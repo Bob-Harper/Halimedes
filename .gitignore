@@ -1,0 +1,6 @@
+__pycache__/
+*.log
+*.pyc
+vosk_models/
+sounds/
+flitevox/
