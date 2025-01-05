@@ -4,3 +4,4 @@ __pycache__/
 vosk_models/
 sounds/
 flitevox/
+.env
