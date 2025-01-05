@@ -13,7 +13,7 @@ voice_path = '/home/msutt/hal/flitevox/cmu_us_jmk.flitevox'  # Update voice path
 tts = TTS(voice_path=voice_path, duration_stretch=1.4, pitch=96)  # Adjust for Halimedes
 
 def recognize_speech_vosk():
-    """Recognize speech using Vosk and return the transcribed text."""
+    """Recognize speech using Vosk and return the transcribed text.""" # does this even work?
     model = Model("/home/msutt/hal/vosk_models/vosk-model-small-en-us-0.15")  # Update the path to Vosk model
     recognizer = KaldiRecognizer(model, 44100)  # Corrected sample rate
     device_index = 1  # Your mic device index

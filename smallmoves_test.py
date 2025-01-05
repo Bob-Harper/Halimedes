@@ -2,6 +2,7 @@ from picrawler import Picrawler
 from adjust_movements import AdjustMovements
 from time import sleep
 
+
 def main():
     crawler = Picrawler()
     adjuster = AdjustMovements(crawler)
