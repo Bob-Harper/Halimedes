@@ -4,7 +4,7 @@ import asyncio
 import threading
 from classes.new_movements import NewMovements  # New movements not in Picrawler
 from classes.picrawler import Picrawler  # Robot movement library
-from classes.tts import TTS  # for audio updates
+from classes.ttsflitevox import TTS  # for audio updates
 
 
 class RobotKeyboard:

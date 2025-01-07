@@ -1,5 +1,5 @@
 import requests
-from classes.tts import TTS
+from classes.ttsflitevox import TTS
 import sounddevice as sd
 from vosk import Model, KaldiRecognizer
 import sys

@@ -1,30 +1,52 @@
-from time import sleep
-from robot_hat import TTS
-import socket
+from ollama import Client
+import subprocess
 
-tts = TTS()
+# Configure the client to point to the remote server
+client = Client(
+    host='http://192.168.0.101:11434'  # Replace with your server's IP and port
+)
 
-
-def send_to_server(text, host='192.168.0.101', port=5000):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((host, port))
-        s.sendall(text.encode('utf-8'))
-        response = s.recv(1024)
-    return response.decode('utf-8')
+def speak_with_flite(words, voice_path="/home/msutt/hal/flitevox/cmu_us_rms.flitevox"):
+    """Speak words using Flite."""
+    try:
+        command = [
+            "flite",
+            "-voice", voice_path,
+            "-t", words
+        ]
+        subprocess.run(command, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+    except FileNotFoundError:
+        print("Flite command not found. Ensure it is installed and in the PATH.")
 
 def main():
-    print("AI LLM Generation Test begin")
-    tts.lang("en-US")
+    print("AI LLM Chat Test Begin")
 
-    # Convert speech to text (Placeholder)
-    spoken_text = "Hello, I have detected your face and i recognize you."  # This should be the result of speech-to-text processing
+    # Conversation starter prompt
+    messages = [
+        {
+            'role': 'system',
+            'content': 'You are a quirky alien robot exploring Earth. Speak in a curious and funny tone.',
+        },
+        {
+            'role': 'user',
+            'content': 'Why is the sky blue?',
+        },
+    ]
 
-    # Send the text to the server and get the response
-    response_text = send_to_server(spoken_text)
-    print(f"Response from server: {response_text}")
+    try:
+        # Send the chat messages to the server
+        response = client.chat(model='llama3.2', messages=messages)
+        response_text = response['message']['content']
 
-    # Use TTS to speak the response
-    tts.say(response_text)
+        print(f"\nResponse from server: {response_text}")
+
+        # Speak the response using Flite
+        speak_with_flite(response_text)
+
+    except Exception as e:
+        print(f"Error during chat or speech: {e}")
 
 if __name__ == "__main__":
     main()

@@ -4,7 +4,7 @@ import speech_recognition as sr
 from classes.llm_communicator import LLMCommunicator  # Send to AI LLM model and speak result
 from classes.new_movements import NewMovements  # New movements not in Picrawler
 from classes.picrawler import Picrawler  # Robot movement library
-from classes.tts import TTS  # for audio updates
+from classes.ttsflitevox import TTS  # for audio updates
 from vilib import Vilib
 
 # Initialize recognizer
