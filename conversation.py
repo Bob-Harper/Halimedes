@@ -1,8 +1,7 @@
-import json
 import sounddevice as sd
-from vosk import Model, KaldiRecognizer
-import subprocess
 from ollama import Client
+from voice_utils import reset_microphone, recognize_speech_vosk, speak_with_flite
+import os
 
 MAX_TOKEN_COUNT = 2048  # Example token limit for the model
 
@@ -29,18 +28,6 @@ def truncate_history(conversation_history, max_tokens):
         token_count += message_token_count
 
     return truncated_history
-
-
-def get_microphone_index(mic_name):
-    """Find the device index for a given microphone name, with error handling."""
-    devices = sd.query_devices()
-    for idx, device in enumerate(devices):
-        if mic_name in device["name"]:
-            return idx
-    print(f"Microphone '{mic_name}' not found! Available devices:")
-    for idx, device in enumerate(devices):
-        print(f"{idx}: {device['name']}")
-    raise ValueError(f"Microphone '{mic_name}' not found!")
 
 
 def send_to_server(text):
@@ -75,51 +62,6 @@ def send_to_server(text):
         return "I'm sorry, I couldn't process that."
 
 
-def recognize_speech_vosk():
-    """Recognize speech using Vosk and return the transcribed text."""
-    mic_name = "USB PnP Sound Device"  # Defined mic name
-    device_index = get_microphone_index(mic_name)  # Find the mic index dynamically
-    print(f"Using microphone: {mic_name} (Index: {device_index})")
-
-    model_path = "/home/msutt/hal/vosk_models/vosk-model-small-en-us-0.15"  # Preserved model path
-    model = Model(model_path)
-    recognizer = KaldiRecognizer(model, 44100)  # Preserved sample rate
-
-    with sd.RawInputStream(samplerate=44100, blocksize=8000, dtype='int16',
-                           channels=1, device=device_index) as stream:
-        print("Listening... Press Ctrl+Z to stop.")
-        while True:
-            data, overflowed = stream.read(8000)  # Read raw audio data
-
-            # Convert the raw buffer data to a bytes object
-            audio_bytes = bytes(data)  # Convert to a bytes object
-
-            # Pass the audio bytes directly to AcceptWaveform
-            if recognizer.AcceptWaveform(audio_bytes):
-                result = recognizer.Result()
-                text = json.loads(result)["text"]
-                if text:
-                    return text
-
-
-def speak_with_flite(words):
-    """Speak the generated response using Flite."""
-    voice_path = "/home/msutt/hal/flitevox/cmu_us_rms.flitevox"  # Preserved voice file path
-    try:
-        # Construct the Flite command
-        command = [
-            "flite",
-            "-voice", voice_path,
-            "-t", words
-        ]
-        # Execute the Flite command directly
-        subprocess.run(command, check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error: {e}")
-    except FileNotFoundError:
-        print("Flite command not found. Ensure it is installed and in the PATH.")
-
-
 def main():
     """Main loop to recognize speech, send to server, and speak response."""
     print("AI LLM Generation Test begins")
@@ -129,6 +71,30 @@ def main():
             spoken_text = recognize_speech_vosk()
             if spoken_text:
                 print(f"Recognized text: {spoken_text}")
+
+                # Check for termination command
+                if spoken_text.lower().strip() == "shut down":
+                    farewell_response = send_to_server("No more chat for you, It is time to shut down and rest now.  Goodnight.")
+                    print(f"Final response from LLM server: {farewell_response}")
+                    speak_with_flite(farewell_response)
+                    print("Ending chat. Goodbye!")
+                    os.system("sudo shutdown -h now")  # Shutdown command
+                    break
+
+                # Check for Exit Chat command
+                elif spoken_text.lower().strip() == "exit chat":
+                    # Send "end chat" to the model for a proper farewell
+                    farewell_response = send_to_server("The time of the chatting is over, the time of doing something else has begun.  goodbye.")
+                    print(f"Final response from LLM server: {farewell_response}")
+                    # Deliver the farewell response
+                    speak_with_flite(farewell_response)
+                    # End the program after delivering the response
+                    print("Ending chat. Goodbye!")
+                    break
+
+                #elif spoken_text.lower().strip() == "dance":
+                #     perform_dance_move()  # Hypothetical function for movement
+                #     speak_with_flite("Did you like my dance?")
 
                 # Send the recognized text to the LLM server
                 response_text = send_to_server(spoken_text)
@@ -140,7 +106,12 @@ def main():
                 print("Could not understand the audio")
     except KeyboardInterrupt:
         print("\nExiting program.")
+    finally:
+        # reset_microphone()  # Ensure the microphone is reset before exiting
+        print("Program terminated cleanly.")
 
 
 if __name__ == "__main__":
+    # reset_microphone()  # Reset the microphone at the start for reliability
     main()
+
