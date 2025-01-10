@@ -1,78 +1,119 @@
-import socket
 import json
 import sounddevice as sd
 from vosk import Model, KaldiRecognizer
-from robot_hat import TTS
-import sys
-import ctypes
+import subprocess
+from ollama import Client
 
-# Manually add the virtual environment site-packages to sys.path
-venv_path = "/home/msutt/hal/venv/lib/python3.11/site-packages"  # Update the Python version if different
-sys.path.insert(0, venv_path)
 
-# Initialize TTS
-voice_path = '/home/msutt/hal/flitevox/cmu_us_jmk.flitevox'  # Update voice path
-tts = TTS(voice_path=voice_path, duration_stretch=1.2, pitch=70)  # Adjust for Halimedes
+def get_microphone_index(mic_name):  # Find the device index for a given microphone name.
+    for idx, device in enumerate(sd.query_devices()):
+        if mic_name in device["name"]:
+            return idx
+    raise ValueError(f"Microphone '{mic_name}' not found!")
 
-def send_to_server(text, source, host='192.168.0.101', port=5000):
-    """Send the recognized text to the LLM server and return the response."""
-    data = json.dumps({"source": source, "text": text})
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((host, port))
-        s.sendall(data.encode('utf-8'))
-        response = s.recv(1024)
-    response_data = json.loads(response.decode('utf-8'))
-    return response_data["response"]
+
+def send_to_server(text):
+    print("AI LLM Chat Test Begin")
+    client = Client(host='http://192.168.0.101:11434')
+    # Conversation starter prompt
+    messages = [
+        {
+            'role': 'system',
+            'content': 'You are Halimeedees, a quirky alien robot exploring Earth. Speak in a curious and funny tone. Keep your responses short, your audience is yung and has a short attention span.  DO not use asterisks or actions.',
+        },
+        {
+            'role': 'user',
+            'content': text,
+        },
+    ]
+
+    try:
+        # Send the chat messages to the server
+        response = client.chat(model='llama3.2', messages=messages)
+        response_text = response['message']['content']
+        return response_text
+
+    except Exception as e:
+        print(f"Error during chat or speech: {e}")
+
 
 def recognize_speech_vosk():
     """Recognize speech using Vosk and return the transcribed text."""
-    model = Model("/home/msutt/hal/vosk_models/vosk-model-small-en-us-0.15")  # Update the path to Vosk model
-    recognizer = KaldiRecognizer(model, 44100)  # Corrected sample rate
-    # Specify the microphone device index. This should be 1 as per your `arecord` results.
-    device_index = 1
+    mic_name = "USB PnP Sound Device"
+    # Get the device index dynamically
+    device_index = get_microphone_index(mic_name)
+    print(f"Using microphone: {mic_name} (Index: {device_index})")
+    model = Model("/home/msutt/hal/vosk_models/vosk-model-small-en-us-0.15")  # small model.  keep the input simple when possible
+    recognizer = KaldiRecognizer(model, 44100)  # default sample rate
 
     with sd.RawInputStream(samplerate=44100, blocksize=8000, dtype='int16',
                            channels=1, device=device_index) as stream:
         print("Listening... Press Ctrl+Z to stop.")
         while True:
-            data, overflowed = stream.read(8000)  # Read raw audio data, same blocksize as before
+            data, overflowed = stream.read(8000)  # Read raw audio data
 
             # Convert the raw buffer data to a bytes object
             audio_bytes = bytes(data)  # Convert to a bytes object
 
             # Pass the audio bytes directly to AcceptWaveform
-            if recognizer.AcceptWaveform(audio_bytes):  # No need for ctypes conversion
+            if recognizer.AcceptWaveform(audio_bytes):
                 result = recognizer.Result()
                 text = json.loads(result)["text"]
                 if text:
                     return text
-            else:
+            # else:
                 # Optionally print the partial result for debugging
-                partial_result = recognizer.PartialResult()
-                print(f"Partial result: {json.loads(partial_result)['partial']}")
+                # partial_result = recognizer.PartialResult()
+                # print(f"Partial result: {json.loads(partial_result)['partial']}")
 
-def list_audio_devices():
-    devices = sd.query_devices()
-    for i, device in enumerate(devices):
-        print(f"Device {i}: {device['name']} (Input Channels: {device['max_input_channels']}, Output Channels: {device['max_output_channels']})")
 
+def speak_with_flite(words):
+    voice_path="/home/msutt/hal/flitevox/cmu_us_rms.flitevox"
+    try:
+        # Construct the Flite command
+        command = [
+            "flite",
+            "-voice", voice_path,
+            "-t", words
+        ]
+        # Execute the Flite command directly
+        subprocess.run(command, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+    except FileNotFoundError:
+        print("Flite command not found. Ensure it is installed and in the PATH.")
 
 def main():
     print("AI LLM Generation Test begins")
-    # list_audio_devices()
-    # Recognize speech with Vosk
-    spoken_text = recognize_speech_vosk()
-    if spoken_text:
-        print(f"Recognized text: {spoken_text}")
+    try:
+        while True:  # Infinite loop to continuously listen and respond
+            # Recognize speech with Vosk
+            spoken_text = recognize_speech_vosk()
+            if spoken_text:
+                print(f"Recognized text: {spoken_text}")
 
-        # Send the recognized text to the LLM server
-        response_text = send_to_server(spoken_text, "Halimedes")  # Specify the source as "Halimedes"
-        print(f"Response from LLM server: {response_text}")
+                # Send the recognized text to the LLM server
+                response_text = send_to_server(spoken_text)
+                print(f"Response from LLM server: {response_text}")
 
-        # Use TTS to speak the response
-        tts.say(response_text)
-    else:
-        print("Could not understand the audio")
+                # Use Flite to speak the response
+                speak_with_flite(response_text)
+            else:
+                print("Could not understand the audio")
+    except KeyboardInterrupt:
+        print("\nExiting program.")
 
 if __name__ == "__main__":
     main()
+
+"""
+IDEAS 
+Use tools like PyAudio or sox for live noise filtering:
+sox -d -n noiseprof noise.prof
+sox input.wav output.wav noisered noise.prof 0.21
+
+Add noise suppression in your Python code with libraries like noisereduce:
+import noisereduce as nr
+reduced_noise = nr.reduce_noise(y=audio_data, sr=sample_rate)
+
+"""
