@@ -2,27 +2,20 @@ import subprocess
 import json
 import sounddevice as sd
 from vosk import Model, KaldiRecognizer
-import subprocess
-
-def reset_microphone():
-    """Reset the USB microphone by reloading the audio driver."""
-    try:
-        subprocess.run(["sudo", "modprobe", "-r", "snd_usb_audio"], check=True)
-        subprocess.run(["sudo", "modprobe", "snd_usb_audio"], check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to reset microphone: {e}")
+import asyncio
 
 
-def speak_with_flite(words):
-    """Speak the given words using Flite."""
+async def speak_with_flite(words):
+    """Speak the given words using Flite asynchronously."""
     voice_path = "/home/msutt/hal/flitevox/cmu_us_rms.flitevox"
     try:
         command = ["flite", "-voice", voice_path, "-t", words]
-        subprocess.run(command, check=True)
+        await asyncio.to_thread(subprocess.run, command, check=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
     except FileNotFoundError:
         print("Flite command not found. Ensure it is installed and in the PATH.")
+
 
 def recognize_speech_vosk():
     """Recognize speech using Vosk and return the transcribed text."""

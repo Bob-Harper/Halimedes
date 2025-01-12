@@ -1,9 +1,12 @@
 import sounddevice as sd
 from ollama import Client
-from voice_utils import reset_microphone, recognize_speech_vosk, speak_with_flite
 import os
-
-MAX_TOKEN_COUNT = 2048  # Example token limit for the model
+import subprocess
+import json
+from vosk import Model, KaldiRecognizer
+# MAX_TOKEN_COUNT is CHARACTER count. For actual Token estimate, multiply by 4. 
+# Smaller equals faster response time. larger means more memory context.  Choose wisely.
+MAX_TOKEN_COUNT = 2048  
 
 # Global conversation history
 conversation_history = [
@@ -12,6 +15,61 @@ conversation_history = [
         'content': 'You are Halimeedees, a quirky alien robot exploring Earth. Speak in a curious and funny tone. Keep your responses short, your audience is young and has a short attention span. Do not use asterisks or actions.',
     }
 ]
+
+def reset_microphone():
+    """Reset the USB microphone by reloading the audio driver."""
+    try:
+        subprocess.run(["sudo", "modprobe", "-r", "snd_usb_audio"], check=True)
+        subprocess.run(["sudo", "modprobe", "snd_usb_audio"], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"MIcrophone Reset Not Required: {e}")
+
+
+def speak_with_flite(words):
+    """Speak the given words using Flite."""
+    voice_path = "/home/msutt/hal/flitevox/cmu_us_rms.flitevox"
+    try:
+        command = ["flite", "-voice", voice_path, "-t", words]
+        subprocess.run(command, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+    except FileNotFoundError:
+        print("Flite command not found. Ensure it is installed and in the PATH.")
+
+def recognize_speech_vosk():
+    """Recognize speech using Vosk and return the transcribed text."""
+    model_path = "/home/msutt/hal/vosk_models/vosk-model-small-en-us-0.15"
+    model = Model(model_path)
+    recognizer = KaldiRecognizer(model, 44100)
+
+    # Hardcoded device index
+    device_index = 1  # Use the correct index for your microphone
+
+    stream = None
+    try:
+        # Initialize the audio stream with the hardcoded index
+        stream = sd.RawInputStream(samplerate=44100, blocksize=8000, dtype='int16',
+                                   channels=1, device=device_index)
+        stream.start()  # Explicitly start the stream
+        print("Listening...")
+        while True:
+            data, _ = stream.read(8000)  # Read raw audio data
+            data = bytes(data)  # Convert to raw byte array
+
+            if recognizer.AcceptWaveform(data):
+                result = recognizer.Result()
+                text = json.loads(result)["text"]
+                if text:
+                    return text
+    except Exception as e:
+        print(f"Error during audio processing: {e}")
+        raise
+    finally:
+        # Ensure the microphone is released
+        if stream:
+            stream.stop()
+            stream.close()
+            print("Audio stream cleaned up successfully.")
 
 
 def truncate_history(conversation_history, max_tokens):
@@ -65,6 +123,20 @@ def send_to_server(text):
 def main():
     """Main loop to recognize speech, send to server, and speak response."""
     print("AI LLM Generation Test begins")
+    speak_with_flite("Say the word Help if you require assistance with command words and phrases. I am now ready to chat.")
+    help_phrases = [
+        "help", "what", "what do i do", 
+        "help me", "i'm confused"
+    ]
+    exit_phrases = [
+        "exit chat", "goodbye", "goodnight", 
+        "end chat", "quit", "quit chat", 
+        "exit", "shush", "good bye", "good night"
+    ]
+    shutdown_phrases = [
+        "shut down", "shutdown", "power down", 
+        "power off", "standby", "hibernate", 
+    ]
     try:
         while True:  # Infinite loop to continuously listen and respond
             # Recognize speech with Vosk
@@ -73,28 +145,29 @@ def main():
                 print(f"Recognized text: {spoken_text}")
 
                 # Check for termination command
-                if spoken_text.lower().strip() == "shut down":
+                if spoken_text.lower().strip() in shutdown_phrases:
+                    speak_with_flite(f"Verbal Shutdown Command Detected: {spoken_text}. Please stand by.")
                     farewell_response = send_to_server("No more chat for you, It is time to shut down and rest now.  Goodnight.")
                     print(f"Final response from LLM server: {farewell_response}")
                     speak_with_flite(farewell_response)
-                    print("Ending chat. Goodbye!")
+                    print("Shutdown  Initiated. Goodbye!")
                     os.system("sudo shutdown -h now")  # Shutdown command
                     break
 
                 # Check for Exit Chat command
-                elif spoken_text.lower().strip() == "exit chat":
+                elif spoken_text.lower().strip() in exit_phrases:
                     # Send "end chat" to the model for a proper farewell
+                    speak_with_flite(f"Verbal End Conversation Command Detected: {spoken_text}. Please stand by.")
                     farewell_response = send_to_server("The time of the chatting is over, the time of doing something else has begun.  goodbye.")
                     print(f"Final response from LLM server: {farewell_response}")
                     # Deliver the farewell response
                     speak_with_flite(farewell_response)
                     # End the program after delivering the response
-                    print("Ending chat. Goodbye!")
+                    print("Ending chat and entering Programming Mode. Goodbye!")
                     break
 
-                #elif spoken_text.lower().strip() == "dance":
-                #     perform_dance_move()  # Hypothetical function for movement
-                #     speak_with_flite("Did you like my dance?")
+                elif spoken_text.lower().strip() in help_phrases:
+                     speak_with_flite("to have me power down, say shut down.  to end chat but leave me powered up, say exit chat.")
 
                 # Send the recognized text to the LLM server
                 response_text = send_to_server(spoken_text)
