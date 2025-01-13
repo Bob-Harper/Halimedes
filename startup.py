@@ -35,8 +35,9 @@ async def main():
     await announce_battery_status()
     await speak_with_flite("Starting conversation mode. Please stand by, system test underway.")
     
-    # Use asyncio.create_subprocess_exec to run animated_chat.py asynchronously
-    await asyncio.create_subprocess_exec("python3", "animated_chat.py")
+    # Start animated_chat.py asynchronously and wait for it
+    process = await asyncio.create_subprocess_exec("python3", "animated_chat.py")
+    await process.wait()  # This ensures the service waits for the subprocess
 
 
 if __name__ == "__main__":
