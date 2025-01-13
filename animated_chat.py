@@ -3,6 +3,7 @@ from llm_utils import LLMClient
 from voice_commands import CommandManager
 from passive_actions import PassiveActionsManager
 import asyncio
+from startup import announce_battery_status
 
 llm_client = LLMClient(server_host='http://192.168.0.101:11434')
 command_manager = CommandManager(llm_client)
@@ -11,7 +12,10 @@ command_map = command_manager.command_map
 
 
 async def main():
-    await speak_with_flite("Servos powered. Listening initiated.  Voice centers activated. Ready for chat.")
+    await speak_with_flite("Servos powered. Listening initiated.  Voice centers activated. Double checking battery.")
+    await announce_battery_status()
+    startup_words = "This is so exciting!  what are we going to talk about today?"
+    passive_manager.startup_speech_actions(startup_words)
     while True:
         spoken_text = recognize_speech_vosk()  # Get input from Vosk
         if spoken_text:
@@ -20,7 +24,7 @@ async def main():
             if command in command_map:
                 # Call the corresponding command function
                 should_exit = await command_map[command](spoken_text)  # Await the function and check return value
-                if should_exit:  # If the command indicates termination, break the loop
+                if should_exit:  # If the command has "return True", ends the script
                     break
             else:
                 # Perform thinking variations while waiting for LLM

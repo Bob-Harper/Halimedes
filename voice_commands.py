@@ -1,21 +1,23 @@
 import asyncio
-import random
 from classes.picrawler import Picrawler
 from classes.new_movements import NewMovements
 from voice_utils import speak_with_flite
 import os
+from startup import announce_battery_status
+from passive_actions import PassiveActionsManager
 
 class CommandManager:
     def __init__(self, llm_client):
         self.llm_client = llm_client
         self.crawler = Picrawler()
         self.newmovements = NewMovements(self.crawler)
+        self.passive_manager = PassiveActionsManager()
 
     async def command_shutdown(self, spoken_text):
         """Shutdown the robot."""
         await speak_with_flite(f"Verbal Command Detected: {spoken_text}. Please stand by.")
         farewell_response = await self.llm_client.send_message_async("No more chat for you, It is time to shut down and rest now.  Goodnight.")
-        await speak_with_flite(farewell_response)
+        await self.passive_manager.startup_speech_actions(farewell_response)        
         await asyncio.to_thread(os.system, "sudo shutdown -h now")
         return True  # Signal to break the loop
     
@@ -23,12 +25,17 @@ class CommandManager:
         """Exit chat mode but remain powered."""
         await speak_with_flite(f"Verbal Command Detected: {spoken_text}. Please stand by.")
         farewell_response = await self.llm_client.send_message_async("The time of the chatting is over, the time of doing something else has begun.  goodbye.")
-        await speak_with_flite(farewell_response)
+        await self.passive_manager.shutdown_speech_actions(farewell_response)     
         return True  # Signal to break the loop
 
     async def command_help(self, spoken_text):
         """Provide verbal help."""
         await speak_with_flite(f"I heard you say {spoken_text}. To have me power down, say shut down. To end chat but leave me powered up, say exit chat.")
+
+    async def command_battery(self, spoken_text):
+        """Provide verbal battery status check."""
+        await speak_with_flite(f"I heard you say {spoken_text}. Acknowledged, I will check battery status now.")
+        await announce_battery_status()
 
     @property
     def command_map(self):
@@ -54,4 +61,9 @@ class CommandManager:
             "what do i do": self.command_help,
             "help me": self.command_help,
             "help": self.command_help,
+            "battery": self.command_battery,
+            "battery check": self.command_battery,
+            "power": self.command_battery,
+            "status": self.command_battery,
         }
+    
