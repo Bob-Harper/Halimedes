@@ -1,9 +1,10 @@
+from rapidfuzz import fuzz, process
 import asyncio
 from classes.picrawler import Picrawler
 from classes.new_movements import NewMovements
 from voice_utils import speak_with_flite
 import os
-from startup import announce_battery_status
+from batterytest import announce_battery_status
 from passive_actions import PassiveActionsManager
 
 class CommandManager:
@@ -17,7 +18,7 @@ class CommandManager:
         """Shutdown the robot."""
         await speak_with_flite(f"Verbal Command Detected: {spoken_text}. Please stand by.")
         farewell_response = await self.llm_client.send_message_async("No more chat for you, It is time to shut down and rest now.  Goodnight.")
-        await self.passive_manager.startup_speech_actions(farewell_response)        
+        await self.passive_manager.shutdown_speech_actions(farewell_response)        
         await asyncio.to_thread(os.system, "sudo shutdown -h now")
         return True  # Signal to break the loop
     
@@ -37,33 +38,23 @@ class CommandManager:
         await speak_with_flite(f"I heard you say {spoken_text}. Acknowledged, I will check battery status now.")
         await announce_battery_status()
 
+    def match_command(self, input_text):
+        """
+        Match the input text to a command in the command map using fuzzy logic.
+        Returns the best match if above the threshold, otherwise None.
+        """
+        threshold = 70  # Minimum similarity score to accept
+        matches = process.extract(input_text, self.command_map.keys(), scorer=fuzz.ratio)
+        if matches and matches[0][1] >= threshold:
+            return matches[0][0]  # Return the best matching command
+        return None
+    
     @property
     def command_map(self):
         return {
-            "shut down": self.command_shutdown,
             "shutdown": self.command_shutdown,
-            "power dow": self.command_shutdown,
-            "power off": self.command_shutdown,
-            "standby": self.command_shutdown,
-            "go to bed": self.command_shutdown,
-            "exit chat": self.command_exit_chat,
-            "goodbye": self.command_exit_chat,
-            "goodnight": self.command_exit_chat,
             "end chat": self.command_exit_chat,
-            "quit": self.command_exit_chat,
-            "quit chat": self.command_exit_chat,
-            "exit": self.command_exit_chat,
-            "shush": self.command_exit_chat,
-            "good bye": self.command_exit_chat,
-            "good night": self.command_exit_chat,
-            "help": self.command_help,
-            "what": self.command_help,
-            "what do i do": self.command_help,
-            "help me": self.command_help,
             "help": self.command_help,
             "battery": self.command_battery,
-            "battery check": self.command_battery,
-            "power": self.command_battery,
-            "status": self.command_battery,
         }
     

@@ -1,5 +1,4 @@
 import asyncio
-from batterytest import announce_battery_status
 from voice_utils import speak_with_flite
 
 # Flag to prevent re-launching animated_chat.py
@@ -11,8 +10,6 @@ async def main():
     global is_chat_started
     if not is_chat_started:
         await speak_with_flite("Beginning startup procedure and status check. Please stand by, system test underway.")
-        await announce_battery_status()
-        # Start animated_chat.py asynchronously only if it hasn't been started yet
         await speak_with_flite("Preparing for conversation mode. ")
         process = await asyncio.create_subprocess_exec("python3", "animated_chat.py")
         is_chat_started = True  # Set flag to indicate chat has started
