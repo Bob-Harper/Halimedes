@@ -8,8 +8,16 @@ import asyncio
 async def speak_with_flite(words):
     """Speak the given words using Flite asynchronously."""
     voice_path = "/home/msutt/hal/flitevox/cmu_us_rms.flitevox"
+    pitch = 50  # default 100 - higher/deeper voice correlates to higher/lower number
+    speed = 0.88  # default 1.0 - higher values stretch the waveform (longer), lower compresses
     try:
-        command = ["flite", "-voice", voice_path, "-t", words]
+        command = [
+            "flite",
+            "-voice", voice_path,
+            "--setf", f"int_f0_target_mean={pitch}",
+            "--setf", f"duration_stretch={speed}",
+            "-t", words,
+        ]
         await asyncio.to_thread(subprocess.run, command, check=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")

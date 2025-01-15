@@ -26,5 +26,3 @@ def main(stdscr):
 
 if __name__ == "__main__":
     curses.wrapper(main)
-
-    word = "Moooooove bitch, get out the way, get out the way bitch, get out the way, Moooooove bitch, get out the way, get out the way bitch, get out the way"
