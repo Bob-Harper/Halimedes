@@ -1,11 +1,7 @@
 import subprocess
 
-def speak_with_flite(words, voice_path="/home/msutt/hal/flitevox/cmu_us_rms.flitevox"):
-    """
-    Speak words using Flite via a direct subprocess call.
-    :param words: Text to speak
-    :param voice_path: Path to the Flite voice file
-    """
+def speak_with_flite(words):
+    voice_path="/home/msutt/hal/flitevox/cmu_us_rms.flitevox"
     try:
         # Construct the Flite command
         command = [
@@ -21,4 +17,4 @@ def speak_with_flite(words, voice_path="/home/msutt/hal/flitevox/cmu_us_rms.flit
         print("Flite command not found. Ensure it is installed and in the PATH.")
 
 if __name__ == "__main__":
-    speak_with_flite("Testing sound output")
+    speak_with_flite("I want to sing...  sing...  SING!!!")

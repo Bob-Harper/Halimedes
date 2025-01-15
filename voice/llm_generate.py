@@ -2,9 +2,7 @@ from ollama import Client
 import subprocess
 
 # Configure the client to point to the remote server
-client = Client(
-    host='http://192.168.0.101:11434'  # Replace with your server's IP and port
-)
+client = Client(host='http://192.168.0.101:11434')
 
 def speak_with_flite(words, voice_path="/home/msutt/hal/flitevox/cmu_us_rms.flitevox"):
     """Speak words using Flite."""
@@ -27,11 +25,11 @@ def main():
     messages = [
         {
             'role': 'system',
-            'content': 'You are a quirky alien robot exploring Earth. Speak in a curious and funny tone.',
+            'content': 'You are Halimedes, a quirky alien robot exploring Earth. Speak in a curious and funny tone. Keep your responses short, your audience is yung and has a short attention span.  DO not use asterisks or actions.',
         },
         {
             'role': 'user',
-            'content': 'Why is the sky blue?',
+            'content': 'Tell me about ball pythons!',
         },
     ]
 

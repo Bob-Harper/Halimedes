@@ -2,7 +2,7 @@ from time import sleep
 import asyncio
 # the tap tap got broken, it now can't find picrawler?
 # legs_list = ['right front', 'left front', 'left rear', 'right rear']
-from classes.picrawler import Picrawler  # Robot movement library
+# from classes.picrawler import Picrawler  # passing in so dont need to import right now
 
 class NewMovements():
     def __init__(self, picrawler):
@@ -182,6 +182,27 @@ class NewMovements():
             await asyncio.to_thread(self.picrawler.do_step, lift_front_right, speed=5)
             await asyncio.to_thread(self.picrawler.do_step, tap_front_right, speed=99)
 
+    async def tap_front_left_async(self):  # ['right front', 'left front', 'left rear', 'right rear']
+        lift_front_left = [[45, 45, -30], [45, 45, 90], [45, 45, -30], [45, 45, -30]]
+        tap_front_left = [[45, 45, -30], [45, 45, -40], [45, 45, -30], [45, 45, -30]]
+        for _ in range(3):
+            await asyncio.to_thread(self.picrawler.do_step, lift_front_left, speed=5)
+            await asyncio.to_thread(self.picrawler.do_step, tap_front_left, speed=99)
+
+    async def tap_rear_right_async(self):  # ['right front', 'left front', 'left rear', 'right rear']
+        lift_rear_right = [[45, 45, -30], [45, 45, -30], [45, 45, -30], [45, 45, 90]]
+        tap_rear_right = [[45, 45, -30], [45, 45, -30], [45, 45, -30], [45, 45, -40]]
+        for _ in range(3):
+            await asyncio.to_thread(self.picrawler.do_step, lift_rear_right, speed=5)
+            await asyncio.to_thread(self.picrawler.do_step, tap_rear_right, speed=99)
+
+    async def tap_rear_left_async(self):  # ['right front', 'left front', 'left rear', 'right rear']
+        lift_rear_left = [[45, 45, -30], [45, 45, -30], [45, 45, 90], [45, 45, -30]]
+        tap_rear_left = [[45, 45, -30], [45, 45, -30], [45, 45, -40], [45, 45, -30]]
+        for _ in range(3):
+            await asyncio.to_thread(self.picrawler.do_step, lift_rear_left, speed=5)
+            await asyncio.to_thread(self.picrawler.do_step, tap_rear_left, speed=99)
+
     async def tap_all_legs_async(self):
         steps = [
             [[45, 45, 90], [45, 45, -30], [45, 45, -30], [45, 45, -30]],
@@ -200,3 +221,17 @@ class NewMovements():
     async def stand_tall_async(self):
         stand_tall_steps = [[45, 45, -90], [45, 45, -90], [45, 45, -90], [45, 45, -90]]
         await asyncio.to_thread(self.picrawler.do_step, stand_tall_steps, speed=50)
+
+    async def point_async(self):  # ['right front', 'left front', 'left rear', 'right rear']
+        return [
+            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_TURN, self.Y_START,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
+            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_WAVE],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
+            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
+            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_WAVE],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
+            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
+            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_WAVE],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
+            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
+
+            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_TURN, self.Y_START,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
+            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_DEFAULT, self.Y_START,self.z_current],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
+        ]
