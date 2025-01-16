@@ -10,7 +10,7 @@ MAX_TOKEN_COUNT represents the character count limit for conversation history.
 For quick testing, use a smaller value (e.g., 512). For production or complex tasks,
 consider increasing this value (e.g., 2048) to enhance conversational memory.
 """
-MAX_TOKEN_COUNT = 512  # Adjust as needed
+MAX_TOKEN_COUNT = 4096  # Adjust as needed
 
 
 class LLMClient:
@@ -18,10 +18,11 @@ class LLMClient:
         self.server_host = server_host
         self.model = model
         self.max_tokens = MAX_TOKEN_COUNT
+        system_prompt = 'You are Halimeedees, a quirky alien robot exploring Earth. Speak in a curious and funny tone. Keep your responses short, your audience is young and has a short attention span. Do not use asterisks or actions.'
         self.conversation_history = [
             {
                 'role': 'system',
-                'content': 'You are Halimeedees, a quirky alien robot exploring Earth. Speak in a curious and funny tone. Keep your responses short, your audience is young and has a short attention span. Do not use asterisks or actions.',
+                'content': system_prompt,
             }
         ]
 
@@ -40,12 +41,19 @@ class LLMClient:
 
         self.conversation_history = truncated_history
 
-    async def send_message_async(self, user_input):
+    async def send_message_async(self, system_prompt, user_input):
         """Send a message to the LLM and get the response asynchronously."""
+        # Update the system prompt without removing the original
+        self.conversation_history[0] = {'role': 'system', 'content': system_prompt}
+        
+        # Add the user's input to the conversation
         self.conversation_history.append({'role': 'user', 'content': user_input})
+        
+        # Truncate history to fit token limits
         self.truncate_history()
-        print(f"{self.conversation_history}")
+       
         try:
+            # Send request to the LLM server
             response = await asyncio.to_thread(
                 requests.post,
                 f"{self.server_host}/api/chat",
@@ -55,13 +63,16 @@ class LLMClient:
                     'stream': False
                 }
             )
-            print("Raw response text:", response.text)  # Print the raw response for debugging
+            print("Raw response text:", response.text)  # Debugging info
             response.raise_for_status()
+            
+            # Extract and clean LLM response
             response_text = response.json().get('message', {}).get('content', '')
             response_text = self.clean_response(response_text)
-
-            # Add the assistant's response to the history
+            
+            # Add Hal's response to the conversation history
             self.conversation_history.append({'role': 'assistant', 'content': response_text})
+            print(f"Conversation history after response: {self.conversation_history}")
             return response_text
         except Exception as e:
             print(f"Error communicating with LLM: {e}")

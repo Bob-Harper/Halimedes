@@ -1,113 +1,133 @@
-from decisions.lunar_effects import LunarEffects
+import os
 import requests
+from collections import defaultdict
+from dotenv import load_dotenv
 
+# Load environment variables from a .env file
+load_dotenv()
 
-@commands.command(name='weather')
-async def get_weather(self, ctx, *args):
-    """Fetch and respond with weather information."""
-    try:
-        # Determine the location
-        location = " ".join(args).strip()
+class WeatherHelper:
+    def __init__(self):
+        self.default_lat = os.getenv("DEFAULT_WEATHER_LAT")
+        self.default_lon = os.getenv("DEFAULT_WEATHER_LONG")
+        self.weather_api_key = os.getenv("OPEN_WEATHER")
 
-        if location:
-            # Use Geocoding API to fetch coordinates for the city
-            coords = self.fetch_coordinates(location)
-            if not coords:
-                await ctx.send(f"Sorry, I couldn't find coordinates for '{location}'.")
-                return
-            lat, lon = coords
+    @staticmethod
+    def get_wind_speed_description(speed):
+        if speed < 1:
+            return "Calm"
+        elif speed < 5:
+            return "Light breeze"
+        elif speed < 11:
+            return "Gentle breeze"
+        elif speed < 19:
+            return "Moderate wind"
+        elif speed < 28:
+            return "Fresh breeze"
+        elif speed < 38:
+            return "Strong wind"
+        elif speed < 49:
+            return "Gale"
+        elif speed < 61:
+            return "Strong gale"
+        elif speed < 74:
+            return "Storm"
         else:
-            # Default to Fort Erie
-            lat, lon = self.default_lat, self.default_lon
+            return "Hurricane-force winds"
 
-        # Fetch weather data using lat/lon
-        weather_data = self.fetch_weather(lat, lon)
-        if not weather_data:
-            await ctx.send("Sorry, I couldn't retrieve weather data.")
-            return
+    @staticmethod
+    def get_wind_direction(degrees):
+        cardinal_directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+        index = round(degrees / 45) % 8
+        return cardinal_directions[index]
 
-        # Format weather data
-        formatted_data = self.format_weather_data(weather_data)
+    @staticmethod
+    def get_cloud_description(cloud_percentage):
+        if cloud_percentage <= 10:
+            return "No clouds"
+        elif cloud_percentage <= 25:
+            return "Mostly clear"
+        elif cloud_percentage <= 50:
+            return "Partly cloudy"
+        elif cloud_percentage <= 75:
+            return "Mostly cloudy"
+        else:
+            return "Overcast"
 
-        # Build context_data
-        context_data = await extract_context_data(ctx=ctx, bot=self.bot)
-        context_data["weather_data"] = formatted_data
+    async def fetch_weather(self):
+        """Fetch and format current weather data."""
+        try:
+            url = "http://api.openweathermap.org/data/2.5/weather"
+            params = {
+                "lat": self.default_lat,
+                "lon": self.default_lon,
+                "appid": self.weather_api_key,
+                "units": "metric"
+            }
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
 
-        # Send weather data to the language model
-        chat_response_cog = self.bot.get_cog("ChatResponseCog")
-        if not chat_response_cog:
-            await ctx.send("I can't process the weather response right now. Try again later.")
-            return
+            # Format weather data
+            location_name = data.get("name", "Unknown location")
+            weather_desc = data["weather"][0]["description"].capitalize()
+            temp = round(data["main"]["temp"])
+            feels_like = round(data["main"]["feels_like"])
+            clouds = self.get_cloud_description(data["clouds"]["all"])
+            wind_speed = self.get_wind_speed_description(data["wind"]["speed"])
+            wind_direction = self.get_wind_direction(data["wind"]["deg"])
 
-        response = await chat_response_cog.send_response_async(
-            context_data=context_data,
-            response_type="Weather_Update",
-            model_type="text",
-        )
+            return (
+                f"Weather in {location_name}: {weather_desc}. "
+                f"Cloudiness: {clouds}. "
+                f"Temperature: {temp}°C (feels like {feels_like}°C). "
+                f"Wind: {wind_speed} from {wind_direction}."
+            )
 
-        # Send the final response to the Discord channel
-        await ctx.send(response or "I couldn't generate a response. Try again later.")
+        except requests.RequestException as e:
+            print(f"Weather API error: {e}")
+            return "Sorry, I couldn't fetch the current weather."
 
-    except Exception as e:
-        logger.error(f"Error in !weather command: {e}")
-        await ctx.send("Something went wrong while fetching the weather.")
+    async def fetch_forecast(self):
+        """Fetch and format a detailed 5-day forecast."""
+        try:
+            url = "http://api.openweathermap.org/data/2.5/forecast"
+            params = {
+                "lat": self.default_lat,
+                "lon": self.default_lon,
+                "appid": self.weather_api_key,
+                "units": "metric"
+            }
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
 
+            # Group data by day
+            forecast_list = data["list"]
+            daily_data = defaultdict(list)
 
-def fetch_coordinates(self, location):
-    """Fetch latitude and longitude for a city using Geocoding API."""
-    try:
-        url = "http://api.openweathermap.org/geo/1.0/direct"
-        params = {
-            "q": location,
-            "appid": self.weather_api_key,
-            "limit": 1  # Fetch the most relevant match
-        }
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-        data = response.json()
+            for entry in forecast_list:
+                date = entry["dt_txt"].split(" ")[0]  # Extract the date
+                daily_data[date].append(entry)
 
-        if data:
-            return data[0]["lat"], data[0]["lon"]
-        return None
-    except requests.RequestException as e:
-        logger.error(f"Geocoding API error: {e}")
-        return None
+            # Summarize each day (process all available days, no artificial limits)
+            all_days_summary = []
+            for date, entries in daily_data.items():
+                temps = [entry["main"]["temp"] for entry in entries]
+                descriptions = [entry["weather"][0]["description"].capitalize() for entry in entries]
+                high_temp = max(temps)
+                low_temp = min(temps)
+                common_weather = max(set(descriptions), key=descriptions.count)
 
+                all_days_summary.append({
+                    "date": date,
+                    "high_temp": round(high_temp),
+                    "low_temp": round(low_temp),
+                    "description": common_weather,
+                })
 
-def fetch_weather(self, lat, lon):
-    """Fetch weather data from OpenWeatherMap API using lat/lon."""
-    try:
-        url = "http://api.openweathermap.org/data/2.5/weather"
-        params = {
-            "lat": lat,
-            "lon": lon,
-            "appid": self.weather_api_key,
-            "units": "metric"
-        }
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException as e:
-        logger.error(f"Weather API error: {e}")
-        return None
+            return all_days_summary
 
-
-@staticmethod
-def format_weather_data(data):
-    """Extract and format relevant weather details from API response."""
-    try:
-        location_name = data.get("name", "Unknown location")
-        weather_desc = data["weather"][0]["description"].capitalize()
-        temp = data["main"]["temp"]
-        feels_like = data["main"]["feels_like"]
-        humidity = data["main"]["humidity"]
-        wind_speed = data["wind"]["speed"]
-
-        return (
-            f"Weather in {location_name}: {weather_desc}. "
-            f"Temperature: {temp}°C (feels like {feels_like}°C). "
-            f"Humidity: {humidity}%. Wind speed: {wind_speed} m/s."
-        )
-    except (KeyError, TypeError) as e:
-        logger.error(f"Error formatting weather data: {e}")
-        return "Weather data is unavailable."
+        except requests.RequestException as e:
+            print(f"Forecast API error: {e}")
+            return None

@@ -4,8 +4,6 @@ from llm_utils import LLMClient
 from voice_commands import CommandManager
 from passive_actions import PassiveActionsManager
 import asyncio
-from rapidfuzz import process
-
 
 llm_client = LLMClient(server_host='http://192.168.0.101:11434')
 command_manager = CommandManager(llm_client)
@@ -28,8 +26,9 @@ async def main():
                     break
             else:
                 stop_event = asyncio.Event()
-                thinking_task = asyncio.create_task(passive_manager.actions_thinking_loop(stop_event))                
-                response_text = await llm_client.send_message_async(spoken_text)
+                thinking_task = asyncio.create_task(passive_manager.actions_thinking_loop(stop_event))
+                system_prompt = 'You are Halimeedees, a quirky alien robot exploring Earth. Speak in a curious and funny tone. Keep your responses short, your audience is young and has a short attention span. Do not use asterisks or actions.'
+                response_text = await llm_client.send_message_async(system_prompt, spoken_text)
                 stop_event.set()  # Signal the thinking loop to stop
                 await thinking_task  # Ensure the thinking task finishes cleanly
                 await speak_with_flite(response_text)
