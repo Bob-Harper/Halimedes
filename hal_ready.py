@@ -1,11 +1,7 @@
 import threading
-from robot_hat import TTS
-from picrawler import Picrawler
+from classes.robot import TTS
+from classes.picrawler import Picrawler
 
-tts1 = TTS(engine='espeak')
-tts1.espeak_params(amp=50, speed=220, gap=2, pitch=98)  # amp = volume, speed = 80 to 260, gap = time between words, pitch 0-98 deep or high voice
-tts2 = TTS(engine='espeak')
-tts2.espeak_params(amp=50, speed=200, gap=2, pitch=2)
 crawler = Picrawler()
 
 

@@ -33,14 +33,13 @@ def main():
         if key == "1":
             music.sound_play('./sounds/test.wav')
             sleep(0.05)
-        else key == "2":
+        elif key == "2":
             music.sound_play('./sounds/test2.wav')
             sleep(0.05)
 
-        else key == "3":
+        elif key == "3":
             music.sound_play('./sounds/test3.wav')
             sleep(0.05)
-
 
 
 if __name__ == "__main__":

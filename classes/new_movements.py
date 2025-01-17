@@ -130,108 +130,69 @@ class NewMovements():
         stand_tall_steps = [[45, 45, -90], [45, 45, -90], [45, 45, -90], [45, 45, -90]]
         self.picrawler.do_step(stand_tall_steps, speed=50)
 
-    def small_right(self):
-        # Define all positions upfront
-        stand_tall_steps = [[45, 45, -90], [45, 45, -90], [45, 45, -90], [45, 45, -90]]
-        step1 = [[45, 45, -90], [75, 30, -60], [45, 45, -90], [45, 45, -90]]  # Front right lifts outward
-        step2 = [[45, 45, -90], [75, 30, -90], [45, 45, -90], [45, 45, -90]]  # Front right taps down
-        step3 = [[15, 30, -60], [75, 30, -90], [45, 45, -90], [45, 45, -90]]  # Front left lifts inward
-        step4 = [[15, 30, -90], [75, 30, -90], [45, 45, -90], [45, 45, -90]]  # Front left taps down
-        step5 = [[15, 30, -90], [75, 30, -90], [25, 30, -60], [45, 45, -90]]  # Rear left adjusts inward
-        step6 = [[15, 30, -90], [75, 30, -90], [25, 30, -90], [45, 45, -90]]  # Rear left taps down
-        step7 = [[15, 30, -90], [75, 30, -90], [25, 30, -90], [65, 30, -60]]  # Rear right adjusts outward
-        step8 = [[15, 30, -90], [75, 30, -90], [25, 30, -90], [65, 30, -90]]  # Rear right taps down
+    def pushup(self, speed):
+        up=[[80, 0, -100], [80, 0, -100],[0, 120, -60], [0, 120, -60]]
+        down=[[80, 0, -30], [80, 0, -30],[0, 120, -60], [0, 120, -60]]
+        self.picrawler.do_step(up,speed)
+        sleep(0.6)
+        self.picrawler.do_step(down,speed)
+        sleep(0.6)
 
-        # Execute the steps in sequence
-        self.picrawler.do_step(stand_tall_steps, speed=50)
-        self.picrawler.do_step(step1, speed=25)
-        self.picrawler.do_step(step2, speed=99)
-        self.picrawler.do_step(step3, speed=25)
-        self.picrawler.do_step(step4, speed=99)
-        self.picrawler.do_step(step5, speed=25)
-        self.picrawler.do_step(step6, speed=99)
-        self.picrawler.do_step(step7, speed=25)
-        self.picrawler.do_step(step8, speed=99)
+    def swimming(self, speed):
+        for i in range(100):
+            self.picrawler.do_step([[100-i,i,0],[100-i,i,0],[0,120,-60+i/5],[0,100,-40-i/5]],speed)
 
+    def handwork(self, speed):
 
-    async def sit_down_async(self):
+        basic_step = []
+        basic_step = self.picrawler.step_list.get("sit")
+        left_hand  = self.picrawler.mix_step(basic_step,0,[0,50,80])
+        right_hand  = self.picrawler.mix_step(basic_step,1,[0,50,80])
+        two_hand = self.picrawler.mix_step(left_hand,1,[0,50,80])
 
-        sit_down_steps = [
-            [[50, 90, 90], [50, 90, 90], [50, 90, 90], [50, 90, 90]],
-            [[50, 60, 60], [50, 60, 60], [0, 60, 60], [0, 60, 60]],
-            [[50, 30, 30], [50, 30, 30], [0, 30, 30], [0, 30, 30]],
-            [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
-        ]
-        for steps in sit_down_steps:
-            await asyncio.to_thread(self.picrawler.do_step, steps, speed=1)
+        self.picrawler.do_step('sit',speed)
+        sleep(0.6)    
+        self.picrawler.do_step(left_hand,speed)
+        sleep(0.6)
+        self.picrawler.do_step(two_hand,speed)
+        sleep(0.6)
+        self.picrawler.do_step(right_hand,speed)
+        sleep(0.6)
+        self.picrawler.do_step('sit',speed)
+        sleep(0.6)
+ 
+    def wave_leg(stop_event):
+        new_step = [[50, 50, -80], [50, 50, -80], [50, 50, -80], [50, 50, -80]]
+        print(f"Waving leg {leg_index}...")
+        speed = 100
+        while not stop_event.is_set():
+            for inc in range(0, 45, 5):
+                if stop_event.is_set():
+                    break
+                lift = [90, 120, 90 + inc]  # Adjust the vertical angles to wave
+                lower = [90, 120, 90 - inc]
+                new_step = [[90, 120, 90] for _ in range(4)]
+                new_step[leg_index] = lift
+                crawler.do_step(new_step, speed)
+                sleep(0.1)
+                new_step[leg_index] = lower
+                crawler.do_step(new_step, speed)
+                sleep(0.1)
+        print(f"Waving leg {leg_index} completed.")    
 
-    async def sway_all_legs_async(self):
-        tap_steps = [
-            [[45, 45, -44], [45, 45, -30], [45, 45, -30], [45, 45, -30]],
-            [[45, 45, -30], [45, 45, -44], [45, 45, -30], [45, 45, -30]],
-            [[45, 45, -30], [45, 45, -30], [45, 45, -44], [45, 45, -30]],
-            [[45, 45, -30], [45, 45, -30], [45, 45, -30], [45, 45, -44]]
-        ]
-        for steps in tap_steps:
-            await asyncio.to_thread(self.picrawler.do_step, steps, speed=80)
+    async def wiggle(self):
+        """Perform a smooth wiggle motion."""
+        new_step = [[50, 50, -80], [50, 50, -80], [50, 50, -80], [50, 50, -80]]
+        speed = 99
 
-    async def tap_front_right_async(self):
-        lift_front_right = [[45, 45, 90], [45, 45, -30], [45, 45, -30], [45, 45, -30]]
-        tap_front_right = [[45, 45, -40], [45, 45, -30], [45, 45, -30], [45, 45, -30]]
-        for _ in range(3):
-            await asyncio.to_thread(self.picrawler.do_step, lift_front_right, speed=5)
-            await asyncio.to_thread(self.picrawler.do_step, tap_front_right, speed=99)
-
-    async def tap_front_left_async(self):  # ['right front', 'left front', 'left rear', 'right rear']
-        lift_front_left = [[45, 45, -30], [45, 45, 90], [45, 45, -30], [45, 45, -30]]
-        tap_front_left = [[45, 45, -30], [45, 45, -40], [45, 45, -30], [45, 45, -30]]
-        for _ in range(3):
-            await asyncio.to_thread(self.picrawler.do_step, lift_front_left, speed=5)
-            await asyncio.to_thread(self.picrawler.do_step, tap_front_left, speed=99)
-
-    async def tap_rear_right_async(self):  # ['right front', 'left front', 'left rear', 'right rear']
-        lift_rear_right = [[45, 45, -30], [45, 45, -30], [45, 45, -30], [45, 45, 90]]
-        tap_rear_right = [[45, 45, -30], [45, 45, -30], [45, 45, -30], [45, 45, -40]]
-        for _ in range(3):
-            await asyncio.to_thread(self.picrawler.do_step, lift_rear_right, speed=5)
-            await asyncio.to_thread(self.picrawler.do_step, tap_rear_right, speed=99)
-
-    async def tap_rear_left_async(self):  # ['right front', 'left front', 'left rear', 'right rear']
-        lift_rear_left = [[45, 45, -30], [45, 45, -30], [45, 45, 90], [45, 45, -30]]
-        tap_rear_left = [[45, 45, -30], [45, 45, -30], [45, 45, -40], [45, 45, -30]]
-        for _ in range(3):
-            await asyncio.to_thread(self.picrawler.do_step, lift_rear_left, speed=5)
-            await asyncio.to_thread(self.picrawler.do_step, tap_rear_left, speed=99)
-
-    async def tap_all_legs_async(self):
-        steps = [
-            [[45, 45, 90], [45, 45, -30], [45, 45, -30], [45, 45, -30]],
-            [[45, 45, -40], [45, 45, -30], [45, 45, -30], [45, 45, -30]],
-            [[45, 45, -30], [45, 45, 90], [45, 45, -30], [45, 45, -30]],
-            [[45, 45, -30], [45, 45, -40], [45, 45, -30], [45, 45, -30]],
-            [[45, 45, -30], [45, 45, -30], [45, 45, -30], [45, 45, 90]],
-            [[45, 45, -30], [45, 45, -30], [45, 45, -30], [45, 45, -40]],
-            [[45, 45, -30], [45, 45, -30], [45, 45, 90], [45, 45, -30]],
-            [[45, 45, -30], [45, 45, -30], [45, 45, -40], [45, 45, -30]]
-        ]
-        for step in steps:
-            await asyncio.to_thread(self.picrawler.do_step, step, speed=25)
-            await asyncio.to_thread(self.picrawler.do_step, step, speed=99)
-
-    async def stand_tall_async(self):
-        stand_tall_steps = [[45, 45, -90], [45, 45, -90], [45, 45, -90], [45, 45, -90]]
-        await asyncio.to_thread(self.picrawler.do_step, stand_tall_steps, speed=50)
-
-    async def point_async(self):  # ['right front', 'left front', 'left rear', 'right rear']
-        return [
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_TURN, self.Y_START,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_WAVE],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_WAVE],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_WAVE],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_TURN, self.Y_START,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_DEFAULT, self.Y_START,self.z_current],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-        ]
+        while True:  # Continuous loop, can be broken externally if needed
+            for i in range(4):  # Cycle through legs
+                for inc in range(30, 60, 80):  # Increment rise/drop values
+                    rise = [50, 50, (-80 + inc * 0.5)]
+                    drop = [50, 50, (-80 - inc)]
+                    new_step[i] = rise
+                    new_step[(i + 2) % 4] = drop
+                    new_step[(i + 1) % 4] = rise
+                    new_step[(i - 1) % 4] = drop
+                    await asyncio.to_thread(self.crawler.do_step, new_step, speed)
+                    await asyncio.sleep(0.05)  # Small delay for smoother animation    

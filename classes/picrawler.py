@@ -327,8 +327,6 @@ class Picrawler(Robot):
             self.recovery_step = []
             self.ready_state = 0
             self.angle = 30
-            self.precision_mode_multiplier = 0.25
-
 
         def __getitem__(self, item):
             return eval("self.%s"%item.replace(" ", "_"))
@@ -484,43 +482,6 @@ class Picrawler(Robot):
                 [[self.TURN_X0, self.TURN_Y0, self.Z_UP],[self.TURN_X0, self.TURN_Y0, self.z_current],[self.TURN_X1, self.TURN_Y1, self.z_current],[self.TURN_X1, self.TURN_X1, self.z_current]],
                 [[self.X_TURN, self.Y_START, self.Z_UP],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_DEFAULT, self.Y_START, self.z_current]],
                 [[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_DEFAULT, self.Y_START, self.z_current]],
-            ]
-
-        @property
-        @check_stand
-        @normal_action(1)
-        def small_left(self):
-            multiplier = 5
-            return [
-                [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
-                [self.X_DEFAULT, self.Y_START,self.z_current],
-                [self.X_TURN, self.Y_START, self.Z_UP],
-                [self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-
-                [[self.TURN_X1, self.TURN_Y1, self.z_current],
-                [self.TURN_X1, self.TURN_Y1, self.z_current],
-                [self.TURN_X0, self.TURN_Y0, self.Z_UP],
-                [self.TURN_X0, self.TURN_Y0, self.z_current]],
-
-                [[self.TURN_X1, self.TURN_Y1, self.z_current],
-                [self.TURN_X1, self.TURN_Y1, self.z_current],
-                [self.TURN_X0, self.TURN_Y0, self.z_current],
-                [self.TURN_X0, self.TURN_Y0, self.z_current]],
-
-                [[self.TURN_X1, self.TURN_Y1, self.z_current],
-                [self.TURN_X1, self.TURN_Y1, self.z_current],
-                [self.TURN_X0, self.TURN_Y0, self.z_current],
-                [self.TURN_X0, self.TURN_Y0, self.Z_UP]],
-
-                [[self.X_DEFAULT, self.Y_START, self.z_current],
-                [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
-                [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
-                [self.X_TURN, self.Y_START, self.Z_UP]],
-
-                [[self.X_DEFAULT, self.Y_START, self.z_current],
-                [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
-                [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
-                [self.X_DEFAULT, self.Y_START, self.z_current]],
             ]
 
         @property
