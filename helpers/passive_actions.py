@@ -1,7 +1,7 @@
 import random
-from classes.picrawler import Picrawler
-from classes.new_movements import NewMovements
-from voice_utils import speak_with_flite
+from helpers.picrawler import Picrawler
+from helpers.new_movements import NewMovements
+from helpers.voice_utils import speak_with_flite
 import asyncio
 
 class PassiveActionsManager:
@@ -12,11 +12,11 @@ class PassiveActionsManager:
     async def actions_thinking_loop(self, stop_event):
         """Perform a thinking action in a loop until the stop_event is set."""
         actions = [
-            self.newmovements.tap_front_right_async,
-            self.newmovements.tap_front_left_async,
-            self.newmovements.tap_rear_right_async,
-            self.newmovements.tap_rear_left_async,
-            self.newmovements.tap_all_legs_async,
+            self.newmovements.tap_front_right,
+            self.newmovements.tap_front_left,
+            self.newmovements.tap_rear_right,
+            self.newmovements.tap_rear_left,
+            self.newmovements.tap_all_legs,
         ]
         while not stop_event.is_set():
             weights = [0.3, 0.3, 0.15, 0.15, 0.1]  # Adjust probabilities

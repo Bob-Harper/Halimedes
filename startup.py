@@ -1,5 +1,5 @@
 import asyncio
-from voice_utils import speak_with_flite
+from helpers.voice_utils import speak_with_flite
 
 # Flag to prevent re-launching animated_chat.py
 is_chat_started = False

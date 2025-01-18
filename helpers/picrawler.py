@@ -1,5 +1,4 @@
 from robot_hat import Robot, utils
-import asyncio
 import time
 import math
 

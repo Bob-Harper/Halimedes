@@ -1,6 +1,6 @@
 import asyncio
 from robot_hat.utils import get_battery_voltage
-from voice_utils import speak_with_flite
+from helpers.voice_utils import speak_with_flite
 
 # --- Battery Management ---
 async def get_battery_status(max_retries=5, retry_delay=2):

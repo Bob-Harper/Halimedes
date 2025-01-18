@@ -1,12 +1,12 @@
 from rapidfuzz import fuzz, process
 import asyncio
-from classes.picrawler import Picrawler
-from classes.new_movements import NewMovements
-from voice_utils import speak_with_flite
+from helpers.picrawler import Picrawler
+from helpers.new_movements import NewMovements
+from helpers.voice_utils import speak_with_flite
 import os
-from batterytest import announce_battery_status
-from passive_actions import PassiveActionsManager
-from weather import WeatherHelper
+from helpers.batterytest import announce_battery_status
+from helpers.passive_actions import PassiveActionsManager
+from helpers.weather import WeatherHelper
 
 class CommandManager:
     def __init__(self, llm_client):
