@@ -1,16 +1,34 @@
 import random
 from helpers.picrawler import Picrawler
 from helpers.new_movements import NewMovements
+from helpers.sound_effects import PassiveSoundsManager
 from helpers.voice_utils import speak_with_flite
 import asyncio
+
 
 class PassiveActionsManager:
     def __init__(self):
         self.crawler = Picrawler()
+        self.passive_sound = PassiveSoundsManager()
         self.newmovements = NewMovements(self.crawler)
 
-    async def actions_thinking_loop(self, stop_event):
-        """Perform a thinking action in a loop until the stop_event is set."""
+    async def handle_passive_actions(self, stop_event):
+        """Alternate between sounds and actions while waiting for LLM response."""
+        while not stop_event.is_set():
+            # Weighted random choice: 70% sound, 30% action
+            choice = random.choices(["sound", "action"], weights=[70, 30], k=1)[0]
+
+            if choice == "sound":
+                print("Playing a sound...")  # Debug
+                await self.passive_sound.sounds_thinking_loop_single()  # Play one sound
+            else:
+                print("Performing an action...")  # Debug
+                await self.actions_thinking_loop_single()  # Perform one action
+
+            await asyncio.sleep(1)  # Short delay before choosing again
+            
+    async def actions_thinking_loop_single(self):
+        """Perform a single thinking action."""
         actions = [
             self.newmovements.tap_front_right,
             self.newmovements.tap_front_left,
@@ -18,11 +36,14 @@ class PassiveActionsManager:
             self.newmovements.tap_rear_left,
             self.newmovements.tap_all_legs,
         ]
-        while not stop_event.is_set():
-            weights = [0.3, 0.3, 0.15, 0.15, 0.1]  # Adjust probabilities
-            action = random.choices(actions, weights=weights)[0]
-            await action()  # Perform a single action
-            await asyncio.sleep(0.5)  # Short pause between actions
+        weights = [0.3, 0.3, 0.15, 0.15, 0.1]  # Adjust probabilities
+        action = random.choices(actions, weights=weights)[0]
+        
+        # Use asyncio.to_thread to execute the sync action
+        await asyncio.to_thread(action)
+        
+        # Short pause between actions
+        await asyncio.sleep(1.0)
 
     async def sit_down(self):
         # Assuming these are the commands to lower the legs

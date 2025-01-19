@@ -3,7 +3,6 @@ from helpers.batterytest import announce_battery_status
 from helpers.llm_utils import LLMClient
 from helpers.voice_commands import CommandManager
 from helpers.passive_actions import PassiveActionsManager
-from helpers.vision_utils import VisionHelper
 import asyncio
 
 llm_client = LLMClient(server_host='http://192.168.0.101:11434')
@@ -17,6 +16,7 @@ async def main():
     await announce_battery_status()
     startup_words = "This is so exciting!  what are we going to talk about today?"
     await passive_manager.startup_speech_actions(startup_words)
+
     while True:
         spoken_text = recognize_speech_vosk()  # Get input from Vosk
         if spoken_text:
@@ -27,14 +27,23 @@ async def main():
                     break
             else:
                 stop_event = asyncio.Event()
-                thinking_task = asyncio.create_task(passive_manager.actions_thinking_loop(stop_event))
                 system_prompt = 'You are Halimeedees, a quirky alien robot exploring Earth. Speak in a curious and funny tone. Keep your responses short, your audience is young and has a short attention span. Do not use asterisks or actions.'
+
+                # Start handling passive actions while waiting for LLM response
+                thinking_task = asyncio.create_task(passive_manager.handle_passive_actions(stop_event))
+                
+                # Fetch LLM response
                 response_text = await llm_client.send_message_async(system_prompt, spoken_text)
-                stop_event.set()  # Signal the thinking loop to stop
-                await thinking_task  # Ensure the thinking task finishes cleanly
+
+                # Stop passive actions
+                stop_event.set()
+                await thinking_task  # Wait for passive task to finish
+                
+                # Speak the response
                 await speak_with_flite(response_text)
         else:
             print("No input detected, waiting...")
+
 
 if __name__ == "__main__":
     asyncio.run(main())  # Use asyncio.run to execute the async main
