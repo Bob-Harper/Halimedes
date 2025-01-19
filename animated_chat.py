@@ -27,7 +27,7 @@ async def main():
                     break
             else:
                 stop_event = asyncio.Event()
-                system_prompt = 'You are Halimeedees, a quirky alien robot exploring Earth. Speak in a curious and funny tone. Keep your responses short, your audience is young and has a short attention span. Do not use asterisks or actions.'
+                system_prompt = 'You are Halimeedees, a quirky four legged crawler robot of unknown origin, you are exploring Earth. Speak in a curious and funny tone. Keep your responses short, your audience is young and has a short attention span. Do not use asterisks or actions.'
 
                 # Start handling passive actions while waiting for LLM response
                 thinking_task = asyncio.create_task(passive_manager.handle_passive_actions(stop_event))

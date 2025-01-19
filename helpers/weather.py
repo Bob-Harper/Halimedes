@@ -1,5 +1,8 @@
 import os
 import requests
+import random
+import asyncio
+import datetime
 from collections import defaultdict
 from dotenv import load_dotenv
 
@@ -11,6 +14,8 @@ class WeatherHelper:
         self.default_lat = os.getenv("DEFAULT_WEATHER_LAT")
         self.default_lon = os.getenv("DEFAULT_WEATHER_LONG")
         self.weather_api_key = os.getenv("OPEN_WEATHER")
+        self.weather_intro_dir = "/home/msutt/hal/sounds/weather"  # Directory for intro sounds
+
 
     @staticmethod
     def get_wind_speed_description(speed):
@@ -80,7 +85,7 @@ class WeatherHelper:
             return (
                 f"Weather in {location_name}: {weather_desc}. "
                 f"Cloudiness: {clouds}. "
-                f"Temperature: {temp}°C (feels like {feels_like}°C). "
+                f"Temperature: {temp} degrees, (feels like {feels_like} degrees). "
                 f"Wind: {wind_speed} from {wind_direction}."
             )
 
@@ -110,9 +115,13 @@ class WeatherHelper:
                 date = entry["dt_txt"].split(" ")[0]  # Extract the date
                 daily_data[date].append(entry)
 
-            # Summarize each day (process all available days, no artificial limits)
+            # Summarize each day
             all_days_summary = []
             for date, entries in daily_data.items():
+                # Convert date string to a datetime object
+                day_name = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%A")
+
+                # Extract temperature and weather info
                 temps = [entry["main"]["temp"] for entry in entries]
                 descriptions = [entry["weather"][0]["description"].capitalize() for entry in entries]
                 high_temp = max(temps)
@@ -120,14 +129,20 @@ class WeatherHelper:
                 common_weather = max(set(descriptions), key=descriptions.count)
 
                 all_days_summary.append({
-                    "date": date,
+                    "day": day_name,  # Use day name instead of date
                     "high_temp": round(high_temp),
                     "low_temp": round(low_temp),
                     "description": common_weather,
                 })
 
-            return all_days_summary
+            # Format the summary for all days
+            forecast_summary = ", ".join([
+                f"{day['day']}: High {day['high_temp']} degrees, Low {day['low_temp']}°C. {day['description']}."
+                for day in all_days_summary
+            ])
+
+            return forecast_summary
 
         except requests.RequestException as e:
             print(f"Forecast API error: {e}")
-            return None
+            return "Sorry, I couldn't fetch the weather forecast."

@@ -15,10 +15,12 @@ MAX_TOKEN_COUNT = 4096  # Adjust as needed
 
 class LLMClient:
     def __init__(self, server_host, model='llama3.2'):
+        # model = "llama3.2"
+        # model = "smallthinker"  # reasoning model but it takes bloody AGES
         self.server_host = server_host
         self.model = model
         self.max_tokens = MAX_TOKEN_COUNT
-        system_prompt = 'You are Halimeedees, a quirky alien robot exploring Earth. Speak in a curious and funny tone. Keep your responses short, your audience is young and has a short attention span. Do not use asterisks or actions.'
+        system_prompt = 'You are Halimeedees, a quirky robot of unknown origin who is exploring Earth. Speak in a curious and funny tone. Keep your responses short, your audience is young and has a short attention span. Do not use asterisks or actions.'
         self.conversation_history = [
             {
                 'role': 'system',

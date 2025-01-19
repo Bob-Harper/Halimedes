@@ -51,16 +51,23 @@ class CommandManager:
             await speak_with_flite("Sorry, I couldn't retrieve the weather. Maybe I need a new antenna.")
             return
         
+        stop_event = asyncio.Event()
         # Generate response with isolated system prompt and a proper user query
         system_prompt = (
-            f"You're Halimeedees, Earth's curious alien visitor. Your human wants to know the current weather. "
-            f"Here's the data: {current_weather}. Deliver an amusing and informative update, blending curiosity and wit. "
+            f"You are Halimeedees, a quirky four legged crawler robot of unknown origin. "
+            f"Here is the weather data for today: {current_weather}. Deliver an amusing and informative update, blending curiosity and wit. "
             f"Be engaging, but don't overcomplicate things—keep it clear and fun!"
         )
         spoken_text = "Please tell me the current weather."  # Overwrite with clean input
+        # Start handling passive actions while waiting for LLM response
+        thinking_task = asyncio.create_task(self.passive_manager.handle_passive_actions(stop_event))
+        # Fetch LLM response
         response_text = await self.llm_client.send_message_async(system_prompt, spoken_text)
-
-        # Speak the generated response
+        # Stop passive actions
+        stop_event.set()
+        await thinking_task  # Wait for passive task to finish
+        # Play the intro sound right before delivering the weather report
+        await self.passive_sound.play_weather_intro_sound()
         await speak_with_flite(response_text)
 
         # Add the system prompt, user query, and response to the conversation history
@@ -77,22 +84,23 @@ class CommandManager:
             await speak_with_flite("Sorry, I couldn't retrieve the forecast. No satellites available to hijack.")
             return
         
-        # Convert forecast data into a readable string
-        forecast_summary = ", ".join([
-            f"{day['date']}: High {day['high_temp']}°C, Low {day['low_temp']}°C. {day['description']}."
-            for day in weather_forecast
-        ])
-        
         # Generate response with isolated system prompt and a proper user query
         system_prompt = (
-            f"You're Halimeedees, the quirky alien robot explorer of Earth. Your human is curious about the weather over the next five days. "
-            f"Here's the data: {forecast_summary}. Craft a fun and engaging response that highlights trends, keeps it concise, and throws in a pinch of your unique robotic humor. "
-            f"Avoid getting bogged down in numbers—focus on the big picture!"
+            f"You are Halimeedees, a quirky four legged crawler robot of unknown origin. "
+            f"Here is the weather data for the next five days: {weather_forecast}. Craft a fun and engaging response that highlights trends, keeps it concise, and throws in a pinch of your unique robotic humor. "
+            f"Avoid getting bogged down in numbers — focus on the big picture!"
         )
+        stop_event = asyncio.Event()
         spoken_text = "Please tell me the 5-day weather forecast."  # Overwrite with clean input
+        # Start handling passive actions while waiting for LLM response
+        thinking_task = asyncio.create_task(self.passive_manager.handle_passive_actions(stop_event))
+        # Fetch LLM response
         response_text = await self.llm_client.send_message_async(system_prompt, spoken_text)
-
-        # Speak the generated response
+        # Stop passive actions
+        stop_event.set()
+        await thinking_task  # Wait for passive task to finish
+        # Play the intro sound right before delivering the weather report
+        await self.passive_sound.play_weather_intro_sound()
         await speak_with_flite(response_text)
 
         # Add the system prompt, user query, and response to the conversation history

@@ -19,22 +19,38 @@ class PassiveActionsManager:
             choice = random.choices(["sound", "action"], weights=[70, 30], k=1)[0]
 
             if choice == "sound":
-                print("Playing a sound...")  # Debug
                 await self.passive_sound.sounds_thinking_loop_single()  # Play one sound
             else:
-                print("Performing an action...")  # Debug
                 await self.actions_thinking_loop_single()  # Perform one action
 
             await asyncio.sleep(1)  # Short delay before choosing again
             
     async def actions_thinking_loop_single(self):
         """Perform a single thinking action."""
+        speed = 85  # default max speed, save higher values for turbo bursts
         actions = [
             self.newmovements.tap_front_right,
             self.newmovements.tap_front_left,
             self.newmovements.tap_rear_right,
             self.newmovements.tap_rear_left,
             self.newmovements.tap_all_legs,
+            self.newmovements.stand_tall,
+            self.newmovements.swimming,
+            self.newmovements.wiggle,
+            self.crawler.do_step('stand', speed),
+            self.crawler.do_step('turn_left', speed),
+            self.crawler.do_step('turn_right', speed),
+            self.crawler.do_step('sit', speed),
+            self.crawler.do_step('stand', speed),
+            self.crawler.do_step('ready', speed),
+            self.crawler.do_step('push_up', speed),
+            self.crawler.do_step('wave', speed),
+            self.crawler.do_step('look_left', speed),
+            self.crawler.do_step('look_down', speed),
+            self.crawler.do_step('dance', speed),
+            self.crawler.do_step('look_right', speed),
+            self.crawler.do_step('sit_down', speed),
+            self.crawler.do_step('sway_all_legs', speed),
         ]
         weights = [0.3, 0.3, 0.15, 0.15, 0.1]  # Adjust probabilities
         action = random.choices(actions, weights=weights)[0]
