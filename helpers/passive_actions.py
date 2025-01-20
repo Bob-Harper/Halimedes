@@ -26,72 +26,62 @@ class PassiveActionsManager:
             await asyncio.sleep(1)  # Short delay before choosing again
             
     async def actions_thinking_loop_single(self):
-        """Perform a single thinking action."""
-        speed = 85  # default max speed, save higher values for turbo bursts
-        actions = [
-            self.newmovements.tap_front_right,
-            self.newmovements.tap_front_left,
-            self.newmovements.tap_rear_right,
-            self.newmovements.tap_rear_left,
-            self.newmovements.tap_all_legs,
-            self.newmovements.stand_tall,
-            self.newmovements.swimming,
-            self.newmovements.wiggle,
-            self.crawler.do_step('stand', speed),
-            self.crawler.do_step('turn_left', speed),
-            self.crawler.do_step('turn_right', speed),
-            self.crawler.do_step('sit', speed),
-            self.crawler.do_step('stand', speed),
-            self.crawler.do_step('ready', speed),
-            self.crawler.do_step('push_up', speed),
-            self.crawler.do_step('wave', speed),
-            self.crawler.do_step('look_left', speed),
-            self.crawler.do_step('look_down', speed),
-            self.crawler.do_step('dance', speed),
-            self.crawler.do_step('look_right', speed),
-            self.crawler.do_step('sit_down', speed),
-            self.crawler.do_step('sway_all_legs', speed),
-        ]
-        weights = [0.3, 0.3, 0.15, 0.15, 0.1]  # Adjust probabilities
-        action = random.choices(actions, weights=weights)[0]
-        
-        # Use asyncio.to_thread to execute the sync action
+        """Perform a single thinking action with categorized weighting."""
+        speed = 85  # Default speed for actions
+
+        # Define categorized actions
+        actions_by_category = {
+            "tapping": [
+                self.newmovements.tap_front_right,
+                self.newmovements.tap_front_left,
+                self.newmovements.tap_rear_right,
+                self.newmovements.tap_rear_left,
+                self.newmovements.tap_all_legs,
+            ],
+            "standing": [
+                self.newmovements.stand_tall,
+                self.newmovements.sway_all_legs,
+                lambda: self.crawler.do_step("stand", speed),
+                lambda: self.crawler.do_step("sit", speed),
+            ],
+            "turning": [
+                lambda: self.crawler.do_action("turn left", 1, speed),
+                lambda: self.crawler.do_action("turn right", 1, speed),
+            ],
+            "other": [
+                lambda: self.crawler.do_step("wave", speed),
+                lambda: self.crawler.do_step("look_left", speed),
+                lambda: self.crawler.do_step("look_right", speed),
+                lambda: self.crawler.do_step("look_up", speed),
+                lambda: self.crawler.do_step("look_down", speed),
+                self.newmovements.sit_down
+            ],
+        }
+
+        # Define weights for the categories
+        category_weights = {
+            "tapping": 0.4,
+            "standing": 0.3,
+            "turning": 0.2,
+            "other": 0.1,
+        }
+
+        # Pick a category based on weights
+        category = random.choices(list(actions_by_category.keys()), weights=category_weights.values(), k=1)[0]
+
+        # Pick a random action from the chosen category
+        action = random.choice(actions_by_category[category])
+
+        # Execute the action
         await asyncio.to_thread(action)
-        
+
         # Short pause between actions
         await asyncio.sleep(1.0)
 
-    async def sit_down(self):
-        # Assuming these are the commands to lower the legs
-        sit_down_steps = [[50, 90, 90], [50, 90, 90], [50, 90, 90], [50, 90, 90]]
-        self.crawler.do_step(sit_down_steps, speed=1)
-        sit_down_steps = [[50, 60, 60], [50, 60, 60], [0, 60, 60], [0, 60, 60]]
-        self.crawler.do_step(sit_down_steps, speed=1)
-        sit_down_steps = [[50, 30, 30], [50, 30, 30], [0, 30, 30], [0, 30, 30]]
-        self.crawler.do_step(sit_down_steps, speed=1)
-        sit_down_steps = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
-        self.crawler.do_step(sit_down_steps, speed=1)
-
-    async def wiggle(self):
-        """Perform a smooth wiggle motion."""
-        new_step = [[50, 50, -80], [50, 50, -80], [50, 50, -80], [50, 50, -80]]
-        speed = 99
-
-        while True:  # Continuous loop, can be broken externally if needed
-            for i in range(4):  # Cycle through legs
-                for inc in range(30, 60, 80):  # Increment rise/drop values
-                    rise = [50, 50, (-80 + inc * 0.5)]
-                    drop = [50, 50, (-80 - inc)]
-                    new_step[i] = rise
-                    new_step[(i + 2) % 4] = drop
-                    new_step[(i + 1) % 4] = rise
-                    new_step[(i - 1) % 4] = drop
-                    await asyncio.to_thread(self.crawler.do_step, new_step, speed)
-                    await asyncio.sleep(0.05)  # Small delay for smoother animation
 
     async def startup_speech_actions(self, words):
         speak_task = asyncio.create_task(speak_with_flite(words))
-        wiggle_task = asyncio.create_task(self.wiggle())
+        wiggle_task = asyncio.create_task(self.newmovements.wiggle())
 
         # Ensure tasks run concurrently, but stop wiggle when speech ends
         await asyncio.gather(speak_task)  # Wait for speech task only
@@ -104,6 +94,6 @@ class PassiveActionsManager:
     async def shutdown_speech_actions(self, words):
         # Run speech and movement concurrently
         speak_task = asyncio.create_task(speak_with_flite(words))
-        movement_task = asyncio.create_task(self.sit_down())
+        movement_task = asyncio.create_task(self.newmovements.sit_down())
         # Wait for both tasks to complete
         await asyncio.gather(speak_task, movement_task)

@@ -1,7 +1,5 @@
 import os
 import requests
-import random
-import asyncio
 import datetime
 from collections import defaultdict
 from dotenv import load_dotenv
@@ -42,7 +40,7 @@ class WeatherHelper:
 
     @staticmethod
     def get_wind_direction(degrees):
-        cardinal_directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+        cardinal_directions = ["North", "Northeast", "East", "Southeast", "South", "Southwest", "West", "Northwest"]
         index = round(degrees / 45) % 8
         return cardinal_directions[index]
 
@@ -137,7 +135,7 @@ class WeatherHelper:
 
             # Format the summary for all days
             forecast_summary = ", ".join([
-                f"{day['day']}: High {day['high_temp']} degrees, Low {day['low_temp']}°C. {day['description']}."
+                f"{day['day']}: High {day['high_temp']} degrees, Low {day['low_temp']} degrees. {day['description']}."
                 for day in all_days_summary
             ])
 

@@ -6,6 +6,7 @@ from helpers.voice_utils import speak_with_flite
 import os
 from helpers.batterytest import announce_battery_status
 from helpers.passive_actions import PassiveActionsManager
+from helpers.sound_effects import PassiveSoundsManager
 from helpers.weather import WeatherHelper
 
 class CommandManager:
@@ -15,6 +16,7 @@ class CommandManager:
         self.crawler = Picrawler()
         self.newmovements = NewMovements(self.crawler)
         self.passive_manager = PassiveActionsManager()
+        self.passive_sound = PassiveSoundsManager()
 
     async def command_shutdown(self, spoken_text):
         """Shutdown the robot."""

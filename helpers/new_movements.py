@@ -5,8 +5,8 @@ import asyncio
 # from classes.picrawler import Picrawler  # passing in so dont need to import right now
 
 class NewMovements():
-    def __init__(self, picrawler):
-        self.picrawler = picrawler
+    def __init__(self, crawler):
+        self.picrawler = crawler
         self.X_DEFAULT = 45
         self.X_TURN = 70
         self.Y_DEFAULT = 45
@@ -161,25 +161,6 @@ class NewMovements():
         self.picrawler.do_step('sit',speed)
         sleep(0.6)
  
-    def wave_leg(stop_event):
-        new_step = [[50, 50, -80], [50, 50, -80], [50, 50, -80], [50, 50, -80]]
-        print(f"Waving leg {leg_index}...")
-        speed = 100
-        while not stop_event.is_set():
-            for inc in range(0, 45, 5):
-                if stop_event.is_set():
-                    break
-                lift = [90, 120, 90 + inc]  # Adjust the vertical angles to wave
-                lower = [90, 120, 90 - inc]
-                new_step = [[90, 120, 90] for _ in range(4)]
-                new_step[leg_index] = lift
-                crawler.do_step(new_step, speed)
-                sleep(0.1)
-                new_step[leg_index] = lower
-                crawler.do_step(new_step, speed)
-                sleep(0.1)
-        print(f"Waving leg {leg_index} completed.")    
-
     async def wiggle(self):
         """Perform a smooth wiggle motion."""
         new_step = [[50, 50, -80], [50, 50, -80], [50, 50, -80], [50, 50, -80]]
@@ -194,5 +175,5 @@ class NewMovements():
                     new_step[(i + 2) % 4] = drop
                     new_step[(i + 1) % 4] = rise
                     new_step[(i - 1) % 4] = drop
-                    await asyncio.to_thread(self.crawler.do_step, new_step, speed)
+                    await asyncio.to_thread(self.picrawler.do_step, new_step, speed)
                     await asyncio.sleep(0.05)  # Small delay for smoother animation    
