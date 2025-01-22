@@ -1,7 +1,7 @@
 import random
 from helpers.picrawler import Picrawler
 from helpers.new_movements import NewMovements
-from helpers.sound_effects import PassiveSoundsManager
+from helpers.passive_sounds import PassiveSoundsManager
 from helpers.voice_utils import speak_with_flite
 import asyncio
 
@@ -94,6 +94,7 @@ class PassiveActionsManager:
     async def shutdown_speech_actions(self, words):
         # Run speech and movement concurrently
         speak_task = asyncio.create_task(speak_with_flite(words))
-        movement_task = asyncio.create_task(self.newmovements.sit_down())
+        movement_task = asyncio.to_thread(self.newmovements.sit_down)
         # Wait for both tasks to complete
         await asyncio.gather(speak_task, movement_task)
+        
