@@ -6,3 +6,6 @@ sounds/
 flitevox/
 .env
 archive/
+pyannote/
+voiceprints/
+classes/
