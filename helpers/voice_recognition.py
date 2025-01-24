@@ -82,3 +82,16 @@ class VoiceprintManager:
     def extract_embedding_from_waveform(self, waveform):
         with torch.no_grad():
             return self.model(waveform)
+        
+    @staticmethod    
+    def convert_raw_to_waveform(raw_audio):
+            # Process the raw audio to extract waveform
+            waveform = torch.tensor(raw_audio, dtype=torch.float32).unsqueeze(0) / 32768.0  # Normalize [-1, 1]
+            if waveform.dim() == 2:
+                waveform = waveform.unsqueeze(1)  # Add batch dimension if needed
+
+            # Resample audio to 16 kHz for voiceprint
+            waveform = torchaudio.transforms.Resample(orig_freq=44100, new_freq=16000)(waveform)
+
+            return waveform
+    

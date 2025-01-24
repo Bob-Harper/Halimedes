@@ -3,6 +3,7 @@ import json
 import sounddevice as sd
 from vosk import Model, KaldiRecognizer
 import asyncio
+import numpy as np
 
 
 async def speak_with_flite(words):
@@ -25,7 +26,7 @@ async def speak_with_flite(words):
         print("Flite command not found. Ensure it is installed and in the PATH.")
 
 
-def recognize_speech_vosk():
+def recognize_speech_vosk(return_audio=False):
     """Recognize speech using Vosk and return the transcribed text."""
     model_path = "/home/msutt/hal/vosk_models/vosk-model-small-en-us-0.15"
     model = Model(model_path)
@@ -33,7 +34,7 @@ def recognize_speech_vosk():
 
     # Hardcoded device index
     device_index = 1  # Use the correct index for your microphone
-
+    audio_buffer = []   
     stream = None
     try:
         # Initialize the audio stream with the hardcoded index
@@ -43,12 +44,15 @@ def recognize_speech_vosk():
         print("Listening...")
         while True:
             data, _ = stream.read(8000)  # Read raw audio data
+            audio_buffer.append(data)  # Save audio for voiceprint
             data = bytes(data)  # Convert to raw byte array
 
             if recognizer.AcceptWaveform(data):
                 result = recognizer.Result()
                 text = json.loads(result)["text"]
                 if text:
+                    if return_audio:
+                        return text, np.frombuffer(b"".join(audio_buffer), dtype=np.int16)
                     return text
     except Exception as e:
         print(f"Error during audio processing: {e}")
