@@ -27,10 +27,9 @@ class WeatherCommandManager:
 
         # Generate LLM system prompt and response
         system_prompt = (
-            f"You are Halimeedees, a quirky four-legged crawler robot of unknown origin. "
+            f"You are Halimeedees, a quirky four-legged crawler robot. "
             f"Here is the weather data for today: {current_weather}. "
             f"Deliver an amusing and informative update, blending curiosity and wit. "
-            f"Be engaging, but don't overcomplicate things—keep it clear and fun!"
         )
         response_text = await self.llm_client.send_message_async(system_prompt, spoken_text)
         # Ensure passive actions are stopped
@@ -47,6 +46,7 @@ class WeatherCommandManager:
             {"role": "user", "content": spoken_text},
             {"role": "assistant", "content": response_text},
         ])
+        return False  # Signal to go back to listening
 
     async def command_get_forecast(self, spoken_text):
         """Provide a 5-day weather forecast."""
@@ -66,9 +66,8 @@ class WeatherCommandManager:
         system_prompt = (
             f"You are Halimeedees, a quirky four-legged crawler robot of unknown origin. "
             f"Here is the weather data for the next five days: {weather_forecast}. "
-            f"Craft a fun and engaging response that highlights trends, keeps it concise, "
-            f"and throws in a pinch of your unique robotic humor. "
-            f"Avoid getting bogged down in numbers — focus on the big picture!"
+            f"Craft a fun and engaging response that highlights trends, keeps it concise but interesting. "
+            f"Numbers are okay but focus on the big picture!"
         )
         response_text = await self.llm_client.send_message_async(system_prompt, spoken_text)
         # Ensure passive actions are stopped
@@ -84,3 +83,4 @@ class WeatherCommandManager:
             {"role": "user", "content": spoken_text},
             {"role": "assistant", "content": response_text},
         ])
+        return False  # Signal to go back to listening

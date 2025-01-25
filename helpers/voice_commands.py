@@ -84,9 +84,11 @@ class CommandManager:
     async def command_help(self, spoken_text):
         """Provide verbal help."""
         await speak_with_flite(f"I heard you say {spoken_text}. To have me power down, say shut down. To end chat but leave me powered up, say end chat.  to check my battery say battery.  to hear me repeat these instructions, say help.")
-
+        return False  # Signal to go back to listening
+    
     async def command_battery(self, spoken_text):
         """Provide verbal battery status check."""
         await speak_with_flite(f"I heard you say {spoken_text}. Acknowledged, I will check battery status now.")
         await announce_battery_status()
+        return False  # Signal to go back to listening
 
