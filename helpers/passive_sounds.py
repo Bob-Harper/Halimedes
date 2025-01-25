@@ -12,10 +12,10 @@ class PassiveSoundsManager:
     async def sounds_thinking_loop_single(self):
         """Play a single passive sound dynamically from a directory, supporting multiple file types."""
         # Define the directory containing the sound files
-        sounds_dir = "/home/msutt/hal/sounds/passive"
+        sounds_dir = "/home/msutt/hal/sounds/passive/positive"
         
         # List of supported file extensions
-        supported_extensions = {".wav", ".mp3", ".ogg", ".flac", ".aac"}
+        supported_extensions = {".wav"}
         
         # Get a list of all supported sound files in the directory
         try:
@@ -46,8 +46,8 @@ class PassiveSoundsManager:
 
     async def play_weather_intro_sound(self):
         """Play a random weather intro sound once."""
-        sounds_dir = "/home/msutt/hal/sounds/weather"  # Directory for weather intro sounds
-        supported_extensions = {".wav", ".mp3", ".ogg", ".flac", ".aac"}
+        sounds_dir = "/home/msutt/hal/sounds/passive/announcement"  # Directory for weather intro sounds
+        supported_extensions = {".wav"}
 
         try:
             weather_intro_sounds = [

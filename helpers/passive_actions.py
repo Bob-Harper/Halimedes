@@ -16,7 +16,7 @@ class PassiveActionsManager:
         """Alternate between sounds and actions while waiting for LLM response."""
         while not stop_event.is_set():
             # Weighted random choice: 70% sound, 30% action
-            choice = random.choices(["sound", "action"], weights=[70, 30], k=1)[0]
+            choice = random.choices(["sound", "action"], weights=[60, 40], k=1)[0]
 
             if choice == "sound":
                 await self.passive_sound.sounds_thinking_loop_single()  # Play one sound
@@ -45,8 +45,8 @@ class PassiveActionsManager:
                 lambda: self.crawler.do_step("sit", speed),
             ],
             "turning": [
-                lambda: self.crawler.do_action("turn left", 1, speed),
-                lambda: self.crawler.do_action("turn right", 1, speed),
+                lambda: [self.crawler.do_action("turn left", 1, speed), self.crawler.do_action("turn right", 1, speed)],
+                lambda: [self.crawler.do_action("turn right", 1, speed), self.crawler.do_action("turn left", 1, speed)],
             ],
             "other": [
                 lambda: self.crawler.do_step("wave", speed),
