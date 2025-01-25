@@ -34,6 +34,10 @@ async def main():
                 should_exit = await command_map[command](spoken_text)  # Run the matched command
                 if should_exit:
                     break
+                else:
+                    print(f"Command '{command}' completed. Continuing to listen...")  # Debugging log
+                    # Optional: Add any other fallback behavior for non-exiting commands
+                        
             else:
                                 # Convert the same audio into a waveform for voiceprint analysis
                 waveform = voiceprint_manager.convert_raw_to_waveform(raw_audio)

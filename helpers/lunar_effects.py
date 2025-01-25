@@ -1,4 +1,4 @@
-from bot.stygia_logging import logger
+# from bot.stygia_logging import logger
 # usage: logger.debug(f"The value of my_variable is: {my_variable}") / logger.info(" |Stygia connected to Discord")
 import ephem
 from datetime import datetime

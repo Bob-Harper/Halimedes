@@ -9,3 +9,4 @@ archive/
 pyannote/
 voiceprints/
 classes/
+.venv/
