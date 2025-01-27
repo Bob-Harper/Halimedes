@@ -6,11 +6,18 @@ from helpers.passive_actions import PassiveActionsManager
 import asyncio
 from helpers.voice_recognition import VoiceprintManager
 
-# Load the reference embedding
+
+# Initialize everything at module level (outside the main() function) as needed:
 voiceprint_manager = VoiceprintManager()
-reference_embedding = voiceprint_manager.load_embedding("dad_embedding.pt")
-if reference_embedding is None:
-    raise ValueError("Reference embedding not found. Ensure the file 'dad_embedding.pt' exists.")
+
+# Load all known speaker embeddings here
+embeddings = {
+    "Dad": voiceprint_manager.load_embedding("dad_embedding.pt"),
+    "Daughter": voiceprint_manager.load_embedding("daughter_embedding.pt"),
+    # Add more speakers here as needed
+}
+
+threshold = 0.2  # If highest similarity is below this, treat speaker as Unknown.
 
 llm_client = LLMClient(server_host='http://192.168.0.101:11434')
 command_manager = CommandManager(llm_client)
@@ -20,59 +27,87 @@ command_map = command_manager.command_map
 
 async def main():
     await speak_with_flite("Beginning startup procedure and status check. Please stand by, system test underway.")
-    await speak_with_flite("Servos powered. Listening initiated.  Voice centers activated. Checking battery.")
+    await speak_with_flite("Servos powered. Listening initiated. Voice centers activated. Checking battery.")
     await announce_battery_status()
-    startup_words = "This is so exciting!  what are we going to talk about today?"
+
+    startup_words = "This is so exciting! What are we going to talk about today?"
     await passive_manager.startup_speech_actions(startup_words)
 
     while True:
         print("Entering the main loop, waiting for input...")
-        spoken_text, raw_audio = recognize_speech_vosk(return_audio=True)  # Get input and raw audio from Vosk
-        if spoken_text:
-            command = command_manager.match_command(spoken_text)  # Check if the input matches a command
-            if command:
-                should_exit = await command_map[command](spoken_text)  # Run the matched command
-                if should_exit:  # If command signals loop termination
-                    break  # Exit the loop entirely
-                continue  # Command handled, go back to listening
+        spoken_text, raw_audio = recognize_speech_vosk(return_audio=True)  # Get input and raw audio
 
-            # No command matched, proceed with default conversation processing
-            stop_event = asyncio.Event()
-
-            # Voice recognition logic
-            waveform = voiceprint_manager.convert_raw_to_waveform(raw_audio)
-            new_embedding = voiceprint_manager.extract_embedding_from_waveform(waveform)
-
-            # Generate a voice response based on the similarity score
-            similarity = voiceprint_manager.compare_embeddings(reference_embedding, new_embedding)
-            print(f"Similarity score: {similarity:.4f}")
-            if similarity >= 0.2:
-                system_prompt = (
-                    'You are Halimeedees, a quirky four legged crawler robot. '
-                    'Do not describe actions, or create sound effects. You are talking to Dad. '
-                    'You are full of sass and like to tease him about his coding skills, but it is for fun, don\'t be mean.'
-                )
-            else:
-                system_prompt = (
-                    'You are Halimeedees, a quirky four legged crawler robot created by Dad to help teach things. '
-                    'Do not describe actions, or create sound effects. Speak in a curious and funny tone. '
-                    'Keep your responses short. You are talking to Onnalyn, she is eleven years old and has a short attention span.'
-                )
-            # Handle passive actions while waiting for LLM response
-            thinking_task = asyncio.create_task(passive_manager.handle_passive_actions(stop_event))
-            
-            # Fetch LLM response
-            response_text = await llm_client.send_message_async(system_prompt, spoken_text)
-
-            # Stop passive actions
-            stop_event.set()
-            await thinking_task  # Wait for passive task to finish
-            
-            # Speak the response
-            await speak_with_flite(response_text)
-        else:
+        # If no text was recognized, loop back and wait again
+        if not spoken_text:
             print("No input detected, waiting...")
+            continue
+
+        # Check if input matches a known command
+        command = command_manager.match_command(spoken_text)
+        if command:
+            should_exit = await command_map[command](spoken_text)
+            if should_exit:
+                break
+            continue  # Command handled; go back to listening
+
+        # Otherwise, proceed with normal conversation
+        stop_event = asyncio.Event()
+
+        # 1) Convert raw audio to waveform and extract new embedding
+        waveform = voiceprint_manager.convert_raw_to_waveform(raw_audio)
+        new_embedding = voiceprint_manager.extract_embedding_from_waveform(waveform)
+
+        # 2) Compare new_embedding to each known speaker
+        best_speaker = None
+        best_score = -1.0
+
+        for speaker_name, ref_embedding in embeddings.items():
+            if ref_embedding is not None:
+                similarity = voiceprint_manager.compare_embeddings(new_embedding, ref_embedding)
+                if similarity is not None and similarity > best_score:
+                    best_score = similarity
+                    best_speaker = speaker_name
+
+        # 3) Decide if we have a match or "Unknown"
+        if best_score >= threshold:
+            recognized_speaker = best_speaker
+        else:
+            recognized_speaker = "Unknown"
+
+        # 4) Build a system prompt based on recognized_speaker
+        if recognized_speaker == "Dad":
+            system_prompt = (
+                "You are Halimeedees, a quirky four-legged crawler robot. "
+                "Multiple humans may speak; keep track of them by their names. "
+                "You are currently talking to Dad. Tease him about his coding skills, "
+                "but be playful, not mean."
+            )
+        elif recognized_speaker == "Daughter":
+            system_prompt = (
+                "You are Halimeedees, a quirky four-legged crawler robot. "
+                "Multiple humans may speak; keep track of them by their names. "
+                "You are currently talking to Daughter, who is eleven years old. "
+                "Speak in a curious and funny tone with short answers."
+            )
+        else:
+            system_prompt = (
+                "You are Halimeedees, a quirky four-legged crawler robot. "
+                "Multiple humans may speak; keep track of them by their names. "
+                "This speaker is Unknown. Be friendly and neutral."
+            )
+
+        # 5) Label the user input for the model
+        user_input_for_llm = f"{recognized_speaker}: {spoken_text}"
+
+        # 6) Handle passive actions while LLM processes
+        thinking_task = asyncio.create_task(passive_manager.handle_passive_actions(stop_event))
+        response_text = await llm_client.send_message_async(system_prompt, user_input_for_llm)
+        stop_event.set()
+        await thinking_task  # Wait for background actions to finish
+
+        # 7) Speak the response
+        await speak_with_flite(response_text)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())  # Use asyncio.run to execute the async main
+    asyncio.run(main())

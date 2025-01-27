@@ -80,7 +80,6 @@ class LLMClient:
             print(f"Error communicating with LLM: {e}")
             return "I'm sorry, I couldn't process that."
 
-
     @staticmethod
     def clean_response(text):
         """
