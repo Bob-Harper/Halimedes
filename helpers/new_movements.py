@@ -130,6 +130,10 @@ class NewMovements():
         stand_tall_steps = [[45, 45, -90], [45, 45, -90], [45, 45, -90], [45, 45, -90]]
         self.picrawler.do_step(stand_tall_steps, speed=50)
 
+    def prepare_to_twist(self):
+        prepare_to_twist = [[90, 10, -60], [90, 10, -60], [25, 65, -60], [25, 65, -60]]
+        self.picrawler.do_step(prepare_to_twist, speed=50)    
+
     def pushup(self, speed):
         up=[[80, 0, -100], [80, 0, -100],[0, 120, -60], [0, 120, -60]]
         down=[[80, 0, -30], [80, 0, -30],[0, 120, -60], [0, 120, -60]]
@@ -177,3 +181,54 @@ class NewMovements():
                     new_step[(i - 1) % 4] = drop
                     await asyncio.to_thread(self.picrawler.do_step, new_step, speed)
                     await asyncio.sleep(0.05)  # Small delay for smoother animation    
+
+    async def glance(self, direction="center", angle=30, speed=99):
+        """
+        Perform a smooth glance motion in the specified direction.
+        
+        Parameters:
+            direction (str): "left", "right", or "center".
+            angle (int): The angle to turn for glancing.
+            speed (int): Speed of the movement.
+        """
+        print(f"Glancing {direction} at {angle} degrees.")
+        
+        # Define the base position (stable, elevated posture)
+        base_position = [[90, 10, -60], [90, 10, -60], [25, 65, -60], [25, 65, -60]]
+
+        # Define a slightly lifted position to maintain stability during the twist
+        lifted_position = [[90, 10, -50], [90, 10, -50], [25, 65, -50], [25, 65, -50]]
+
+        # Adjust positions based on the direction
+        if direction == "left":
+            # Exaggerate twist left with lift
+            glance_position = [
+                [90 - angle, 10 + angle, -50],  # Left front twists inward
+                [90 + angle, 10 - angle, -70],  # Right front twists outward
+                [25 - angle, 65 + angle, -50],  # Left rear twists inward
+                [25 + angle, 65 - angle, -70],  # Right rear twists outward
+            ]
+        elif direction == "right":
+            # Exaggerate twist right with lift
+            glance_position = [
+                [90 + angle, 10 - angle, -50],  # Left front twists outward
+                [90 - angle, 10 + angle, -70],  # Right front twists inward
+                [25 + angle, 65 - angle, -50],  # Left rear twists outward
+                [25 - angle, 65 + angle, -70],  # Right rear twists inward
+            ]
+        else:
+            # Reset to base position
+            glance_position = base_position
+
+        # Perform the glance motion
+        print("Lifting body for stability...")
+        await asyncio.to_thread(self.picrawler.do_step, lifted_position, speed)  # Transition to lifted position
+        await asyncio.sleep(0.3)
+
+        print(f"Twisting {direction}...")
+        await asyncio.to_thread(self.picrawler.do_step, glance_position, speed)  # Execute the twist
+        await asyncio.sleep(0.5)
+
+        print("Resetting to base position...")
+        await asyncio.to_thread(self.picrawler.do_step, base_position, speed)  # Reset to base position
+        await asyncio.sleep(0.3)

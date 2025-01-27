@@ -126,7 +126,7 @@ class Picrawler(Robot):
         # print('output: %s'%[alpha,beta,gamma])
         return limit_flag,[alpha,beta,gamma]
 
-    def do_action(self, motion_name, step=1, speed=50):
+    def do_action(self, motion_name, step=1, speed=99):
         try:
             for _ in range(step): # times
                 self.move_list.stand_position = self.stand_position
@@ -484,10 +484,8 @@ class Picrawler(Robot):
         @property
         @check_stand
         @normal_action(1)
-        def look_left(self, angle=None):
-            if angle is None:
-                angle = 0  # Or some default angle if needed
-            li = self.turn_angle_coord(angle)
+        def look_left(self):
+            li = self.turn_angle_coord(self.angle)
             temp_x1 = li[0:2]
             temp_x1.append(self.z_current)
             temp_x2 = li[2:4]
@@ -502,10 +500,8 @@ class Picrawler(Robot):
         @property
         @check_stand
         @normal_action(1)
-        def look_right(self, angle=None):
-            if angle is None:
-                angle = 0  # Or some default angle if needed
-            li = self.turn_angle_coord(angle)
+        def look_right(self):
+            li = self.turn_angle_coord(self.angle)
             temp_x1 = li[0:2]
             temp_x1.append(self.z_current)
             temp_x2 = li[2:4]
