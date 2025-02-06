@@ -1,19 +1,41 @@
 import subprocess
 import json
+import re
 import sounddevice as sd
 from vosk import Model, KaldiRecognizer
 import asyncio
 import numpy as np
 import websockets
-# import torchaudio
-# import torch
+from helpers.emotions import get_voice_modifiers
+from helpers.emotions import EmotionHandler
+
+"""
+pitch = 50  # flite default 100 - higher/deeper voice correlates to higher/lower number
+speed = 0.88  # flite default 1.0 - higher values stretch the waveform (longer), lower compresses
+
+"""
+# Hal's voicefile, modified with the following values
+voice_path = "/home/msutt/hal/flitevox/cmu_us_rms.flitevox"
+# Baseline values for Hal's signature voice
+baseline_pitch = 50
+baseline_speed = 0.88
+
+emotion_handler = EmotionHandler()
 
 
-async def speak_with_flite(words):
-    """Speak the given words using Flite asynchronously."""
-    voice_path = "/home/msutt/hal/flitevox/cmu_us_rms.flitevox"
-    pitch = 50  # default 100 - higher/deeper voice correlates to higher/lower number
-    speed = 0.88  # default 1.0 - higher values stretch the waveform (longer), lower compresses
+async def speak_with_flite(words, emotion="neutral"):
+    """
+    Speak using a single pitch and speed for the entire speech output.
+
+    """
+    # Get relative adjustment factors for pitch and speed
+    emotion_settings = get_voice_modifiers(emotion)
+    pitch_factor = emotion_settings["pitch_factor"]
+    speed_factor = emotion_settings["speed_factor"]
+
+    # Calculate modified pitch and speed
+    pitch = int(baseline_pitch * pitch_factor)
+    speed = round(baseline_speed * speed_factor, 2)
 
     try:
         command = [
@@ -28,6 +50,39 @@ async def speak_with_flite(words):
         print(f"Error: {e}")
     except FileNotFoundError:
         print("Flite command not found. Ensure it is installed and in the PATH.")
+
+
+async def speak_with_dynamic_flite(full_text):
+    """Speak with adaptive pitch and speed modulation dynamically for each sentence fragment."""
+    try:
+        # Step 1: Split the text into logical fragments (sentences/clauses)
+        fragments = re.split(r'[.,;!?]\s*', full_text)
+        fragments = [frag.strip() for frag in fragments if frag.strip()]  # Clean empty strings
+
+        # Step 2: Process each fragment individually
+        for fragment in fragments:
+            # Determine the emotion for the fragment
+            fragment_emotion = emotion_handler.analyze_text_emotion(fragment)
+            emotion_settings = get_voice_modifiers(fragment_emotion)
+            pitch = int(baseline_pitch * emotion_settings["pitch_factor"])
+            speed = round(baseline_speed * emotion_settings["speed_factor"], 2)
+
+            print(f"Speaking fragment '{fragment}' with emotion '{fragment_emotion}': pitch={pitch}, speed={speed}")
+
+            # Speak the fragment with calculated pitch and speed
+            command = [
+                "flite",
+                "-voice", voice_path,
+                "--setf", f"int_f0_target_mean={pitch}",
+                "--setf", f"duration_stretch={speed}",
+                "-t", fragment,
+            ]
+            await asyncio.to_thread(subprocess.run, command, check=True)
+
+    except Exception as e:
+        print(f"Error in adaptive speech, falling back to neutral: {e}")
+        # Fallback to the default flite with no modulation
+        await speak_with_flite(full_text)
 
 
 async def recognize_speech_vosk(server_url="ws://192.168.0.123:2700", return_audio=False):
@@ -68,6 +123,7 @@ async def recognize_speech_vosk(server_url="ws://192.168.0.123:2700", return_aud
         return transcript, audio_array
     return transcript
 
+
 async def process_audio_with_transcriber(transcriber, audio_bytes, *transcriber_args):
     """
     Shared logic for chunking audio and collecting the transcript.
@@ -89,7 +145,6 @@ async def process_audio_with_transcriber(transcriber, audio_bytes, *transcriber_
     # Final combined transcript
     final_text = " ".join(final_text_parts).strip()
     return final_text or "No transcript available"
-
 
 
 async def transcribe_via_server(audio_bytes, chunk_size, server_url):
@@ -154,9 +209,3 @@ def record_until_silence(sample_rate=44100, block_duration=1.0, silence_threshol
             break
 
     return np.concatenate(blocks, axis=0)
-
-
-""" def denoise_audio(audio_array):
-    # Apply a simple denoising filter or noise suppression algorithm
-    denoised_audio = torchaudio.functional.highpass_biquad(torch.tensor(audio_array), sample_rate=44100, cutoff_freq=300)
-    return denoised_audio.numpy() """

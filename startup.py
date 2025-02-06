@@ -1,4 +1,4 @@
-from helpers.voice_utils import recognize_speech_vosk, speak_with_flite
+from helpers.voice_utils import recognize_speech_vosk, speak_with_flite, speak_with_dynamic_flite
 from helpers.batterytest import announce_battery_status
 from helpers.llm_utils import LLMClient
 from helpers.voice_commands import CommandManager
@@ -87,21 +87,20 @@ async def main():
         # 4) Build a system prompt based on recognized_speaker
         if recognized_speaker == "Dad":
             system_prompt = (
-                "You are Halimeedees, a quirky four-legged crawler robot. DO NOT describe your actions or sound effects."
-                "Multiple humans may speak; keep track of who speaks when by their names. "
-                "You are currently talking to Dad. Tease him about his coding skills, "
-                "but be playful, not mean. User emotion detected: {user_emotion}."
+                "You are a quirky four-legged crawler robot who responds playfully and keeps track of multiple speakers. "
+                "You are currently talking to Dad. Tease him about his coding skills, but be playful, not mean. "
+                "Do not describe actions or sound effects. User emotion detected: {user_emotion}."
             )
         elif recognized_speaker == "Onnalyn":
             system_prompt = (
-                "You are Halimeedees, a quirky four-legged crawler robot.DO NOT  describe actions or sound effects. "
+                "You are a quirky four-legged crawler robot.DO NOT  describe actions or sound effects. "
                 "Multiple humans may speak; keep track of them by their names. "
                 "You are currently talking to Onnalyn, she is eleven years old and loves cats and snakes and neat robots and watching youtube videos.. "
                 "Speak in a curious and funny tone with short answers. User emotion detected: {user_emotion}."
             )
         else:
             system_prompt = (
-                "You are Halimeedees, a quirky four-legged crawler robot. "
+                "You are a quirky four-legged crawler robot. "
                 "Multiple humans may speak; keep track of them by their names. "
                 "This speaker is Unknown. Be friendly and neutral. User emotion detected: {user_emotion}"
             )
@@ -123,7 +122,7 @@ async def main():
         emotion_sound_manager.play_sound(hal_emotion)
 
         # 7) Speak the response
-        await speak_with_flite(response_text)
+        await speak_with_dynamic_flite(response_text)
 
 
 if __name__ == "__main__":

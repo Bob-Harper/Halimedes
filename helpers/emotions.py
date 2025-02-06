@@ -4,6 +4,35 @@ import os
 import random
 import subprocess
 
+""" 
+multipliers adjust cadence to simulate emotional changes during speech compared to neutral default.
+    Baseline values for Hal's signature voice
+    baseline_pitch = 50
+    baseline_speed = 0.88
+ """
+
+emotion_voice_map = {
+    "joy": {"pitch_factor": 1.4, "speed_factor": 0.7},       # Higher pitch, faster speech
+    "positive": {"pitch_factor": 1.3, "speed_factor": 0.8},  # Energetic and faster
+    "neutral": {"pitch_factor": 1.0, "speed_factor": 1.0},   # Baseline voice
+    "trust": {"pitch_factor": 1.15, "speed_factor": 0.9},    # Warm, steady, and slightly faster
+    "surprise": {"pitch_factor": 1.5, "speed_factor": 0.6},  # Very excited and fast
+    "fear": {"pitch_factor": 0.6, "speed_factor": 1.4},      # Low pitch, slower—hesitant
+    "anger": {"pitch_factor": 0.5, "speed_factor": 1.5},     # Deep, intense, and slower
+    "sadness": {"pitch_factor": 0.4, "speed_factor": 1.8},   # Very slow and low pitch
+    "disgust": {"pitch_factor": 0.6, "speed_factor": 1.6},   # Low pitch, slower pace
+    "anticipation": {"pitch_factor": 1.25, "speed_factor": 0.75}, # Faster and eager
+    "negative": {"pitch_factor": 0.5, "speed_factor": 1.5},  # Deep pitch, slower
+}
+
+
+def get_voice_modifiers(emotion):
+    """
+    Retrieve the pitch and speed modifiers based on the emotion.
+    If the emotion is not found, return the baseline (1.0 factors).
+    """
+    return emotion_voice_map.get(emotion, {"pitch_factor": 1.0, "speed_factor": 1.0})
+
 
 class EmotionSoundManager:
     def __init__(self):
@@ -83,3 +112,5 @@ class EmotionHandler:
 
         # Return the emotion if significant, otherwise "neutral"
         return predominant_emotion if nrc_emotions[predominant_emotion] > 0 else "neutral"
+
+

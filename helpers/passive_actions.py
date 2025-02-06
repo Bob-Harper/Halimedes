@@ -80,7 +80,7 @@ class PassiveActionsManager:
 
 
     async def startup_speech_actions(self, words):
-        speak_task = asyncio.create_task(speak_with_flite(words))
+        speak_task = asyncio.create_task(speak_with_flite(words, emotion="anticipation"))
         wiggle_task = asyncio.create_task(self.newmovements.wiggle())
 
         # Ensure tasks run concurrently, but stop wiggle when speech ends
