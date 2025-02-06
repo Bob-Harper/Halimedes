@@ -1,4 +1,3 @@
-# helpers/weather_commands.py
 from helpers.voice_utils import speak_with_flite
 from helpers.weather import WeatherHelper
 import asyncio

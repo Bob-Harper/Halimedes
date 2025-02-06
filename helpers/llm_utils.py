@@ -65,7 +65,7 @@ class LLMClient:
                     'stream': False
                 }
             )
-            print("Raw response text:", response.text)  # Debugging info
+            # print("Raw response text:", response.text)  # Debugging info
             response.raise_for_status()
             
             # Extract and clean LLM response
@@ -74,7 +74,7 @@ class LLMClient:
             
             # Add Hal's response to the conversation history
             self.conversation_history.append({'role': 'assistant', 'content': response_text})
-            print(f"Conversation history after response: {self.conversation_history}")
+            # print(f"Conversation history after response: {self.conversation_history}")
             return response_text
         except Exception as e:
             print(f"Error communicating with LLM: {e}")

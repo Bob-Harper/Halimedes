@@ -1,4 +1,3 @@
-from time import sleep
 from robot_hat import Music
 import asyncio
 import random
@@ -16,7 +15,7 @@ class PassiveSoundsManager:
         
         # List of supported file extensions
         supported_extensions = {".wav"}
-        
+
         # Get a list of all supported sound files in the directory
         try:
             passive_sounds = [
@@ -44,11 +43,41 @@ class PassiveSoundsManager:
         # Optional: Add a short delay to simulate processing time
         await asyncio.sleep(1.5)
 
+    async def play_emotion_sound(self, emotion):
+        """Play a sound corresponding to the given emotion."""
+        # List of supported file extensions
+        supported_extensions = {".wav"}
+        
+        # Determine the directory for the given emotion
+        sounds_dir = os.path.join(self.sounds_base_dir, emotion)
+        try:
+            # Collect all sound files in the emotion directory
+            emotion_sounds = [
+                os.path.join(sounds_dir, file)
+                for file in os.listdir(sounds_dir)
+                if any(file.lower().endswith(ext) for ext in supported_extensions)
+            ]
+
+            if not emotion_sounds:
+                print(f"No sound files found for emotion '{emotion}'.")
+                return
+
+            # Randomly select a sound file
+            sound_file = random.choice(emotion_sounds)
+            print(f"Playing sound for emotion '{emotion}': {sound_file}")  # Debugging message
+
+            # Play the sound using the Music API
+            await asyncio.to_thread(self.music.sound_play, sound_file, 75)
+        
+        except FileNotFoundError:
+            print(f"Error: Directory '{sounds_dir}' not found.")
+        except Exception as e:
+            print(f"Error: {e}")
+
     async def play_weather_intro_sound(self):
         """Play a random weather intro sound once."""
         sounds_dir = "/home/msutt/hal/sounds/passive/announcement"  # Directory for weather intro sounds
         supported_extensions = {".wav"}
-
         try:
             weather_intro_sounds = [
                 os.path.join(sounds_dir, file)

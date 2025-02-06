@@ -1,5 +1,44 @@
 from nltk.sentiment import SentimentIntensityAnalyzer
 from nrclex import NRCLex
+import os
+import random
+import subprocess
+
+
+class EmotionSoundManager:
+    def __init__(self):
+        self.emotion_base_dir = "/home/msutt/hal/sounds/passive"
+
+    def get_emotion_directory(self, emotion):
+        """Returns the appropriate sound directory for the given emotion."""
+        emotion_dir = os.path.join(self.emotion_base_dir, emotion)
+        if os.path.exists(emotion_dir):
+            return emotion_dir
+        else:
+            print(f"Warning: No directory found for emotion '{emotion}'")
+            return None
+
+    def play_sound(self, emotion):
+        """Play a sound from the corresponding emotion directory."""
+        emotion_dir = self.get_emotion_directory(emotion)
+        if not emotion_dir:
+            return  # Directory doesn't exist, do nothing
+
+        # Get all .wav files in the directory
+        sound_files = [f for f in os.listdir(emotion_dir) if f.lower().endswith(".wav")]
+        if not sound_files:
+            print(f"No .wav files found in {emotion_dir}.")
+            return
+
+        # Choose a random sound and play it using aplay
+        sound_file = os.path.join(emotion_dir, random.choice(sound_files))
+
+        try:
+            print(f"Playing: {sound_file}")
+            subprocess.run(["aplay", sound_file], check=True)
+
+        except subprocess.CalledProcessError as e:
+            print(f"Error playing sound: {e}")
 
 
 class EmotionHandler:
