@@ -36,7 +36,7 @@ class CommandManager:
 
 
     @property
-    def command_map(self):
+    def old_command_map(self):
         return {
             "shutdown": self.command_shutdown,
             "quit": self.command_exit_chat,
@@ -46,7 +46,7 @@ class CommandManager:
             "forecast": self.weather_commands.command_get_forecast,
         }
     
-    def match_command(self, input_text):
+    def old_match_command(self, input_text):
         """
         Match the input text to a command in the command map using fuzzy logic.
         Returns the best match if above the threshold, otherwise None.
@@ -57,6 +57,58 @@ class CommandManager:
             return matches[0][0]  # Return the best matching command
         return None
         
+    # Command names mapped to their associated function and conversational phrases
+    @property
+    def command_map(self):
+        return {
+            "shutdown": {
+                "function": self.command_shutdown,
+                "phrases": ["shutdown", "power off", "turn off"],
+            },
+            "quit": {
+                "function": self.command_exit_chat,
+                "phrases": ["quit", "exit chat", "we’re done", "stop talking"],
+            },
+            "help": {
+                "function": self.command_help,
+                "phrases": ["help", "what can you do", "commands"],
+            },
+            "battery": {
+                "function": self.command_battery,
+                "phrases": ["battery", "check battery status", "power level"],
+            },
+            "weather": {
+                "function": self.weather_commands.command_get_weather,
+                "phrases": ["weather", "current weather", "what's the weather"],
+            },
+            "forecast": {
+                "function": self.weather_commands.command_get_forecast,
+                "phrases": ["forecast", "what's the forecast", "weather tomorrow", "what’s tomorrow’s weather"],
+            }
+        }
+    
+    def match_command(self, input_text):
+        """
+        Match the input text to a command using fuzzy logic and conversational mappings.
+        Returns the command name if matched, otherwise None.
+        """
+        threshold = 70  # Minimum similarity score to accept
+        best_match = None
+        best_score = 0
+
+        # Loop through commands and match against associated phrases
+        for command_name, command_data in self.command_map.items():
+            for phrase in command_data["phrases"]:
+                match_score = fuzz.ratio(input_text.lower(), phrase.lower())
+                if match_score > best_score and match_score >= threshold:
+                    best_score = match_score
+                    best_match = command_name
+
+        if best_match:
+            print(f"Matched command: {best_match} with score: {best_score}")
+            return best_match  # Return the matched command name
+        return None
+    
     async def command_shutdown(self, spoken_text):
         """Shutdown the robot."""
         await speak_with_flite(f"Verbal Command Detected: {spoken_text}. Please stand by.")

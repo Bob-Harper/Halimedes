@@ -8,6 +8,7 @@ class PassiveSoundsManager:
     def __init__(self):
         self.music = Music()  # def sound_play(self, filename, volume=None)
 
+
     async def sounds_thinking_loop_single(self):
         """Play a single passive sound dynamically from a directory, supporting multiple file types."""
         # Define the directory containing the sound files
@@ -43,6 +44,7 @@ class PassiveSoundsManager:
         # Optional: Add a short delay to simulate processing time
         await asyncio.sleep(1.5)
 
+
     async def play_emotion_sound(self, emotion):
         """Play a sound corresponding to the given emotion."""
         # List of supported file extensions
@@ -74,6 +76,7 @@ class PassiveSoundsManager:
         except Exception as e:
             print(f"Error: {e}")
 
+
     async def play_weather_intro_sound(self):
         """Play a random weather intro sound once."""
         sounds_dir = "/home/msutt/hal/sounds/passive/announcement"  # Directory for weather intro sounds
@@ -99,3 +102,17 @@ class PassiveSoundsManager:
         sound_file = random.choice(weather_intro_sounds)
         print(f"Playing weather intro sound: {sound_file}")  # Debug message
         await asyncio.to_thread(self.music.sound_play, sound_file, 75)
+
+
+    async def play_sound_indicator(self, sound_file, volume=75):
+        """
+        Plays a sound to indicate a state (e.g., now listening, done listening).
+        Uses the robot hat's music.sound_play for playback.
+        """
+        from robot_hat import music  # Import if not already in your scope
+        
+        try:
+            print(f"Playing sound: {sound_file} at volume {volume}")
+            await asyncio.to_thread(self.music.sound_play, sound_file, volume)
+        except Exception as e:
+            print(f"Error playing sound: {e}")    

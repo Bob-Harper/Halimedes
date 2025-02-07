@@ -51,7 +51,7 @@ async def main():
         # Check if input matches a known command
         command = command_manager.match_command(spoken_text)
         if command:
-            should_exit = await command_map[command](spoken_text)
+            should_exit = await command_map[command]["function"](spoken_text)
             if should_exit:
                 break
             continue  # Command handled; go back to listening

@@ -8,6 +8,8 @@ import numpy as np
 import websockets
 from helpers.emotions import get_voice_modifiers
 from helpers.emotions import EmotionHandler
+from helpers.passive_sounds import PassiveSoundsManager
+from nltk.tokenize import sent_tokenize
 
 """
 pitch = 50  # flite default 100 - higher/deeper voice correlates to higher/lower number
@@ -21,6 +23,7 @@ baseline_pitch = 50
 baseline_speed = 0.88
 
 emotion_handler = EmotionHandler()
+sound_manager = PassiveSoundsManager()
 
 
 async def speak_with_flite(words, emotion="neutral"):
@@ -55,9 +58,8 @@ async def speak_with_flite(words, emotion="neutral"):
 async def speak_with_dynamic_flite(full_text):
     """Speak with adaptive pitch and speed modulation dynamically for each sentence fragment."""
     try:
-        # Step 1: Split the text into logical fragments (sentences/clauses)
-        fragments = re.split(r'[.,;!?]\s*', full_text)
-        fragments = [frag.strip() for frag in fragments if frag.strip()]  # Clean empty strings
+        # Step 1: Use nltk to split text into meaningful fragments (sentences/clauses)
+        fragments = sent_tokenize(full_text)
 
         # Step 2: Process each fragment individually
         for fragment in fragments:
@@ -84,6 +86,11 @@ async def speak_with_dynamic_flite(full_text):
         # Fallback to the default flite with no modulation
         await speak_with_flite(full_text)
 
+    except Exception as e:
+        print(f"Error in adaptive speech, falling back to neutral: {e}")
+        # Fallback to the default flite with no modulation
+        await speak_with_flite(full_text)
+
 
 async def recognize_speech_vosk(server_url="ws://192.168.0.123:2700", return_audio=False):
     """
@@ -92,10 +99,16 @@ async def recognize_speech_vosk(server_url="ws://192.168.0.123:2700", return_aud
     - The small Vosk model locally (fallback path if the server is truly unavailable).
     Returns the transcript and optionally the raw audio.
     """
+    # Play the "now listening" sound
+    await sound_manager.play_sound_indicator("/home/msutt/hal/sounds/passive/trust/n-beep-1.wav", 10)
+
     audio_array = await asyncio.to_thread(record_until_silence)
     # audio_array = denoise_audio(audio_array)
     audio_array = np.ravel(audio_array)  # Flatten audio to 1D
     audio_bytes = audio_array.tobytes()
+
+    # Play the "stopped listening" sound
+    await sound_manager.play_sound_indicator("/home/msutt/hal/sounds/passive/trust/n-beep-1.wav", 10)
 
     try:
         # Try processing via the Vosk server
@@ -181,7 +194,7 @@ async def transcribe_via_fallback(audio_bytes, chunk_size):
             yield json.loads(recognizer.Result())
 
 
-def record_until_silence(sample_rate=44100, block_duration=1.0, silence_threshold=600, silence_duration=2.0):
+def record_until_silence(sample_rate=44100, block_duration=1.0, silence_threshold=700, silence_duration=2.0):
     """
     Records audio until silence is detected for at least `silence_duration` seconds.
     """
