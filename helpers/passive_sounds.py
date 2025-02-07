@@ -104,7 +104,7 @@ class PassiveSoundsManager:
         await asyncio.to_thread(self.music.sound_play, sound_file, 75)
 
 
-    async def play_sound_indicator(self, sound_file, volume=75):
+    async def play_sound_indicator(self, sound_file, volume=50):
         """
         Plays a sound to indicate a state (e.g., now listening, done listening).
         Uses the robot hat's music.sound_play for playback.

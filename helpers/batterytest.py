@@ -38,5 +38,5 @@ async def announce_battery_status():
     elif status == "Critical": 
         await speak_with_flite("Warning! Immediate power pack recharge recommended, imminent shutdown possibility..")
     elif status == "Unknown":  # Checking battery too early after startup may return no result
-        await speak_with_flite("Proceed with caution, recheck battery status regularly, consider a hardware status check.")
+        await speak_with_flite("Battery not detected. Proceed with caution, recheck battery status regularly, consider a hardware status check.")
 

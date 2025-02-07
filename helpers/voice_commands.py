@@ -105,7 +105,6 @@ class CommandManager:
                     best_match = command_name
 
         if best_match:
-            print(f"Matched command: {best_match} with score: {best_score}")
             return best_match  # Return the matched command name
         return None
     

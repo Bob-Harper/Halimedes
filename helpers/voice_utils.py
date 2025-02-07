@@ -68,9 +68,6 @@ async def speak_with_dynamic_flite(full_text):
             emotion_settings = get_voice_modifiers(fragment_emotion)
             pitch = int(baseline_pitch * emotion_settings["pitch_factor"])
             speed = round(baseline_speed * emotion_settings["speed_factor"], 2)
-
-            print(f"Speaking fragment '{fragment}' with emotion '{fragment_emotion}': pitch={pitch}, speed={speed}")
-
             # Speak the fragment with calculated pitch and speed
             command = [
                 "flite",
@@ -103,7 +100,6 @@ async def recognize_speech_vosk(server_url="ws://192.168.0.123:2700", return_aud
     await sound_manager.play_sound_indicator("/home/msutt/hal/sounds/passive/trust/n-beep-1.wav", 10)
 
     audio_array = await asyncio.to_thread(record_until_silence)
-    # audio_array = denoise_audio(audio_array)
     audio_array = np.ravel(audio_array)  # Flatten audio to 1D
     audio_bytes = audio_array.tobytes()
 
@@ -115,9 +111,7 @@ async def recognize_speech_vosk(server_url="ws://192.168.0.123:2700", return_aud
         transcript = await process_audio_with_transcriber(
             transcribe_via_server, audio_bytes, server_url
         )
-        print(f"Transcript: {transcript}")
     except websockets.exceptions.ConnectionClosedOK:
-        print("Server completed successfully, no fallback needed.")
         # If the server closed normally (1000 OK), just return the transcript
         return transcript, audio_array if return_audio else transcript
 
@@ -173,8 +167,6 @@ async def transcribe_via_server(audio_bytes, chunk_size, server_url):
         while True:
             try:
                 message = await asyncio.wait_for(ws.recv(), timeout=5)
-                print(f"message: {message}")
-
                 yield json.loads(message)
             except asyncio.TimeoutError:
                 break
