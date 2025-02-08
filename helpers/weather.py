@@ -7,13 +7,13 @@ from dotenv import load_dotenv
 # Load environment variables from a .env file
 load_dotenv()
 
+
 class WeatherHelper:
     def __init__(self):
         self.default_lat = os.getenv("DEFAULT_WEATHER_LAT")
         self.default_lon = os.getenv("DEFAULT_WEATHER_LONG")
         self.weather_api_key = os.getenv("OPEN_WEATHER")
         self.weather_intro_dir = "/home/msutt/hal/sounds/weather"  # Directory for intro sounds
-
 
     @staticmethod
     def get_wind_speed_description(speed):

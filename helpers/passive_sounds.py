@@ -109,8 +109,6 @@ class PassiveSoundsManager:
         Plays a sound to indicate a state (e.g., now listening, done listening).
         Uses the robot hat's music.sound_play for playback.
         """
-        from robot_hat import music  # Import if not already in your scope
-        
         try:
             print(f"Playing sound: {sound_file} at volume {volume}")
             await asyncio.to_thread(self.music.sound_play, sound_file, volume)

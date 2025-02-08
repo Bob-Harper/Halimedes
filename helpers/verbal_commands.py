@@ -2,9 +2,9 @@ from rapidfuzz import fuzz, process
 import asyncio
 from helpers.picrawler import Picrawler
 from helpers.new_movements import NewMovements
-from helpers.voice_utils import speak_with_flite
+from helpers.response_utils import speak_with_flite
 import subprocess
-from helpers.batterytest import announce_battery_status
+from helpers.general_utilities import announce_battery_status
 from helpers.passive_actions import PassiveActionsManager
 from helpers.passive_sounds import PassiveSoundsManager
 from helpers.weather import WeatherHelper
@@ -57,6 +57,13 @@ class CommandManager:
             return matches[0][0]  # Return the best matching command
         return None
         
+    async def handle_command(self, spoken_text):
+        command = self.match_command(spoken_text)
+        if command:
+            should_exit = await self.command_map[command]["function"](spoken_text)
+            return should_exit  # Return if we need to exit or continue
+        return None
+
     # Command names mapped to their associated function and conversational phrases
     @property
     def command_map(self):

@@ -2,8 +2,10 @@ import random
 from helpers.picrawler import Picrawler
 from helpers.new_movements import NewMovements
 from helpers.passive_sounds import PassiveSoundsManager
-from helpers.voice_utils import speak_with_flite
+from helpers.response_utils import speak_with_flite
 import asyncio
+from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk import pos_tag
 
 
 class PassiveActionsManager:
@@ -11,6 +13,7 @@ class PassiveActionsManager:
         self.crawler = Picrawler()
         self.passive_sound = PassiveSoundsManager()
         self.newmovements = NewMovements(self.crawler)
+
 
     async def handle_passive_actions(self, stop_event):
         """Alternate between sounds and actions while waiting for LLM response."""
@@ -98,3 +101,51 @@ class PassiveActionsManager:
         # Wait for both tasks to complete
         await asyncio.gather(speak_task, movement_task)
         
+    async def process_and_replace_actions(self, response_text):
+        """
+        Detects full sentences describing sounds or actions, and dynamically replaces them.
+        Returns the modified conversational text and the list of detected actions/sounds.
+        """
+        sentences = sent_tokenize(response_text)
+        modified_text = ""
+        detected_events = []
+
+        for sentence in sentences:
+            words = word_tokenize(sentence)
+            tagged_words = pos_tag(words)
+
+            # Detect if the sentence describes a sound effect
+            if any(word.lower() in self.sound_keywords for word, tag in tagged_words):
+                detected_events.append(("sound", sentence))
+                print(f"Detected sound description: {sentence}")
+                continue  # Skip adding this sentence to the spoken text
+
+            # Detect if the sentence describes an action
+            if any(word.lower() in self.action_keywords for word, tag in tagged_words):
+                detected_events.append(("action", sentence))
+                print(f"Detected action description: {sentence}")
+                continue  # Skip adding this sentence to the spoken text
+
+            # Otherwise, keep the sentence as part of the spoken text
+            modified_text += sentence + " "
+
+        return modified_text.strip(), detected_events    
+    
+    def extract_sound_type(self, description):
+        """
+        Extracts the key sound keyword from the sentence.
+        """
+        for word in word_tokenize(description):
+            if word.lower() in self.sound_keywords:
+                return word.lower()  # Return the detected sound keyword
+        return "default_sound"  # Fallback if no keyword is found
+
+    def extract_action_type(self, description):
+        """
+        Extracts the key action phrase from the sentence.
+        """
+        words = word_tokenize(description)
+        for i, (word, tag) in enumerate(pos_tag(words)):
+            if word.lower() in self.action_keywords:
+                return ' '.join(words[i:i + 3])  # Return 3-word action phrase
+        return "default_action"  # Fallback if no action phrase is found
