@@ -2,7 +2,7 @@ import random
 from helpers.picrawler import Picrawler
 from helpers.new_movements import NewMovements
 from helpers.passive_sounds import PassiveSoundsManager
-from helpers.response_utils import speak_with_flite
+from helpers.response_utils import Response_Manager
 import asyncio
 from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk import pos_tag
@@ -13,13 +13,16 @@ class PassiveActionsManager:
         self.crawler = Picrawler()
         self.passive_sound = PassiveSoundsManager()
         self.newmovements = NewMovements(self.crawler)
+        self.response_manager = Response_Manager()
 
 
     async def handle_passive_actions(self, stop_event):
         """Alternate between sounds and actions while waiting for LLM response."""
         while not stop_event.is_set():
             # Weighted random choice: 70% sound, 30% action
-            choice = random.choices(["sound", "action"], weights=[60, 40], k=1)[0]
+            # choice = random.choices(["sound", "action"], weights=[60, 40], k=1)[0]
+            choice = random.choices(["sound", "action"], weights=[100, 0], k=1)[0]  # Set to Only Sounds for Debugging
+
 
             if choice == "sound":
                 await self.passive_sound.sounds_thinking_loop_single()  # Play one sound
@@ -83,7 +86,7 @@ class PassiveActionsManager:
 
 
     async def startup_speech_actions(self, words):
-        speak_task = asyncio.create_task(speak_with_flite(words, emotion="anticipation"))
+        speak_task = asyncio.create_task(self.response_manager.speak_with_flite(words, emotion="anticipation"))
         wiggle_task = asyncio.create_task(self.newmovements.wiggle())
 
         # Ensure tasks run concurrently, but stop wiggle when speech ends
@@ -96,7 +99,7 @@ class PassiveActionsManager:
 
     async def shutdown_speech_actions(self, words):
         # Run speech and movement concurrently
-        speak_task = asyncio.create_task(speak_with_flite(words))
+        speak_task = asyncio.create_task(self.response_manager.speak_with_flite(words))
         movement_task = asyncio.to_thread(self.newmovements.sit_down)
         # Wait for both tasks to complete
         await asyncio.gather(speak_task, movement_task)
@@ -117,14 +120,14 @@ class PassiveActionsManager:
             # Detect if the sentence describes a sound effect
             if any(word.lower() in self.sound_keywords for word, tag in tagged_words):
                 detected_events.append(("sound", sentence))
-                print(f"Detected sound description: {sentence}")
+                # print(f"Detected sound description: {sentence}")
                 continue  # Skip adding this sentence to the spoken text
 
             # Detect if the sentence describes an action
             if any(word.lower() in self.action_keywords for word, tag in tagged_words):
                 detected_events.append(("action", sentence))
                 print(f"Detected action description: {sentence}")
-                continue  # Skip adding this sentence to the spoken text
+                c# ontinue  # Skip adding this sentence to the spoken text
 
             # Otherwise, keep the sentence as part of the spoken text
             modified_text += sentence + " "

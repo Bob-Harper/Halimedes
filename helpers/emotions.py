@@ -63,7 +63,7 @@ class EmotionSoundManager:
         sound_file = os.path.join(emotion_dir, random.choice(sound_files))
 
         try:
-            print(f"Playing: {sound_file}")
+            # print(f"Playing: {sound_file}")
             subprocess.run(["aplay", sound_file], check=True)
 
         except subprocess.CalledProcessError as e:

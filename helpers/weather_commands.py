@@ -1,4 +1,4 @@
-from helpers.response_utils import speak_with_flite
+from helpers.response_utils import Response_Manager
 from helpers.weather import WeatherHelper
 import asyncio
 
@@ -9,15 +9,28 @@ class WeatherCommandManager:
         self.passive_manager = passive_manager
         self.passive_sound = passive_sound
         self.weather_helper = WeatherHelper()
+        self.response_manager = Response_Manager()
 
+    async def startup_fetch_forecast(self):
+        # Fetch the 5-day weather forecast
+        weather_forecast = await self.weather_helper.fetch_forecast()
+        if not weather_forecast:
+            await self.response_manager.speak_with_flite("Checking weather satellite connection. Status: Offline.")
+            return
+        await self.response_manager.speak_with_flite("Checking weather satellite connection. Status: Online.")
+        # Add history for LLM
+        self.llm_client.conversation_history.extend([
+            {"role": "system", "content": f"If the conversation is weather related, here is the most recent 5-day forecast: {weather_forecast}."}
+        ])
+        
     async def command_get_weather(self, spoken_text):
         """Provide today's weather."""
-        await speak_with_flite("You want to check the weather? Okay, I'll stick my head out the window and look around.")
+        await self.response_manager.speak_with_flite("You want to check the weather? Okay, I'll stick my head out the window and look around.")
 
         # Fetch the current weather
         current_weather = await self.weather_helper.fetch_weather()
         if not current_weather:
-            await speak_with_flite("Sorry, I couldn't retrieve the weather. Maybe I need a new antenna.")
+            await self.response_manager.speak_with_flite("Sorry, I couldn't retrieve the weather. Maybe I need a new antenna.")
             return
 
         # Start passive actions
@@ -37,7 +50,7 @@ class WeatherCommandManager:
         # Play the weather intro sound
         await self.passive_sound.play_weather_intro_sound()
         # Speak the response
-        await speak_with_flite(response_text)
+        await self.response_manager.speak_with_flite(response_text)
 
         # Add history for LLM
         self.llm_client.conversation_history.extend([
@@ -49,12 +62,12 @@ class WeatherCommandManager:
 
     async def command_get_forecast(self, spoken_text):
         """Provide a 5-day weather forecast."""
-        await speak_with_flite("You think I can predict the weather? Oh Boy, I'll check my crystal ball. Just kidding, I'll use a satellite.")
+        await self.response_manager.speak_with_flite("You think I can predict the weather? Oh Boy, I'll check my crystal ball. Just kidding, I'll use a satellite.")
 
         # Fetch the 5-day weather forecast
         weather_forecast = await self.weather_helper.fetch_forecast()
         if not weather_forecast:
-            await speak_with_flite("Sorry, I couldn't retrieve the forecast. No satellites available to hijack.")
+            await self.response_manager.speak_with_flite("Sorry, I couldn't retrieve the forecast. No satellites available to hijack.")
             return
 
         # Start passive actions
@@ -75,7 +88,7 @@ class WeatherCommandManager:
         # Play the weather intro sound
         await self.passive_sound.play_weather_intro_sound()
         # Speak the response
-        await speak_with_flite(response_text)
+        await self.response_manager.speak_with_flite(response_text)
         # Add history for LLM
         self.llm_client.conversation_history.extend([
             {"role": "system", "content": system_prompt},

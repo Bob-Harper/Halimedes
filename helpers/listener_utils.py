@@ -5,14 +5,19 @@ import asyncio
 import numpy as np
 import websockets
 from helpers.passive_sounds import PassiveSoundsManager
+from helpers.general_utilities import GeneralUtilities
+from gpiozero import LED
 
 
 class AudioInput:
     def __init__(self, silence_threshold=700, silence_duration=2.0, sample_rate=44100):
         self.sound_manager = PassiveSoundsManager()
+        self.general_utils = GeneralUtilities()
         self.silence_threshold = silence_threshold
         self.silence_duration = silence_duration
         self.sample_rate = sample_rate
+        # Initialize the listening LED pin
+        self.listening_led = LED(26)
 
     async def recognize_speech_vosk(self, server_url="ws://192.168.0.123:2700", return_audio=False):
         """
@@ -21,15 +26,22 @@ class AudioInput:
         - The small Vosk model locally (fallback path if the server is truly unavailable).
         Returns the transcript and optionally the raw audio.
         """
-        # Play the "now listening" sound
+        # Turn on Indicators for Active Listening.
         await self.sound_manager.play_sound_indicator("/home/msutt/hal/sounds/passive/excited/n-talk3.wav", 10)
+        led_task = asyncio.create_task(self._led_blip())
 
         audio_array = await asyncio.to_thread(self.record_until_silence)
         audio_array = np.ravel(audio_array)  # Flatten audio to 1D
         audio_bytes = audio_array.tobytes()
 
-        # Play the "stopped listening" sound
+        # Turn off Indicators for Active Listening.
+        led_task.cancel()
+        try:
+            await led_task  # Ensure it stops cleanly
+        except asyncio.CancelledError:
+            pass
         await self.sound_manager.play_sound_indicator("/home/msutt/hal/sounds/passive/excited/n-talk1.wav", 10)
+        self.listening_led.off()
 
         try:
             # Try processing via the Vosk server
@@ -120,7 +132,7 @@ class AudioInput:
         block_samples = int(sample_rate * block_duration)
         has_spoken = False
 
-        print("Recording started. Please speak...")
+        # print("Recording started. Please speak...")
 
         while True:
             audio_block = sd.rec(block_samples, samplerate=sample_rate, channels=1, dtype='int16')
@@ -138,5 +150,13 @@ class AudioInput:
             if has_spoken and silence_time >= silence_duration:
                 break
 
-        print("Recording stopped. Stand By...")            
+        # print("Recording stopped. Stand By...")            
         return np.concatenate(blocks, axis=0)
+
+    async def _led_blip(self):
+        """Blinks the LED every 2 seconds while listening."""
+        while True:
+            self.listening_led.on()
+            await asyncio.sleep(0.1)  # LED on for 0.1 seconds
+            self.listening_led.off()
+            await asyncio.sleep(1.9)  # LED off for 1.9 seconds

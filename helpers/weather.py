@@ -10,6 +10,8 @@ load_dotenv()
 
 class WeatherHelper:
     def __init__(self):
+        self.openweather1day = os.getenv("OPEN_WEATHER_1DAY")
+        self.openweather5day = os.getenv("OPEN_WEATHER_5DAY")
         self.default_lat = os.getenv("DEFAULT_WEATHER_LAT")
         self.default_lon = os.getenv("DEFAULT_WEATHER_LONG")
         self.weather_api_key = os.getenv("OPEN_WEATHER")
@@ -60,14 +62,13 @@ class WeatherHelper:
     async def fetch_weather(self):
         """Fetch and format current weather data."""
         try:
-            url = "http://api.openweathermap.org/data/2.5/weather"
             params = {
                 "lat": self.default_lat,
                 "lon": self.default_lon,
                 "appid": self.weather_api_key,
                 "units": "metric"
             }
-            response = requests.get(url, params=params, timeout=10)
+            response = requests.get(self.openweather1day, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
 
@@ -94,14 +95,13 @@ class WeatherHelper:
     async def fetch_forecast(self):
         """Fetch and format a detailed 5-day forecast."""
         try:
-            url = "http://api.openweathermap.org/data/2.5/forecast"
             params = {
                 "lat": self.default_lat,
                 "lon": self.default_lon,
                 "appid": self.weather_api_key,
                 "units": "metric"
             }
-            response = requests.get(url, params=params, timeout=10)
+            response = requests.get(self.openweather5day, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
 

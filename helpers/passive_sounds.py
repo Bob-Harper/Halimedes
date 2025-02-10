@@ -66,7 +66,7 @@ class PassiveSoundsManager:
 
             # Randomly select a sound file
             sound_file = random.choice(emotion_sounds)
-            print(f"Playing sound for emotion '{emotion}': {sound_file}")  # Debugging message
+            # print(f"Playing sound for emotion '{emotion}': {sound_file}")  # Debugging message
 
             # Play the sound using the Music API
             await asyncio.to_thread(self.music.sound_play, sound_file, 75)
@@ -100,7 +100,7 @@ class PassiveSoundsManager:
 
         # Select and play a random sound
         sound_file = random.choice(weather_intro_sounds)
-        print(f"Playing weather intro sound: {sound_file}")  # Debug message
+        # print(f"Playing weather intro sound: {sound_file}")  # Debug message
         await asyncio.to_thread(self.music.sound_play, sound_file, 75)
 
 
@@ -110,7 +110,7 @@ class PassiveSoundsManager:
         Uses the robot hat's music.sound_play for playback.
         """
         try:
-            print(f"Playing sound: {sound_file} at volume {volume}")
+            # print(f"Playing sound: {sound_file} at volume {volume}")
             await asyncio.to_thread(self.music.sound_play, sound_file, volume)
         except Exception as e:
             print(f"Error playing sound: {e}")    

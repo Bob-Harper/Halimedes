@@ -1,14 +1,15 @@
-from rapidfuzz import fuzz, process
+from rapidfuzz import fuzz
 import asyncio
 from helpers.picrawler import Picrawler
 from helpers.new_movements import NewMovements
-from helpers.response_utils import speak_with_flite
 import subprocess
-from helpers.general_utilities import announce_battery_status
+from helpers.general_utilities import GeneralUtilities
 from helpers.passive_actions import PassiveActionsManager
 from helpers.passive_sounds import PassiveSoundsManager
+from helpers.response_utils import Response_Manager
 from helpers.weather import WeatherHelper
 from helpers.weather_commands import WeatherCommandManager
+from helpers.news_api import fetch_top_news
 import signal
 import sys
 
@@ -33,36 +34,15 @@ class CommandManager:
         self.passive_manager = PassiveActionsManager()
         self.passive_sound = PassiveSoundsManager()
         self.weather_commands = WeatherCommandManager(llm_client, self.passive_manager, self.passive_sound)
+        self.response_manager = Response_Manager()
+        self.general_utils = GeneralUtilities()
 
-
-    @property
-    def old_command_map(self):
-        return {
-            "shutdown": self.command_shutdown,
-            "quit": self.command_exit_chat,
-            "help": self.command_help,
-            "battery": self.command_battery,
-            "weather": self.weather_commands.command_get_weather,
-            "forecast": self.weather_commands.command_get_forecast,
-        }
-    
-    def old_match_command(self, input_text):
-        """
-        Match the input text to a command in the command map using fuzzy logic.
-        Returns the best match if above the threshold, otherwise None.
-        """
-        threshold = 70  # Minimum similarity score to accept
-        matches = process.extract(input_text, self.command_map.keys(), scorer=fuzz.ratio)
-        if matches and matches[0][1] >= threshold:
-            return matches[0][0]  # Return the best matching command
-        return None
-        
     async def handle_command(self, spoken_text):
-        command = self.match_command(spoken_text)
+        command = self.match_command(spoken_text)  # Check if input matches a known command
         if command:
             should_exit = await self.command_map[command]["function"](spoken_text)
-            return should_exit  # Return if we need to exit or continue
-        return None
+            return True, should_exit  # Return that a command was detected, and whether to exit
+        return False, False  # No command detected, don't exit
 
     # Command names mapped to their associated function and conversational phrases
     @property
@@ -91,7 +71,11 @@ class CommandManager:
             "forecast": {
                 "function": self.weather_commands.command_get_forecast,
                 "phrases": ["forecast", "what's the forecast", "weather tomorrow", "what’s tomorrow’s weather"],
-            }
+            },
+            "news": {
+                "function": self.command_get_news,
+                "phrases": ["news", "check the news", "tell me the news", "what's new today"]
+            },
         }
     
     def match_command(self, input_text):
@@ -117,7 +101,7 @@ class CommandManager:
     
     async def command_shutdown(self, spoken_text):
         """Shutdown the robot."""
-        await speak_with_flite(f"Verbal Command Detected: {spoken_text}. Please stand by.")
+        await self.response_manager.speak_with_flite(f"Verbal Command Detected: {spoken_text}. Please stand by.")
         system_prompt = 'You are Halimeedees, a quirky alien robot exploring Earth. Do not use asterisks or actions. No more chat for you, It is time to shut down and rest now.  Goodnight.'
         response_text = await self.llm_client.send_message_async(system_prompt, spoken_text)
         # Small delay to ensure the message is heard before the shutdown
@@ -128,7 +112,7 @@ class CommandManager:
     
     async def command_exit_chat(self, spoken_text):
         """Exit chat mode but remain powered."""
-        await speak_with_flite(f"Verbal Command Detected: {spoken_text}. Please stand by.")
+        await self.response_manager.speak_with_flite(f"Verbal Command Detected: {spoken_text}. Please stand by.")
         system_prompt = 'You are Halimeedees, a quirky alien robot exploring Earth. Do not use asterisks or actions. The time of the chatting is over, the time of doing something else has begun. Goodbye.'
         response_text = await self.llm_client.send_message_async(system_prompt, spoken_text)
         
@@ -141,12 +125,30 @@ class CommandManager:
 
     async def command_help(self, spoken_text):
         """Provide verbal help."""
-        await speak_with_flite(f"I heard you say {spoken_text}. To have me power down, say shut down. To end chat but leave me powered up, say end chat.  to check my battery say battery.  to hear me repeat these instructions, say help.")
+        await self.response_manager.speak_with_flite(f"I heard you say {spoken_text}. To have me power down, say shut down. To end chat but leave me powered up, say end chat.  to check my battery say battery.  to hear me repeat these instructions, say help.")
         return False  # Signal to go back to listening
     
     async def command_battery(self, spoken_text):
         """Provide verbal battery status check."""
-        await speak_with_flite(f"I heard you say {spoken_text}. Acknowledged, I will check battery status now.")
-        await announce_battery_status()
+        await self.response_manager.speak_with_flite(f"I heard you say {spoken_text}. Acknowledged, I will check battery status now.")
+        await self.general_utils.announce_battery_status()
         return False  # Signal to go back to listening
 
+    async def command_get_news(self, *_):
+        """
+        Fetch top science and tech news and speak them aloud.
+        """
+        news_articles = await fetch_top_news()
+
+        if isinstance(news_articles, str):  # Check for error message
+            await self.response_manager.speak_with_flite(f"News fetch failed: {news_articles}")
+        else:
+            # Play the weather intro sound
+            await self.passive_sound.play_weather_intro_sound()
+            # Store headlines in conversation history for potential reference by the LLM
+            formatted_news = "Here are today’s top science and tech headlines:\n" + "\n".join(news_articles)
+            self.llm_client.conversation_history.append({"role": "system", "content": formatted_news})
+            # Speak each news article aloud
+            for article in news_articles:
+                await self.response_manager.speak_with_flite(article)
+    
