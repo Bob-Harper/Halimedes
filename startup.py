@@ -11,6 +11,7 @@ from helpers.llm_utils import LLMClient
 from helpers.passive_actions import PassiveActionsManager
 from helpers.system_prompts import get_system_prompt
 from helpers.general_utilities import GeneralUtilities
+from helpers.news_api import startup_fetch_news
 from dotenv import load_dotenv
 
 # Load environment variables from a .env file
@@ -36,6 +37,7 @@ async def main():
     await response_manager.speak_with_flite("Servos powered. Listening initiated. Voice centers activated. Checking battery.")
     await general_utils.announce_battery_status()
     await weather_fetch.startup_fetch_forecast()
+    await startup_fetch_news(response_manager, llm_client)
     startup_words = "This is so exciting! what are we doing today?"
     await actions_manager.startup_speech_actions(startup_words)
 

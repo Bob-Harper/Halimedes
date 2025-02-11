@@ -8,23 +8,33 @@ load_dotenv()
 news_api_key = os.getenv("NEWSAPIDOTCOM")
 
 async def connect_to_news_api(endpoint_url):
-    """
-    Handles the connection to the API and returns the JSON response.
-    """
     async with aiohttp.ClientSession() as session:
         async with session.get(endpoint_url) as response:
             if response.status == 200:
-                return await response.json()  # Return parsed JSON response
+                result = await response.json()
+                if "error" in result:
+                    return {"error": result["error"]}
+                return result
             else:
                 return {"error": f"API request failed with status code {response.status}"}
             
+async def startup_fetch_news(response_manager, llm_client):
+    news_articles = await fetch_top_news()
+    if isinstance(news_articles, str):  # Check for error message
+        await response_manager.speak_with_flite("Checking news satellite connection. Status: Offline.")
+    else:
+        # Store headlines in conversation history for potential reference by the LLM
+        formatted_news = "Here are today’s top science and tech headlines:\n" + "\n".join(news_articles)
+        llm_client.conversation_history.append({"role": "system", "content": f"If it becomes relevant, here are today's headlines: {formatted_news}"})        
+        await response_manager.speak_with_flite("Checking news satellite connection. Status: Online.")
+
 async def fetch_top_news():
     """
     Builds the API request for top science and tech news and retrieves the data.
     """
     endpoint = (
         f"https://api.thenewsapi.com/v1/news/top"
-        f"?api_token={news_api_key}&locale=ca&language=en&categories=science&limit=3"
+        f"?api_token={news_api_key}&locale=ca,us,uk,au,nz&categories=science&limit=3"
         f"&exclude_categories=tech,sports,entertainment,politics,general,food,travel,business,health"
     )
 

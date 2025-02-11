@@ -190,12 +190,6 @@ class Picrawler(Robot):
         for coord in step_temp: # each servo motion
             alpha, beta, gamma = self.coord2polar(coord)
             angles_temp.append([beta, alpha, gamma])
-
-        # print('current_coord: %s'%len(self.current_coord))
-        # print('_step: %s'%len(_step))
-        # print('angles_temp：%s'%len(angles_temp))
-        # print('angles_temp：%s'%len(self.coord_temp))
-
         return list.copy(self.set_angle(angles_temp, speed, israise))
 
     def current_step_all_leg_angle(self):
@@ -214,7 +208,6 @@ class Picrawler(Robot):
             cali_position += [beta, alpha, gamma]
 
         cali_position = [cali_position[i] + self.offset[i] for i in range(12)]
-        # print("cali_position:",cali_position)
 
         positive_list = [
             [1, -1, -1, 1, 1, -1],
@@ -244,7 +237,6 @@ class Picrawler(Robot):
             coord[2] = max(-50, min(-10, coord[2]))
         self.do_step(self.current_coord, speed=100)
         current_position = list.copy(self.do_step(self.current_coord, speed=100))
-        # print('current_position: %s'%current_position)
         if enter == 1:
             tmp = [current_position[i] - cali_position[i] + offset[i] for i in range(len(current_position))]
             offset[leg*3:(leg + 1)*3] = tmp[leg*3:(leg + 1)*3]
@@ -468,6 +460,7 @@ class Picrawler(Robot):
         @check_stand
         @normal_action(0)
         def wave(self):
+            print("[DEBUG] MoveList.wave triggered")
             return [
                 [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_TURN, self.Y_START,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
                 [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_WAVE],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
@@ -485,6 +478,7 @@ class Picrawler(Robot):
         @check_stand
         @normal_action(1)
         def look_left(self):
+            print("[DEBUG] MoveList.look_left triggered")
             li = self.turn_angle_coord(self.angle)
             temp_x1 = li[0:2]
             temp_x1.append(self.z_current)
@@ -501,6 +495,7 @@ class Picrawler(Robot):
         @check_stand
         @normal_action(1)
         def look_right(self):
+            print("[DEBUG] MoveList.look_right triggered")
             li = self.turn_angle_coord(self.angle)
             temp_x1 = li[0:2]
             temp_x1.append(self.z_current)

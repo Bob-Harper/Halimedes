@@ -127,7 +127,7 @@ class PassiveActionsManager:
             if any(word.lower() in self.action_keywords for word, tag in tagged_words):
                 detected_events.append(("action", sentence))
                 print(f"Detected action description: {sentence}")
-                c# ontinue  # Skip adding this sentence to the spoken text
+                continue  # Skip adding this sentence to the spoken text
 
             # Otherwise, keep the sentence as part of the spoken text
             modified_text += sentence + " "
@@ -152,3 +152,15 @@ class PassiveActionsManager:
             if word.lower() in self.action_keywords:
                 return ' '.join(words[i:i + 3])  # Return 3-word action phrase
         return "default_action"  # Fallback if no action phrase is found
+
+def passive_wave(robot):
+    print("[DEBUG] Triggering passive wave")
+    return robot.wave()
+
+def passive_look_left(robot):
+    print("[DEBUG] Triggering passive look left")
+    return robot.look_left()
+
+def passive_look_right(robot):
+    print("[DEBUG] Triggering passive look right")
+    return robot.look_right()

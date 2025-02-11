@@ -61,7 +61,7 @@ class AudioInput:
             
         # Remove "the" at the start of the transcript if present
         if transcript.lower().startswith("the "):
-            transcript = transcript[4:]  # Trim the first occurrence of "the" + space/home/msutt/hal/sounds/passive/excited/n-talk3.wav
+            transcript = transcript[4:]  # Trim the first occurrence of "the" + space
         
         if return_audio:
             return transcript, audio_array

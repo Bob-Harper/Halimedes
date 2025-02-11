@@ -113,4 +113,9 @@ class PassiveSoundsManager:
             # print(f"Playing sound: {sound_file} at volume {volume}")
             await asyncio.to_thread(self.music.sound_play, sound_file, volume)
         except Exception as e:
-            print(f"Error playing sound: {e}")    
+            print(f"Error playing sound: {e}")
+
+
+def play_passive_sound(sound_name):
+    print(f"[DEBUG] Playing sound: {sound_name}")
+    # TODO: Add your sound-playing implementation here

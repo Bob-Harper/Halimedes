@@ -1,6 +1,5 @@
 from time import sleep
 import asyncio
-# the tap tap got broken, it now can't find picrawler?
 # legs_list = ['right front', 'left front', 'left rear', 'right rear']
 # from classes.picrawler import Picrawler  # passing in so dont need to import right now
 
@@ -111,28 +110,13 @@ class NewMovements():
         self.picrawler.do_step(lift_rear_right, speed=25)
         self.picrawler.do_step(tap_rear_right, speed=99)
 
-
-    def point(self):  # ['right front', 'left front', 'left rear', 'right rear']
-        return [
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_TURN, self.Y_START,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_WAVE],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_WAVE],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_WAVE],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_TURN, self.Y_START,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-            [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_DEFAULT, self.Y_START,self.z_current],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-        ]
-
     def stand_tall(self):
         stand_tall_steps = [[45, 45, -90], [45, 45, -90], [45, 45, -90], [45, 45, -90]]
         self.picrawler.do_step(stand_tall_steps, speed=50)
 
-    def prepare_to_twist(self):
-        prepare_to_twist = [[90, 10, -60], [90, 10, -60], [25, 65, -60], [25, 65, -60]]
-        self.picrawler.do_step(prepare_to_twist, speed=50)    
+    def stretch_out(self):
+        stretch_out = [[90, 10, -60], [90, 10, -60], [25, 65, -60], [25, 65, -60]]
+        self.picrawler.do_step(stretch_out, speed=50)    
 
     def pushup(self, speed):
         up=[[80, 0, -100], [80, 0, -100],[0, 120, -60], [0, 120, -60]]
@@ -232,3 +216,21 @@ class NewMovements():
         print("Resetting to base position...")
         await asyncio.to_thread(self.picrawler.do_step, base_position, speed)  # Reset to base position
         await asyncio.sleep(0.3)
+
+    # New parameterized wave function: moves only the specified leg.
+    def wave(self, speed=50, leg='rf'):
+        leg_mapping = {'rf': 0, 'lf': 1, 'lr': 2, 'rr': 3}
+        target = leg_mapping.get(leg.lower(), 0)
+        base_pose = [60, 0, -30]
+        sequence = []
+        # Frame 1: target leg raised (modify y value)
+        frame1 = [base_pose[:] for _ in range(4)]
+        frame1[target] = [60, 12, -30]
+        sequence.append(frame1)
+        # Frame 2: return to base pose
+        frame2 = [base_pose[:] for _ in range(4)]
+        sequence.append(frame2)
+        for step in sequence:
+            self.picrawler.do_step(step, speed=speed)
+            sleep(0.2)
+
