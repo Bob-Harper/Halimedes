@@ -13,103 +13,34 @@ class RobotKeyboard:
         self.manual = '''
         Press keys on keyboard to control PiCrawler!
             W: Forward                  1: Sit
-            A: Turn left                2: Stand
-            S: Backward                 3: Wave
-            D: Turn right               4: Dance
-            Q: Turn Angle Left          5: Swim
-            X: Turn Angle Right         6: Pushup
-            Z: Ready Position           7: Twist
-            E: Look left                8: Handwork
-            R: Look up                  F: Look down
-            I: Tap Front Right
+            S: Backward                 2: Stand
+            A: Turn Left                3: Wave
+            D: Turn Right               4: Dance
+            Q: Turn Angle Left          5: Swim (3x)
+            X: Turn Angle Right         6: Pushup (3x)
+            7: Twist
+            E: Look Left                8: Handwork
+            C: Look Right               R: Look Up
+            F: Look Down                I: Tap Front Right
             O: Tap Front Left           P: Tap Rear Right
-            ;: Tap Rear Left            [: Sway All Legs
-            ]: Point Movement           =: Stand Tall
-            -: Stretch Out              `: Wiggle (3 sec)
-            G: Glance Left             
+            ;: Tap Rear Left            
+            =: Stand Tall               -: Stretch Out
+            `: Wiggle (3 sec)           G: Glance Left then Forward
+            H: Glance Right then Forward  J: Glance Left, Forward, Right, Forward
         '''
 
     def show_info(self):
-        print("\033[H\033[J",end='')  # clear terminal windows
+        print("\033[H\033[J", end='')  # clear terminal
         print(self.manual)
-
-    def handwork(self, speed):
-
-        basic_step = []
-        basic_step = self.picrawler.step_list.get("sit")
-        left_hand  = self.picrawler.mix_step(basic_step,0,[0,50,80])
-        right_hand  = self.picrawler.mix_step(basic_step,1,[0,50,80])
-        two_hand = self.picrawler.mix_step(left_hand,1,[0,50,80])
-
-        self.picrawler.do_step('sit',speed)
-        sleep(0.6)
-        self.picrawler.do_step(left_hand,speed)
-        sleep(0.6)
-        self.picrawler.do_step(two_hand,speed)
-        sleep(0.6)
-        self.picrawler.do_step(right_hand,speed)
-        sleep(0.6)
-        self.picrawler.do_step('sit',speed)
-        sleep(0.6)
-
-    def twist(self, speed):
-        new_step=[[50, 50, -80], [50, 50, -80],[50, 50, -80], [50, 50, -80]]
-        for i in range(4):
-            for inc in range(30,60,5):
-                rise = [50,50,(-80+inc*0.5)]
-                drop = [50,50,(-80-inc)]
-
-                new_step[i]=rise
-                new_step[(i+2)%4] = drop
-                new_step[(i+1)%4] = rise
-                new_step[(i-1)%4] = drop
-                self.picrawler.do_step(new_step,speed)
-
-    ##"[[right front], [left front], [right rear], [left rear]]")
-
-    def pushup(self, speed):
-        up=[[80, 0, -100], [80, 0, -100],[0, 120, -60], [0, 120, -60]]
-        down=[[80, 0, -30], [80, 0, -30],[0, 120, -60], [0, 120, -60]]
-        self.picrawler.do_step(up,speed)
-        sleep(0.6)
-        self.picrawler.do_step(down,speed)
-        sleep(0.6)
-
-    def swimming(self, speed):
-        for i in range(100):
-            self.picrawler.do_step([[100-i,i,0],[100-i,i,0],[0,120,-60+i/5],[0,100,-40-i/5]],speed)
-
-    def sit_down(self):
-        # Assuming these are the commands to lower the legs
-        sit_down_steps = [[50, 90, 90], [50, 90, 90], [50, 90, 90], [50, 90, 90]]
-        self.picrawler.do_step(sit_down_steps, speed=1)
-        sit_down_steps = [[50, 60, 60], [50, 60, 60], [0, 60, 60], [0, 60, 60]]
-        self.picrawler.do_step(sit_down_steps, speed=1)
-        sit_down_steps = [[50, 30, 30], [50, 30, 30], [0, 30, 30], [0, 30, 30]]
-        self.picrawler.do_step(sit_down_steps, speed=1)
-        sit_down_steps = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
-        self.picrawler.do_step(sit_down_steps, speed=1)
-
-    def excited(self, speed, stop_event):
-        new_step = [[50, 50, -80], [50, 50, -80], [50, 50, -80], [50, 50, -80]]
-        while not stop_event.is_set():
-            for i in range(4):
-                for inc in range(30, 60, 80):
-                    if stop_event.is_set():
-                        break
-                    rise = [50, 50, (-80 + inc * 0.5)]
-                    drop = [50, 50, (-80 - inc)]
-                    new_step[i] = rise
-                    new_step[(i + 2) % 4] = drop
-                    new_step[(i + 1) % 4] = rise
-                    new_step[(i - 1) % 4] = drop
-                    self.picrawler.do_step(new_step, speed)
 
     async def move_along_now(self):
         self.show_info()
         while True:
             key = readchar.readkey().lower()
-            if key in ('wsadqexzercf12345678iop;[]=-`gk'):
+            # Allowed keys based on the actual mapping
+            if key in ('w', 's', 'a', 'd', 'q', 'x', 'z', 'e', 'c', 'r', 'f',
+                       '1', '2', '3', '4', '5', '6', '7', '8', 'i', 'o', 'p',
+                       ';', '=', '-', '`', 'g', 'h', 'j'):
                 if key == 'w':
                     self.picrawler.do_action('forward', 1, self.speed)
                 elif key == 's':
@@ -119,9 +50,9 @@ class RobotKeyboard:
                 elif key == 'd':
                     self.picrawler.do_action('turn right', 1, self.speed)
                 elif key == 'q':
-                    self.picrawler.do_action('turn left angle', 1, self.speed)
+                    self.picrawler.do_action('turn left angle', 1, self.speed, angle=15)
                 elif key == 'x':
-                    self.picrawler.do_action('turn right angle', 1, self.speed)
+                    self.picrawler.do_action('turn right angle', 1, self.speed, angle=15)
                 elif key == 'z':
                     self.picrawler.do_action('ready', 1, self.speed)
                 elif key == 'e':
@@ -141,14 +72,13 @@ class RobotKeyboard:
                 elif key == '4':
                     self.picrawler.do_action('dance', 1, self.speed)
                 elif key == '5':
-                    self.swimming(self.speed)
+                    self.new_movements.swimming(count=3, speed=self.speed)
                 elif key == '6':
-                    self.pushup(self.speed)
+                    self.new_movements.pushup(3, speed=self.speed)
                 elif key == '7':
-                    self.twist(self.speed)
+                    self.new_movements.twist(speed=self.speed)
                 elif key == '8':
-                    self.handwork(self.speed)
-                # New movements from new_movements.py:
+                    self.new_movements.handwork(speed=self.speed)
                 elif key == 'i':
                     self.new_movements.tap_front_right()
                 elif key == 'o':
@@ -157,19 +87,11 @@ class RobotKeyboard:
                     self.new_movements.tap_rear_right()
                 elif key == ';':
                     self.new_movements.tap_rear_left()
-                elif key == '[':
-                    self.new_movements.sway_all_legs()
-                elif key == ']':
-                    # Iterate over each step/frame returned by point()
-                    for step in self.new_movements.point():
-                        self.picrawler.do_step(step, self.speed)
-                        sleep(0.1)
                 elif key == '=':
                     self.new_movements.stand_tall()
                 elif key == '-':
                     self.new_movements.stretch_out()
                 elif key == '`':
-                    # Run wiggle for 3 seconds then cancel
                     wiggle_task = asyncio.create_task(self.new_movements.wiggle())
                     await asyncio.sleep(3)
                     wiggle_task.cancel()
@@ -178,7 +100,21 @@ class RobotKeyboard:
                     except:
                         pass
                 elif key == 'g':
-                    await self.new_movements.glance(direction="left", angle=30, speed=self.speed)
+                    await self.new_movements.glance(direction="left", angle=25, speed=self.speed)
+                    sleep(0.5)
+                    await self.new_movements.glance(direction="forward", angle=25, speed=self.speed)
+                elif key == 'h':
+                    await self.new_movements.glance(direction="right", angle=25, speed=self.speed)
+                    sleep(0.5)
+                    await self.new_movements.glance(direction="forward", angle=25, speed=self.speed)
+                elif key == 'j':
+                    await self.new_movements.glance(direction="left", angle=25, speed=self.speed)
+                    sleep(0.5)
+                    await self.new_movements.glance(direction="forward", angle=25, speed=self.speed)
+                    sleep(0.5)
+                    await self.new_movements.glance(direction="right", angle=25, speed=self.speed)
+                    sleep(0.5)
+                    await self.new_movements.glance(direction="forward", angle=25, speed=self.speed)
                 sleep(0.05)
                 self.show_info()
             elif key == readchar.key.CTRL_C:

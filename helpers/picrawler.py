@@ -126,19 +126,26 @@ class Picrawler(Robot):
         # print('output: %s'%[alpha,beta,gamma])
         return limit_flag,[alpha,beta,gamma]
 
-    def do_action(self, motion_name, step=1, speed=99):
+    def do_action(self, action_name, count, speed, **kwargs):
         try:
-            for _ in range(step): # times
+            for _ in range(count):  # times
                 self.move_list.stand_position = self.stand_position
-                if motion_name in ["forward", "backward", "turn left", "turn right", "turn left angle", "turn right angle"]:
-                    self.stand_position = self.stand_position + 1 & 1
-                action = self.move_list[motion_name]
-                for _step in action: # spyder motion
-                    self.do_step(_step, speed=speed)
+                if action_name in ["forward", "backward", "turn left", "turn right", "turn left angle", "turn right angle"]:
+                    self.stand_position = (self.stand_position + 1) & 1  # Fixed toggle
+                if action_name in ['turn left angle', 'turn right angle']:
+                    angle = kwargs.get('angle', 0)  # Use provided angle; default to 0 if not set
+                    # Call the method directly (note: removed @property so methods accept an angle)
+                    action = self.move_list.__getattribute__(action_name.replace(" ", "_"))(angle)
+                    for _step in action:
+                        self.do_step(_step, speed=speed)
+                else:
+                    action = self.move_list[action_name]
+                    for _step in action:  # spyder motion
+                        self.do_step(_step, speed=speed)
         except AttributeError:
             try:
-                for _ in range(step):
-                    action_add = self.move_list_add[motion_name]
+                for _ in range(count):
+                    action_add = self.move_list_add[action_name]
                     for _step in action_add:
                         self.do_step(_step, speed=speed)
             except KeyError:
@@ -474,12 +481,83 @@ class Picrawler(Robot):
                 [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_DEFAULT, self.Y_START,self.z_current],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
             ]
 
+        def turn_left_angle(self, angle=0):
+            li = self.turn_angle_coord(angle)
+            temp_x1 = li[0]
+            temp_y1 = li[1]
+            temp_x2 = li[2]
+            temp_y2 = li[3]
+            temp_x3 = li[4]
+            temp_y3 = li[5]
+            return [
+                [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                 [self.X_DEFAULT, self.Y_START, self.z_current],
+                 [self.X_TURN, self.Y_START, self.Z_UP],
+                 [self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
+                [[temp_x1, temp_y1, self.z_current],
+                 [temp_x2, temp_y2, self.z_current],
+                 [self.X_TURN, self.Y_START, self.Z_UP],
+                 [temp_x3, temp_y3, self.z_current]],
+                [[temp_x1, temp_y1, self.z_current],
+                 [temp_x2, temp_y2, self.z_current],
+                 [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                 [temp_x3, temp_y3, self.z_current]],
+                [[temp_x1, temp_y1, self.z_current],
+                 [temp_x2, temp_y2, self.z_current],
+                 [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                 [temp_x3, temp_y3, self.Z_UP]],
+                [[temp_x1, temp_y1, self.z_current],
+                 [temp_x2, temp_y2, self.z_current],
+                 [self.X_TURN, self.Y_DEFAULT, self.z_current],
+                 [self.X_TURN, self.Y_START, self.Z_UP]],
+                [[temp_x1, temp_y1, self.z_current],
+                 [temp_x2, temp_y2, self.z_current],
+                 [self.X_TURN, self.Y_DEFAULT, self.z_current],
+                 [self.X_DEFAULT, self.Y_START, self.z_current]]
+            ]
+        
+        def turn_right_angle(self, angle=0):
+            li = self.turn_angle_coord(angle)
+            temp_x1 = li[0]
+            temp_y1 = li[1]
+            temp_x2 = li[2]
+            temp_y2 = li[3]
+            temp_x3 = li[4]
+            temp_y3 = li[5]
+            return [
+                [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                 [self.X_TURN, self.Y_START, self.Z_UP],
+                 [self.X_DEFAULT, self.Y_START, self.z_current],
+                 [self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
+                [[temp_x3, temp_y3, self.z_current],
+                 [self.X_TURN, self.Y_START, self.Z_UP],
+                 [temp_x2, temp_y2, self.z_current],
+                 [temp_x1, temp_y1, self.z_current]],
+                [[temp_x3, temp_y3, self.z_current],
+                 [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                 [temp_x2, temp_y2, self.z_current],
+                 [temp_x1, temp_y1, self.z_current]],
+                [[temp_x3, temp_y3, self.Z_UP],
+                 [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                 [temp_x2, temp_y2, self.z_current],
+                 [temp_x1, temp_y1, self.z_current]],
+                [[self.X_TURN, self.Y_START, self.Z_UP],
+                 [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                 [temp_x2, temp_y2, self.z_current],
+                 [temp_x1, temp_y1, self.z_current]],
+                [[self.X_DEFAULT, self.Y_START, self.z_current],
+                 [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                 [temp_x2, temp_y2, self.z_current],
+                 [temp_x1, temp_y1, self.z_current]]
+            ]
+
         @property
         @check_stand
         @normal_action(1)
-        def look_left(self):
-            print("[DEBUG] MoveList.look_left triggered")
-            li = self.turn_angle_coord(self.angle)
+        def look_left(self, angle=None):
+            if angle is None:
+                angle = 0  # Or some default angle if needed
+            li = self.turn_angle_coord(angle)
             temp_x1 = li[0:2]
             temp_x1.append(self.z_current)
             temp_x2 = li[2:4]
@@ -487,16 +565,22 @@ class Picrawler(Robot):
             temp_x3 = li[4:6]
             temp_x3.append(self.z_current)
             return [
-                [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current], [self.X_DEFAULT, self.Y_START, self.z_current], [self.X_TURN, self.Y_START, self.Z_UP], [self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
+                [
+                    [self.X_DEFAULT, self.Y_DEFAULT, self.z_current], 
+                    [self.X_DEFAULT, self.Y_START, self.z_current], 
+                    [self.X_TURN, self.Y_START, self.Z_UP], 
+                    [self.X_DEFAULT, self.Y_DEFAULT, self.z_current]
+                ],
                 [temp_x1, temp_x2, [self.X_TURN, self.Y_START, self.Z_UP], temp_x3]
             ]
 
         @property
         @check_stand
         @normal_action(1)
-        def look_right(self):
-            print("[DEBUG] MoveList.look_right triggered")
-            li = self.turn_angle_coord(self.angle)
+        def look_right(self, angle=None):
+            if angle is None:
+                angle = 0  # Or some default angle if needed
+            li = self.turn_angle_coord(angle)
             temp_x1 = li[0:2]
             temp_x1.append(self.z_current)
             temp_x2 = li[2:4]
@@ -511,50 +595,8 @@ class Picrawler(Robot):
                     [self.X_DEFAULT, self.Y_DEFAULT, self.z_current]
                 ],
                 [temp_x3, [self.X_TURN, self.Y_START, self.Z_UP], temp_x2, temp_x1]
-            ]
-
-
-        @property
-        @check_stand
-        @normal_action(1)
-        def turn_left_angle(self):
-            li = self.turn_angle_coord(self.angle)
-            temp_x1 = li[0]
-            temp_y1 = li[1]
-            temp_x2 = li[2]
-            temp_y2 = li[3]
-            temp_x3 = li[4]
-            temp_y3 = li[5]
-            return [
-                [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_DEFAULT, self.Y_START,self.z_current],[self.X_TURN, self.Y_START, self.Z_UP],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-                [[temp_x1, temp_y1, self.z_current], [temp_x2, temp_y2, self.z_current],[self.X_TURN, self.Y_START, self.Z_UP],[temp_x3, temp_y3, self.z_current]],
-                [[temp_x1, temp_y1, self.z_current], [temp_x2, temp_y2, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[temp_x3, temp_y3, self.z_current]],
-                [[temp_x1, temp_y1, self.z_current], [temp_x2, temp_y2, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[temp_x3, temp_y3, self.Z_UP]],
-                [[temp_x1, temp_y1, self.z_current], [temp_x2, temp_y2, self.z_current],[self.X_TURN, self.Y_DEFAULT, self.z_current],[self.X_TURN, self.Y_START, self.Z_UP]],
-                [[temp_x1, temp_y1, self.z_current], [temp_x2, temp_y2, self.z_current],[self.X_TURN, self.Y_DEFAULT, self.z_current],[self.X_DEFAULT, self.Y_START, self.z_current]]
-            ]
-
-        @property
-        @check_stand
-        @normal_action(1)
-        def turn_right_angle(self):
-            li = self.turn_angle_coord(self.angle)
-            temp_x1 = li[0]
-            temp_y1 = li[1]
-            temp_x2 = li[2]
-            temp_y2 = li[3]
-            temp_x3 = li[4]
-            temp_y3 = li[5]
-            return [
-                [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_TURN, self.Y_START,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
-                [[temp_x3,temp_y3, self.z_current], [self.X_TURN, self.Y_START, self.Z_UP], [temp_x2, temp_y2, self.z_current], [temp_x1, temp_y1, self.z_current]],
-                [[temp_x3,temp_y3, self.z_current], [self.X_DEFAULT, self.Y_DEFAULT, self.z_current], [temp_x2, temp_y2, self.z_current], [temp_x1, temp_y1, self.z_current]],
-                [[temp_x3,temp_y3, self.Z_UP], [self.X_DEFAULT, self.Y_DEFAULT, self.z_current], [temp_x2, temp_y2, self.z_current], [temp_x1, temp_y1, self.z_current]],
-                [[self.X_TURN, self.Y_START, self.Z_UP], [self.X_DEFAULT, self.Y_DEFAULT, self.z_current], [temp_x2, temp_y2, self.z_current], [temp_x1, temp_y1, self.z_current]],
-                [[self.X_DEFAULT, self.Y_START, self.z_current], [self.X_DEFAULT, self.Y_DEFAULT, self.z_current], [temp_x2, temp_y2, self.z_current], [temp_x1, temp_y1, self.z_current]],
-            ]
-
-
+            ]    
+   
         @property
         @check_stand
         @normal_action(0)
@@ -632,11 +674,11 @@ class Picrawler(Robot):
     def current_step_all_leg_value(self):
         return list.copy(self.current_coord)
 
-    def mix_step(self,basic_step,leg,coodinate=[50,50,-33]):
+    def mix_step(self, basic_step, leg, coodinate=[50,50,-33]):
         # Pay attention to adding list(), otherwise the address pointer is returned
         new_step = list(basic_step)
         new_step[leg] = coodinate
-        return list(new_step)
+        return new_step
 
 
 

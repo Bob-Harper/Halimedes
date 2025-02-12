@@ -118,17 +118,26 @@ class NewMovements():
         stretch_out = [[90, 10, -60], [90, 10, -60], [25, 65, -60], [25, 65, -60]]
         self.picrawler.do_step(stretch_out, speed=50)    
 
-    def pushup(self, speed):
-        up=[[80, 0, -100], [80, 0, -100],[0, 120, -60], [0, 120, -60]]
-        down=[[80, 0, -30], [80, 0, -30],[0, 120, -60], [0, 120, -60]]
-        self.picrawler.do_step(up,speed)
-        sleep(0.6)
-        self.picrawler.do_step(down,speed)
-        sleep(0.6)
+    def pushup(self, count, speed):
+        for _ in range(count):
+            up = [[80, 0, -100], [80, 0, -100], [0, 120, -60], [0, 120, -60]]
+            down = [[80, 0, -30], [80, 0, -30], [0, 120, -60], [0, 120, -60]]
+            self.picrawler.do_step(up, speed)
+            sleep(0.6)
+            self.picrawler.do_step(down, speed)
+            sleep(0.6)
 
-    def swimming(self, speed):
-        for i in range(100):
-            self.picrawler.do_step([[100-i,i,0],[100-i,i,0],[0,120,-60+i/5],[0,100,-40-i/5]],speed)
+    def swimming(self, count, speed):
+        for _ in range(count):
+            for i in range(100):
+                self.picrawler.do_step(
+                    [
+                        [100 - i, i, 0],
+                        [100 - i, i, 0],
+                        [0, 120, -60 + i/5],
+                        [0, 100, -40 - i/5]
+                    ], speed
+                )
 
     def handwork(self, speed):
 
@@ -233,4 +242,16 @@ class NewMovements():
         for step in sequence:
             self.picrawler.do_step(step, speed=speed)
             sleep(0.2)
+
+    def twist(self, speed):
+        new_step = [[50, 50, -80] for _ in range(4)]
+        for i in range(4):
+            for inc in range(30, 60, 5):
+                rise = [50, 50, -80 + inc * 0.5]
+                drop = [50, 50, -80 - inc]
+                new_step[i] = rise
+                new_step[(i + 2) % 4] = drop
+                new_step[(i + 1) % 4] = rise
+                new_step[(i - 1) % 4] = drop
+                self.picrawler.do_step(new_step, speed)
 

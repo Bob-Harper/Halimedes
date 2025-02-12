@@ -17,12 +17,12 @@ emotion_voice_map = {
     "neutral": {"pitch_factor": 1.0, "speed_factor": 1.0},   # Baseline voice
     "trust": {"pitch_factor": 1.15, "speed_factor": 0.9},    # Warm, steady, and slightly faster
     "surprise": {"pitch_factor": 1.5, "speed_factor": 0.6},  # Very excited and fast
-    "fear": {"pitch_factor": 0.6, "speed_factor": 1.4},      # Low pitch, slower—hesitant
-    "anger": {"pitch_factor": 0.5, "speed_factor": 1.5},     # Deep, intense, and slower
-    "sadness": {"pitch_factor": 0.4, "speed_factor": 1.8},   # Very slow and low pitch
-    "disgust": {"pitch_factor": 0.6, "speed_factor": 1.6},   # Low pitch, slower pace
+    "fear": {"pitch_factor": 0.6, "speed_factor": 1.1},      # Low pitch, slower—hesitant
+    "anger": {"pitch_factor": 0.5, "speed_factor": 1.15},     # Deep, intense, and slower
+    "sadness": {"pitch_factor": 0.4, "speed_factor": 1.25},   # Very slow and low pitch
+    "disgust": {"pitch_factor": 0.6, "speed_factor": 1.2},   # Low pitch, slower pace
     "anticipation": {"pitch_factor": 1.25, "speed_factor": 0.75}, # Faster and eager
-    "negative": {"pitch_factor": 0.5, "speed_factor": 1.5},  # Deep pitch, slower
+    "negative": {"pitch_factor": 0.5, "speed_factor": 1.15},  # Deep pitch, slower
 }
 
 
