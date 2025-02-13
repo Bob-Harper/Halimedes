@@ -11,7 +11,7 @@ from helpers.llm_utils import LLMClient
 from helpers.passive_actions import PassiveActionsManager
 from helpers.system_prompts import get_system_prompt
 from helpers.general_utilities import GeneralUtilities
-from helpers.news_api import startup_fetch_news
+from helpers.news_api import NewsAPI
 from dotenv import load_dotenv
 
 # Load environment variables from a .env file
@@ -30,6 +30,7 @@ emotion_sound_manager = EmotionSoundManager()
 actions_manager = PassiveActionsManager()
 general_utils = GeneralUtilities()
 weather_fetch = WeatherCommandManager(llm_client, actions_manager, emotion_sound_manager)
+news_api = NewsAPI()  # No arguments needed now
 
 
 async def main():
@@ -37,7 +38,9 @@ async def main():
     await response_manager.speak_with_flite("Servos powered. Listening initiated. Voice centers activated. Checking battery.")
     await general_utils.announce_battery_status()
     await weather_fetch.startup_fetch_forecast()
-    await startup_fetch_news(response_manager, llm_client)
+    await news_api.startup_fetch_news(llm_client)  # Only needs llm_client now
+    current_time = news_api.current_datetime()
+    await response_manager.speak_with_flite(f"Today's date is {current_time}.")    
     startup_words = "This is so exciting! what are we doing today?"
     await actions_manager.startup_speech_actions(startup_words)
 

@@ -15,8 +15,6 @@ MAX_TOKEN_COUNT = 4096  # Adjust as needed
 
 class LLMClient:
     def __init__(self, server_host, model='llama3.2'):
-        # model = "llama3.2"
-        # model = "smallthinker"  # reasoning model but it takes bloody AGES
         self.server_host = server_host
         self.model = model
         self.max_tokens = MAX_TOKEN_COUNT
@@ -29,7 +27,6 @@ class LLMClient:
         ]
 
     def truncate_history(self):
-        """Truncate conversation history to fit within the token limit."""
         # Estimate tokens by character count (1 token ≈ 4 chars)
         token_count = len(self.conversation_history[0]['content']) // 4
         truncated_history = [self.conversation_history[0]]
@@ -65,7 +62,6 @@ class LLMClient:
                     'stream': False
                 }
             )
-            # print("Raw response text:", response.text)  # Debugging info
             response.raise_for_status()
             
             # Extract and clean LLM response
@@ -74,7 +70,6 @@ class LLMClient:
             
             # Add Hal's response to the conversation history
             self.conversation_history.append({'role': 'assistant', 'content': response_text})
-            # print(f"Conversation history after response: {self.conversation_history}")
             return response_text
         except Exception as e:
             print(f"Error communicating with LLM: {e}")
@@ -82,10 +77,10 @@ class LLMClient:
 
     @staticmethod
     def clean_response(text):
-        """
-        Cleans up LLM response text by removing unwanted characters or patterns.
-        - Replaces asterisks (*) with nothing.
-        - Replaces newlines (\n) with a space.
-        """
+        # Clean up symbols and special characters
         cleaned_text = text.replace("*", "").replace("\n", " ")
+        # Replace specific words mispronounced by flite with phonetic equivalents
+        cleaned_text = text.replace("debug", "deebug").replace("brrr", "burr").replace("hehe", "Heh Heh")
+        cleaned_text = text.replace("Rrrzzt", "").replace("*beep*", " ").replace("whirr", "Heh Heh")
+
         return cleaned_text.strip()

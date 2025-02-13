@@ -6,15 +6,12 @@ import os
 
 class PassiveSoundsManager:
     def __init__(self):
-        self.music = Music()  # def sound_play(self, filename, volume=None)
+        self.music = Music() 
 
 
     async def sounds_thinking_loop_single(self):
         """Play a single passive sound dynamically from a directory, supporting multiple file types."""
-        # Define the directory containing the sound files
         sounds_dir = "/home/msutt/hal/sounds/passive/positive"
-        
-        # List of supported file extensions
         supported_extensions = {".wav"}
 
         # Get a list of all supported sound files in the directory
@@ -47,7 +44,6 @@ class PassiveSoundsManager:
 
     async def play_emotion_sound(self, emotion):
         """Play a sound corresponding to the given emotion."""
-        # List of supported file extensions
         supported_extensions = {".wav"}
         
         # Determine the directory for the given emotion
@@ -66,8 +62,6 @@ class PassiveSoundsManager:
 
             # Randomly select a sound file
             sound_file = random.choice(emotion_sounds)
-            # print(f"Playing sound for emotion '{emotion}': {sound_file}")  # Debugging message
-
             # Play the sound using the Music API
             await asyncio.to_thread(self.music.sound_play, sound_file, 75)
         
@@ -79,7 +73,7 @@ class PassiveSoundsManager:
 
     async def play_weather_intro_sound(self):
         """Play a random weather intro sound once."""
-        sounds_dir = "/home/msutt/hal/sounds/passive/announcement"  # Directory for weather intro sounds
+        sounds_dir = "/home/msutt/hal/sounds/passive/announcement" 
         supported_extensions = {".wav"}
         try:
             weather_intro_sounds = [
@@ -100,7 +94,6 @@ class PassiveSoundsManager:
 
         # Select and play a random sound
         sound_file = random.choice(weather_intro_sounds)
-        # print(f"Playing weather intro sound: {sound_file}")  # Debug message
         await asyncio.to_thread(self.music.sound_play, sound_file, 75)
 
 
@@ -110,12 +103,6 @@ class PassiveSoundsManager:
         Uses the robot hat's music.sound_play for playback.
         """
         try:
-            # print(f"Playing sound: {sound_file} at volume {volume}")
             await asyncio.to_thread(self.music.sound_play, sound_file, volume)
         except Exception as e:
             print(f"Error playing sound: {e}")
-
-
-def play_passive_sound(sound_name):
-    print(f"[DEBUG] Playing sound: {sound_name}")
-    # TODO: Add your sound-playing implementation here

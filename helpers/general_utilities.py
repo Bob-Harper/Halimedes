@@ -6,7 +6,7 @@ from helpers.response_utils import Response_Manager
 
 class GeneralUtilities:
     def __init__(self):
-        self.response_manager = Response_Manager()  # Store the passed response manager
+        self.response_manager = Response_Manager()
 
     @staticmethod
     async def log_response_to_file(response_text, log_file="hal_responses.log"):

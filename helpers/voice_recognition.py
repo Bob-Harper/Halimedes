@@ -4,12 +4,10 @@ import torchaudio
 
 
 class VoiceprintManager:
-    # Define default paths as class-level constants
     MODEL_PATH = "/home/msutt/hal/pyannote/embedding/pytorch_model.bin"
     VOICEPRINT_DIR = "/home/msutt/hal/voiceprints"
 
     def __init__(self):
-        # Use class-level constants for paths
         self.model_path = self.MODEL_PATH
         self.voiceprint_dir = self.VOICEPRINT_DIR
         self.model = self._load_model()

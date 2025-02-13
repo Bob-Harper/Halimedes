@@ -4,7 +4,6 @@ import datetime
 from collections import defaultdict
 from dotenv import load_dotenv
 
-# Load environment variables from a .env file
 load_dotenv()
 
 
@@ -15,7 +14,7 @@ class WeatherHelper:
         self.default_lat = os.getenv("DEFAULT_WEATHER_LAT")
         self.default_lon = os.getenv("DEFAULT_WEATHER_LONG")
         self.weather_api_key = os.getenv("OPEN_WEATHER")
-        self.weather_intro_dir = "/home/msutt/hal/sounds/weather"  # Directory for intro sounds
+        self.weather_intro_dir = "/home/msutt/hal/sounds/weather"
 
     @staticmethod
     def get_wind_speed_description(speed):
@@ -110,7 +109,7 @@ class WeatherHelper:
             daily_data = defaultdict(list)
 
             for entry in forecast_list:
-                date = entry["dt_txt"].split(" ")[0]  # Extract the date
+                date = entry["dt_txt"].split(" ")[0]
                 daily_data[date].append(entry)
 
             # Summarize each day

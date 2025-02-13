@@ -9,7 +9,7 @@ from helpers.passive_sounds import PassiveSoundsManager
 from helpers.response_utils import Response_Manager
 from helpers.weather import WeatherHelper
 from helpers.weather_commands import WeatherCommandManager
-from helpers.news_api import fetch_top_news
+from helpers.news_api import NewsAPI
 import signal
 import sys
 
@@ -36,6 +36,7 @@ class CommandManager:
         self.weather_commands = WeatherCommandManager(llm_client, self.passive_manager, self.passive_sound)
         self.response_manager = Response_Manager()
         self.general_utils = GeneralUtilities()
+        self.news_api = NewsAPI()
 
     async def handle_command(self, spoken_text):
         command = self.match_command(spoken_text)  # Check if input matches a known command
@@ -44,7 +45,6 @@ class CommandManager:
             return True, should_exit  # Return that a command was detected, and whether to exit
         return False, False  # No command detected, don't exit
 
-    # Command names mapped to their associated function and conversational phrases
     @property
     def command_map(self):
         return {
@@ -96,7 +96,7 @@ class CommandManager:
                     best_match = command_name
 
         if best_match:
-            return best_match  # Return the matched command name
+            return best_match
         return None
     
     async def command_shutdown(self, spoken_text):
@@ -138,7 +138,7 @@ class CommandManager:
         """
         Fetch top science and tech news and speak them aloud.
         """
-        news_articles = await fetch_top_news()
+        news_articles = await self.news_api.fetch_top_news()
 
         if isinstance(news_articles, str):  # Check for error message
             await self.response_manager.speak_with_flite(f"News fetch failed: {news_articles}")

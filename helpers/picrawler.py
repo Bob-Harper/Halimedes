@@ -1,6 +1,7 @@
 from robot_hat import Robot, utils
 import time
 import math
+import traceback
 
 class Picrawler(Robot):
     A = 48
@@ -27,7 +28,7 @@ class Picrawler(Robot):
             "look_right": self.move_list["look_right"][0],  # Reuse from move_list
             "look_up": self.move_list["look_up"][0],  # Reuse from move_list
             "look_down": self.move_list["look_down"][0],  # Reuse from move_list
-            "wave": self.move_list["wave"][0],  # Reuse from move_list
+            # "wave": self.move_list["wave"][0],  # Reuse from move_list
         }
 
 
@@ -468,6 +469,7 @@ class Picrawler(Robot):
         @normal_action(0)
         def wave(self):
             print("[DEBUG] MoveList.wave triggered")
+            print("Call Stack:\n", "".join(traceback.format_stack()))
             return [
                 [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_TURN, self.Y_START,self.Z_UP],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
                 [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],[self.X_START, self.Y_WAVE,self.Z_WAVE],[self.X_DEFAULT, self.Y_START, self.z_current],[self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
