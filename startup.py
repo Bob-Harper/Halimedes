@@ -1,6 +1,16 @@
+print("=== STARTUP SCRIPT INITIATED ===")
 import warnings
 import asyncio
-import os
+from helpers.config import OLLAMALAPTOP
+""" 
+Import the Picrawler class from the picrawler module first 
+to pass through to all helper classes that use it.  This should
+prevent multiple initializations of the Picrawler class.
+ """
+from helpers.picrawler import Picrawler 
+# Create a single instance of Picrawler to pass through
+picrawler_instance = Picrawler()
+
 from helpers.response_utils import Response_Manager
 from helpers.listener_utils import AudioInput
 from helpers.verbal_commands import CommandManager
@@ -12,25 +22,49 @@ from helpers.passive_actions import PassiveActionsManager
 from helpers.system_prompts import get_system_prompt
 from helpers.general_utilities import GeneralUtilities
 from helpers.news_api import NewsAPI
-from dotenv import load_dotenv
 
-# Load environment variables from a .env file
-load_dotenv()
-llm_server_url = os.getenv("OLLAMALAPTOP")
 warnings.simplefilter('ignore')
 
-# Initialize everything at module level (outside the main() function) as needed:
-llm_client = LLMClient(server_host=llm_server_url)
+# Initialize everything at module level
+llm_client = LLMClient(server_host=OLLAMALAPTOP)
+print("LLMClient initialized")
+
 voiceprint_manager = VoiceprintManager()
-command_manager = CommandManager(llm_client)
-response_manager = Response_Manager()
-audio_input = AudioInput()
+print("VoiceprintManager initialized")
+
+command_manager = CommandManager(llm_client, picrawler_instance)
+print("CommandManager initialized")
+
+response_manager = Response_Manager(picrawler_instance)
+print("Response_Manager initialized")
+
+audio_input = AudioInput(picrawler_instance)
+print("AudioInput initialized")
+
 emotion_handler = EmotionHandler()
+print("EmotionHandler initialized")
+
 emotion_sound_manager = EmotionSoundManager()
-actions_manager = PassiveActionsManager()
-general_utils = GeneralUtilities()
-weather_fetch = WeatherCommandManager(llm_client, actions_manager, emotion_sound_manager)
-news_api = NewsAPI()  # No arguments needed now
+print("EmotionSoundManager initialized")
+
+actions_manager = PassiveActionsManager(picrawler_instance)
+print("PassiveActionsManager initialized")
+
+general_utils = GeneralUtilities(picrawler_instance)
+print("GeneralUtilities initialized")
+
+weather_fetch = WeatherCommandManager(llm_client, actions_manager, emotion_sound_manager, picrawler_instance)
+print("WeatherCommandManager initialized")
+
+news_api = NewsAPI(picrawler_instance)
+print("NewsAPI initialized")
+
+print("=== STARTUP INITIALIZATION COMPLETE ===\n\nSTARTING MAIN FUNCTION...\n")
+
+async def main():
+    print("Entered main()")
+    await response_manager.speak_with_flite("Beginning startup procedure and status check. Please stand by, system test underway.")
+
 
 
 async def main():

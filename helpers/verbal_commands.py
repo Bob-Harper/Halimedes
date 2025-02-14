@@ -1,6 +1,5 @@
 from rapidfuzz import fuzz
 import asyncio
-from helpers.picrawler import Picrawler
 from helpers.new_movements import NewMovements
 import subprocess
 from helpers.general_utilities import GeneralUtilities
@@ -26,17 +25,17 @@ signal.signal(signal.SIGINT, handle_shutdown_signal)
 
 
 class CommandManager:
-    def __init__(self, llm_client):
+    def __init__(self, llm_client, picrawler_instance):
+        self.picrawler_instance = picrawler_instance
         self.llm_client = llm_client
         self.weather_helper = WeatherHelper()
-        self.crawler = Picrawler()
-        self.newmovements = NewMovements(self.crawler)
-        self.passive_manager = PassiveActionsManager()
+        self.newmovements = NewMovements(self.picrawler_instance)
+        self.passive_manager = PassiveActionsManager(self.picrawler_instance)
         self.passive_sound = PassiveSoundsManager()
-        self.weather_commands = WeatherCommandManager(llm_client, self.passive_manager, self.passive_sound)
-        self.response_manager = Response_Manager()
-        self.general_utils = GeneralUtilities()
-        self.news_api = NewsAPI()
+        self.weather_commands = WeatherCommandManager(llm_client, self.passive_manager, self.passive_sound, picrawler_instance)
+        self.response_manager = Response_Manager(self.picrawler_instance)
+        self.general_utils = GeneralUtilities(self.picrawler_instance)
+        self.news_api = NewsAPI(self.picrawler_instance)
 
     async def handle_command(self, spoken_text):
         command = self.match_command(spoken_text)  # Check if input matches a known command

@@ -1,23 +1,22 @@
 import random
 import asyncio
-from helpers.picrawler import Picrawler
 from helpers.new_movements import NewMovements
 from helpers.passive_sounds import PassiveSoundsManager
 from helpers.response_utils import Response_Manager
 
 
 class PassiveActionsManager:
-    def __init__(self):
-        self.crawler = Picrawler()
+    def __init__(self, picrawler_instance):
+        self.crawler = picrawler_instance 
         self.passive_sound = PassiveSoundsManager()
         self.newmovements = NewMovements(self.crawler)
-        self.response_manager = Response_Manager()
+        self.response_manager = Response_Manager(self.crawler)
 
     async def handle_passive_actions(self, stop_event):
         """Alternate between sounds and actions while waiting for LLM response."""
         while not stop_event.is_set():
             # 60% Sound, 40% Action
-            choice = random.choices(["sound", "action"], weights=[0, 100], k=1)[0]
+            choice = random.choices(["sound", "action"], weights=[15, 85], k=1)[0]
 
             if choice == "sound":
                 await self.passive_sound.sounds_thinking_loop_single() 
@@ -55,9 +54,9 @@ class PassiveActionsManager:
                 lambda: self.newmovements.glance(direction="forward", angle=25, speed=speed),
             ],
             "expressive": [
-                lambda: self.newmovements.wiggle(duration=3),  # Wiggle for 3 sec
-                lambda: self.newmovements.pushup(count=3, speed=speed),  # 3x pushups
-                lambda: self.newmovements.swimming(count=3, speed=speed),  # 3x swimming
+                # lambda: self.newmovements.wiggle(duration=2),  # Wiggle for 3 sec
+                lambda: self.newmovements.pushup(count=2, speed=speed),  # 3x pushups
+                lambda: self.newmovements.swimming(count=2, speed=95),  # 3x swimming
                 lambda: self.newmovements.twist(speed=speed),
                 lambda: self.newmovements.handwork(speed=speed),
             ],

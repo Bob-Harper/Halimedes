@@ -5,8 +5,9 @@ from helpers.response_utils import Response_Manager
 
 
 class GeneralUtilities:
-    def __init__(self):
-        self.response_manager = Response_Manager()
+    def __init__(self, picrawler_instance):
+        self.picrawler_instance = picrawler_instance
+        self.response_manager = Response_Manager(self.picrawler_instance)
 
     @staticmethod
     async def log_response_to_file(response_text, log_file="hal_responses.log"):

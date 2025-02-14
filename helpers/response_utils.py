@@ -3,14 +3,14 @@ import asyncio
 from helpers.emotions import get_voice_modifiers
 from helpers.emotions import EmotionHandler
 from helpers.passive_sounds import PassiveSoundsManager
-from helpers.picrawler import Picrawler
 from helpers.new_movements import NewMovements
 from nltk.tokenize import sent_tokenize, TreebankWordTokenizer
 from nltk import pos_tag, RegexpParser
 
 
-class Response_Manager():
-    def __init__(self):
+class Response_Manager:
+    def __init__(self, picrawler_instance):
+        self.crawler = picrawler_instance 
 
         # Hal's voicefile
         self.voice_path = "/home/msutt/hal/flitevox/cmu_us_rms.flitevox"
@@ -23,7 +23,6 @@ class Response_Manager():
         """
         self.emotion_handler = EmotionHandler()
         self.sound_manager = PassiveSoundsManager()
-        self.crawler = Picrawler()
         self.newmovements = NewMovements(self.crawler)
 
         # Expanded sound and action keywords for detection

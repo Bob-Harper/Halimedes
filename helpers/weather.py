@@ -1,19 +1,19 @@
-import os
 import requests
 import datetime
 from collections import defaultdict
-from dotenv import load_dotenv
-
-load_dotenv()
-
+from helpers.config import (
+    OPEN_WEATHER_1DAY, OPEN_WEATHER_5DAY, OPEN_WEATHER,
+    DEFAULT_WEATHER_LAT, DEFAULT_WEATHER_LONG
+)
+params = {
+    "lat": DEFAULT_WEATHER_LAT,
+    "lon": DEFAULT_WEATHER_LONG,
+    "appid": OPEN_WEATHER,
+    "units": "metric"
+}
 
 class WeatherHelper:
     def __init__(self):
-        self.openweather1day = os.getenv("OPEN_WEATHER_1DAY")
-        self.openweather5day = os.getenv("OPEN_WEATHER_5DAY")
-        self.default_lat = os.getenv("DEFAULT_WEATHER_LAT")
-        self.default_lon = os.getenv("DEFAULT_WEATHER_LONG")
-        self.weather_api_key = os.getenv("OPEN_WEATHER")
         self.weather_intro_dir = "/home/msutt/hal/sounds/weather"
 
     @staticmethod
@@ -61,13 +61,8 @@ class WeatherHelper:
     async def fetch_weather(self):
         """Fetch and format current weather data."""
         try:
-            params = {
-                "lat": self.default_lat,
-                "lon": self.default_lon,
-                "appid": self.weather_api_key,
-                "units": "metric"
-            }
-            response = requests.get(self.openweather1day, params=params, timeout=10)
+
+            response = requests.get(OPEN_WEATHER_1DAY, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
 
@@ -94,13 +89,8 @@ class WeatherHelper:
     async def fetch_forecast(self):
         """Fetch and format a detailed 5-day forecast."""
         try:
-            params = {
-                "lat": self.default_lat,
-                "lon": self.default_lon,
-                "appid": self.weather_api_key,
-                "units": "metric"
-            }
-            response = requests.get(self.openweather5day, params=params, timeout=10)
+
+            response = requests.get(OPEN_WEATHER_5DAY, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
 

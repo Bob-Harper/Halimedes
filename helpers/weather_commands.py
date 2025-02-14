@@ -4,12 +4,13 @@ import asyncio
 
 
 class WeatherCommandManager:
-    def __init__(self, llm_client, passive_manager, passive_sound):
+    def __init__(self, llm_client, passive_manager, passive_sound, picrawler_instance):
         self.llm_client = llm_client
+        self.picrawler_instance = picrawler_instance
         self.passive_manager = passive_manager
         self.passive_sound = passive_sound
         self.weather_helper = WeatherHelper()
-        self.response_manager = Response_Manager()
+        self.response_manager = Response_Manager(self.picrawler_instance)
 
     async def startup_fetch_forecast(self):
         # Fetch the 5-day weather forecast

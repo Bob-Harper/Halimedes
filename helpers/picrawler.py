@@ -24,13 +24,12 @@ class Picrawler(Robot):
         self.step_list = {
             "stand": self.move_list["stand"][0],
             "sit": self.move_list["sit"][0],
-            "look_left": self.move_list["look_left"][0],  # Reuse from move_list
-            "look_right": self.move_list["look_right"][0],  # Reuse from move_list
-            "look_up": self.move_list["look_up"][0],  # Reuse from move_list
-            "look_down": self.move_list["look_down"][0],  # Reuse from move_list
-            # "wave": self.move_list["wave"][0],  # Reuse from move_list
+            "look_left": lambda: self.move_list["look_left"][0],  # Reuse from move_list
+            "look_right": lambda: self.move_list["look_right"][0],  # Reuse from move_list
+            "look_up": lambda: self.move_list["look_up"][0],  # Reuse from move_list
+            "look_down": lambda: self.move_list["look_down"][0],  # Reuse from move_list
+            "wave": lambda: self.move_list["wave"][0],  # Store as a function reference, don't execute  # Reuse from move_list
         }
-
 
         self.stand_position = 0
         self.direction = [

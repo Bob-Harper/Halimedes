@@ -1,18 +1,14 @@
 import os
 import aiohttp
-from dotenv import load_dotenv
 from datetime import datetime
 from helpers.response_utils import Response_Manager  # Import here
-
-
-# Load environment variables from .env
-load_dotenv()
-news_api_key = os.getenv("NEWSAPIDOTCOM")
+from helpers.config import NEWSAPIDOTCOM
 
 
 class NewsAPI():
-    def __init__(self):
-        self.response_manager = Response_Manager()  # No need to pass this manually
+    def __init__(self, picrawler_instance):
+        self.picrawler_instance = picrawler_instance
+        self.response_manager = Response_Manager(picrawler_instance)  # No need to pass this manually
 
     @staticmethod
     async def connect_to_news_api(endpoint_url):
@@ -42,7 +38,7 @@ class NewsAPI():
         """
         endpoint = (
             f"https://api.thenewsapi.com/v1/news/top"
-            f"?api_token={news_api_key}&locale=ca,us,uk,au,nz&categories=science&limit=3"
+            f"?api_token={NEWSAPIDOTCOM}&locale=ca,us,uk,au,nz&categories=science&limit=3"
             f"&exclude_categories=tech,sports,entertainment,politics,general,food,travel,business,health"
         )
 

@@ -10,9 +10,10 @@ from gpiozero import LED
 
 
 class AudioInput:
-    def __init__(self, silence_threshold=700, silence_duration=2.0, sample_rate=44100):
+    def __init__(self, picrawler_instance, silence_threshold=700, silence_duration=2.0, sample_rate=44100):
+        self.picrawler_instance = picrawler_instance
         self.sound_manager = PassiveSoundsManager()
-        self.general_utils = GeneralUtilities()
+        self.general_utils = GeneralUtilities(picrawler_instance)
         self.silence_threshold = silence_threshold
         self.silence_duration = silence_duration
         self.sample_rate = sample_rate
