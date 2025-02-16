@@ -78,7 +78,7 @@ class LLMClient:
     @staticmethod
     def clean_response(text):
         # Clean up symbols and special characters
-        cleaned_text = text.replace("*", "").replace("\n", " ")
+        cleaned_text = text.replace("*", "").replace("\n", " ").replace("_", " ")
         # Replace specific words mispronounced by flite with phonetic equivalents
         cleaned_text = text.replace("debug", "deebug").replace("brrr", "burr").replace("hehe", "Heh Heh")
         cleaned_text = text.replace("Rrrzzt", "").replace("*beep*", " ").replace("whirr", "Heh Heh")

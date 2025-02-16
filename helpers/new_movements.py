@@ -175,6 +175,17 @@ class NewMovements():
                     await asyncio.to_thread(self.picrawler.do_step, new_step, speed)
                     await asyncio.sleep(0.05)  # Small delay for smoother animation    
 
+    async def run_wiggle_for_seconds(self, duration=3):
+        """Starts wiggle for `duration` seconds, then stops it."""
+        wiggle_task = asyncio.create_task(self.wiggle())  # Start wiggle
+        await asyncio.sleep(duration)  # Let it run for X seconds
+        wiggle_task.cancel()  # Stop wiggle
+        try:
+            await wiggle_task  # Ensure it actually stops cleanly
+        except asyncio.CancelledError:
+            pass  # Suppress expected cancellation error
+
+
     async def glance(self, direction="center", angle=30, speed=99):
         """
         Perform a smooth glance motion in the specified direction.

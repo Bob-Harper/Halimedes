@@ -75,6 +75,10 @@ class CommandManager:
                 "function": self.command_get_news,
                 "phrases": ["news", "check the news", "tell me the news", "what's new today"]
             },
+            "movement": {
+                "function": self.command_test_all_actions,
+                "phrases": ["movement test", "test all actions", "show me what you can do"],
+            },
         }
     
     def match_command(self, input_text):
@@ -124,8 +128,22 @@ class CommandManager:
 
     async def command_help(self, spoken_text):
         """Provide verbal help."""
-        await self.response_manager.speak_with_flite(f"I heard you say {spoken_text}. To have me power down, say shut down. To end chat but leave me powered up, say end chat.  to check my battery say battery.  to hear me repeat these instructions, say help.")
+        help_text = (
+            f"I heard you say {spoken_text}. "
+            "Here are the available commands at this time. "
+            "To have me power down, say shut down. "
+            "To end chat but leave me powered up, say end chat. "
+            "To check my battery, say battery. "
+            "To get today's weather, say weather. "
+            "To get this week's weather, say forecast. "
+            "To get today's news, say news. "
+            "To test all actions, say movement test. "
+            "To hear me repeat these instructions, say help."
+        )
+
+        await self.response_manager.speak_with_flite(help_text)
         return False  # Signal to go back to listening
+
     
     async def command_battery(self, spoken_text):
         """Provide verbal battery status check."""
@@ -150,4 +168,12 @@ class CommandManager:
             # Speak each news article aloud
             for article in news_articles:
                 await self.response_manager.speak_with_flite(article)
+    
+    async def command_test_all_actions(self, spoken_text):
+        """Test all available actions."""
+        await self.response_manager.speak_with_flite(f"I heard you say {spoken_text}. Initiating action test.")
+        await self.passive_manager.test_all_actions()
+        await self.response_manager.speak_with_flite("Action test complete.")
+
+        return False
     

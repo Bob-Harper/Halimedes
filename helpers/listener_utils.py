@@ -12,6 +12,8 @@ from gpiozero import LED
 class AudioInput:
     def __init__(self, picrawler_instance, silence_threshold=700, silence_duration=2.0, sample_rate=44100):
         self.picrawler_instance = picrawler_instance
+        # Force sounddevice to use the correct microphone!
+        sd.default.device = (1, None)  # (input device index, output device index)
         self.sound_manager = PassiveSoundsManager()
         self.general_utils = GeneralUtilities(picrawler_instance)
         self.silence_threshold = silence_threshold
