@@ -27,44 +27,21 @@ warnings.simplefilter('ignore')
 
 # Initialize everything at module level
 llm_client = LLMClient(server_host=OLLAMALAPTOP)
-print("LLMClient initialized")
-
 voiceprint_manager = VoiceprintManager()
-print("VoiceprintManager initialized")
-
 command_manager = CommandManager(llm_client, picrawler_instance)
-print("CommandManager initialized")
-
 response_manager = Response_Manager(picrawler_instance)
-print("Response_Manager initialized")
-
 audio_input = AudioInput(picrawler_instance)
-print("AudioInput initialized")
-
 emotion_handler = EmotionHandler()
-print("EmotionHandler initialized")
-
 emotion_sound_manager = EmotionSoundManager()
-print("EmotionSoundManager initialized")
-
 actions_manager = PassiveActionsManager(picrawler_instance)
-print("PassiveActionsManager initialized")
-
 general_utils = GeneralUtilities(picrawler_instance)
-print("GeneralUtilities initialized")
-
 weather_fetch = WeatherCommandManager(llm_client, actions_manager, emotion_sound_manager, picrawler_instance)
-print("WeatherCommandManager initialized")
-
 news_api = NewsAPI(picrawler_instance)
-print("NewsAPI initialized")
 
-print("=== STARTUP INITIALIZATION COMPLETE ===\n\nSTARTING MAIN FUNCTION...\n")
 
 async def main():
     print("Entered main()")
     await response_manager.speak_with_flite("Beginning startup procedure and status check. Please stand by, system test underway.")
-
 
 
 async def main():

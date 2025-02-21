@@ -1,5 +1,6 @@
 import requests
 import asyncio
+import re
 
 """
 MAX_TOKEN_COUNT represents the character count limit for conversation history.
@@ -77,10 +78,31 @@ class LLMClient:
 
     @staticmethod
     def clean_response(text):
-        # Clean up symbols and special characters
-        cleaned_text = text.replace("*", "").replace("\n", " ").replace("_", " ")
-        # Replace specific words mispronounced by flite with phonetic equivalents
-        cleaned_text = text.replace("debug", "deebug").replace("brrr", "burr").replace("hehe", "Heh Heh")
-        cleaned_text = text.replace("Rrrzzt", "").replace("*beep*", " ").replace("whirr", "Heh Heh")
+        # Define replacements (all in lowercase for matching)
+        replacements = {
+            "brrr": "burr",
+            "debug": "deebug",
+            "hehe": "Heh Heh",
+            "rrrzzt": "",
+            "*beep*": " ",
+            "whirr": "Heh Heh"
+        }
+
+        # Function to match case dynamically
+        def case_sensitive_replace(match):
+            word = match.group(0)
+            replacement = replacements[word.lower()]  # Lookup in lowercase
+
+            # Preserve original case:
+            if word.istitle():  # Capitalized (e.g., "Brrr")
+                return replacement.capitalize()
+            elif word.isupper():  # Fully uppercase (e.g., "BRRR")
+                return replacement.upper()
+            else:  # All lowercase (e.g., "brrr")
+                return replacement
+
+        # Use regex to replace only whole words (case-insensitive)
+        pattern = re.compile(r'\b(' + '|'.join(re.escape(key) for key in replacements.keys()) + r')\b', re.IGNORECASE)
+        cleaned_text = pattern.sub(case_sensitive_replace, text)
 
         return cleaned_text.strip()

@@ -28,8 +28,6 @@ class PassiveActionsManager:
                 ("Look Up", lambda: [self.crawler.do_step(step, self.speed) for step in self.crawler.move_list["look_up"]]),
                 ("Look Down", lambda: [self.crawler.do_step(step, self.speed) for step in self.crawler.move_list["look_down"]]),
                 ("Wave", lambda: [self.crawler.do_step(step, self.speed) for step in self.crawler.move_list["wave"]]),
-                # ("Glance Left", lambda: self.newmovements.glance(direction="left", angle=25, speed=self.speed)),
-                # ("Glance Right", lambda: self.newmovements.glance(direction="right", angle=25, speed=self.speed)),
             ],
             "expressive": [
                 # ("Wiggle", lambda: asyncio.create_task(self.newmovements.run_wiggle_for_seconds(3))),
@@ -84,9 +82,6 @@ class PassiveActionsManager:
 
         # Pick a random action (EXTRACT the function from the tuple)
         action_name, action_function = random.choice(self.actions_by_category[category])
-
-        # Log for debugging (Optional)
-        print(f"Performing action: {action_name}")
 
         # Execute the action
         await asyncio.to_thread(action_function)
