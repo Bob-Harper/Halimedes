@@ -21,7 +21,7 @@ from helpers.llm_utils import LLMClient
 from helpers.passive_actions import PassiveActionsManager
 from helpers.system_prompts import get_system_prompt
 from helpers.general_utilities import GeneralUtilities
-from helpers.news_api import NewsAPI
+from helpers.news_api import NewsFeed
 
 warnings.simplefilter('ignore')
 
@@ -36,7 +36,7 @@ emotion_sound_manager = EmotionSoundManager()
 actions_manager = PassiveActionsManager(picrawler_instance)
 general_utils = GeneralUtilities(picrawler_instance)
 weather_fetch = WeatherCommandManager(llm_client, actions_manager, emotion_sound_manager, picrawler_instance)
-news_api = NewsAPI(picrawler_instance)
+news_api = NewsFeed(picrawler_instance)
 
 
 async def main():

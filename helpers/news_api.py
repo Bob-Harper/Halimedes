@@ -1,71 +1,87 @@
-import os
 import aiohttp
+import feedparser
+import asyncio
 from datetime import datetime
-from helpers.response_utils import Response_Manager  # Import here
-from helpers.config import NEWSAPIDOTCOM
+from helpers.response_utils import Response_Manager  
+import random
 
 
-class NewsAPI():
+class NewsFeed():
     def __init__(self, picrawler_instance):
         self.picrawler_instance = picrawler_instance
-        self.response_manager = Response_Manager(picrawler_instance)  # No need to pass this manually
+        self.response_manager = Response_Manager(picrawler_instance)
 
-    @staticmethod
-    async def connect_to_news_api(endpoint_url):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(endpoint_url) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    if "error" in result:
-                        return {"error": result["error"]}
-                    return result
-                else:
-                    return {"error": f"API request failed with status code {response.status}"}
-                
+        # RSS Feeds categorized (1 source per category)
+        self.rss_feeds = {
+            "nature": "https://www.natureconservancy.ca/system/rss/channel.jsp?feedID=464872245",
+            "tech": "https://www.cbc.ca/webfeed/rss/rss-technology",
+            "health": "https://www.cbc.ca/webfeed/rss/rss-health",
+            "arts": "https://www.cbc.ca/webfeed/rss/rss-arts",
+            "national": "https://www.cbc.ca/webfeed/rss/rss-canada",  
+        }
+
+    async def fetch_news(self, category):
+        """Fetches a random news headline from a category's RSS feed."""
+        feed_url = self.rss_feeds.get(category)
+        if not feed_url:
+            return None  # No feed available for this category
+        
+        articles = await self.fetch_news_feed(feed_url)
+
+        if not articles:
+            return None  # No articles found
+
+        # Choose a random article from the list
+        selected_article = random.choice(articles)
+        print(f"Fetched {len(articles)} articles for category {category}. Selecting one at random.")
+
+        return selected_article
+
+    async def fetch_news_feed(self, url, timeout=5):
+        """Fetches and parses an RSS feed with a timeout and User-Agent."""
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
+        }
+        
+        try:
+            async with aiohttp.ClientSession(headers=headers) as session:
+                async with session.get(url, timeout=timeout) as response:
+                    if response.status == 200:
+                        data = await response.text()
+                        feed = feedparser.parse(data)
+                        articles = [{"title": entry.title, "link": entry.link} for entry in feed.entries]
+                        return articles
+                    else:
+                        print(f"Failed to fetch RSS feed: {url} (Status Code: {response.status})")
+                        return []
+        except asyncio.TimeoutError:
+            print(f"Timeout: RSS feed {url} took too long to respond.")
+        except aiohttp.ClientError as e:
+            print(f"Network error while fetching RSS feed {url}: {str(e)}")
+        
+        return []
+
     async def startup_fetch_news(self, llm_client):
-        news_articles = await self.fetch_top_news()
-        if isinstance(news_articles, str):  # Check for error message
-            await self.response_manager.speak_with_flite("Checking news satellite connection. Status: Offline.")
+        """Fetches and stores one headline per category in the conversation history."""
+        news_data = {}
+
+        for category in self.rss_feeds.keys():
+            article = await self.fetch_news(category)
+            if article:
+                news_data[category] = f"{article['title']} ({article['link']})"
+            else:
+                print(f"No article added for category {category}")
+
+        # Format for conversation history
+        news_summary = "Here are today's headlines:\n" + "\n".join(f"{cat.capitalize()}: {news}" for cat, news in news_data.items())
+        llm_client.conversation_history.append({"role": "system", "content": news_summary})
+
+        # Acknowledge news retrieval (but don't speak the news yet)
+        if news_data:
+            await self.response_manager.speak_with_flite("News connection established. Headlines have been preloaded.")
         else:
-            # Store headlines in conversation history for potential reference by the LLM
-            formatted_news = "Here are today’s top science and tech headlines:\n" + "\n".join(news_articles)
-            llm_client.conversation_history.append({"role": "system", "content": f"If it becomes relevant, here are today's headlines: {formatted_news}"})        
-            await self.response_manager.speak_with_flite("Checking news satellite connection. Status: Online.")
-
-    async def fetch_top_news(self):
-        """
-        Builds the API request for top science and tech news and retrieves the data.
-        """
-        endpoint = (
-            f"https://api.thenewsapi.com/v1/news/top"
-            f"?api_token={NEWSAPIDOTCOM}&locale=ca,us,uk,au,nz&categories=science&limit=3"
-            f"&exclude_categories=tech,sports,entertainment,politics,general,food,travel,business,health"
-        )
-
-        # Fetch news using the general API connector
-        api_response = await self.connect_to_news_api(endpoint)
-
-        # Check if API response contains an error
-        if "error" in api_response:
-            return api_response["error"]
-
-        # Parse and format the top news
-        news_articles = []
-        for article in api_response.get("data", []):
-            title = article.get("title", "No title")
-            description = article.get("description", "No description")
-            news_articles.append(f"{title}: {description}")
-
-        # Return formatted articles or fallback message
-        if news_articles:
-            return news_articles
-        else:
-            return ["No relevant news found."]
-
+            await self.response_manager.speak_with_flite("Unable to retrieve news at this time.")
     @staticmethod
     def current_datetime():
-        """
-        Returns the current date and time as a formatted string.
-        """
+        """Returns the current date and time as a formatted string."""
         return datetime.now().strftime("%A, %B %d, %Y. The time is %I:%M %p.")
-    

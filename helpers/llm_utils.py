@@ -80,6 +80,8 @@ class LLMClient:
     def clean_response(text):
         # Define replacements (all in lowercase for matching)
         replacements = {
+            "*" : "",
+            "beep": "",
             "brrr": "burr",
             "debug": "deebug",
             "hehe": "Heh Heh",

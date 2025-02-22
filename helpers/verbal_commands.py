@@ -8,7 +8,7 @@ from helpers.passive_sounds import PassiveSoundsManager
 from helpers.response_utils import Response_Manager
 from helpers.weather import WeatherHelper
 from helpers.weather_commands import WeatherCommandManager
-from helpers.news_api import NewsAPI
+from helpers.news_api import NewsFeed
 import signal
 import sys
 
@@ -35,7 +35,7 @@ class CommandManager:
         self.weather_commands = WeatherCommandManager(llm_client, self.passive_manager, self.passive_sound, picrawler_instance)
         self.response_manager = Response_Manager(self.picrawler_instance)
         self.general_utils = GeneralUtilities(self.picrawler_instance)
-        self.news_api = NewsAPI(self.picrawler_instance)
+        self.news_api = NewsFeed(self.picrawler_instance)
 
     async def handle_command(self, spoken_text):
         command = self.match_command(spoken_text)  # Check if input matches a known command
@@ -153,21 +153,30 @@ class CommandManager:
 
     async def command_get_news(self, *_):
         """
-        Fetch top science and tech news and speak them aloud.
+        Fetch the latest headlines from each news category and speak them aloud.
         """
-        news_articles = await self.news_api.fetch_top_news()
+        news_data = {}
 
-        if isinstance(news_articles, str):  # Check for error message
-            await self.response_manager.speak_with_flite(f"News fetch failed: {news_articles}")
-        else:
-            # Play the weather intro sound
-            await self.passive_sound.play_weather_intro_sound()
-            # Store headlines in conversation history for potential reference by the LLM
-            formatted_news = "Here are today’s top science and tech headlines:\n" + "\n".join(news_articles)
-            self.llm_client.conversation_history.append({"role": "system", "content": formatted_news})
-            # Speak each news article aloud
-            for article in news_articles:
-                await self.response_manager.speak_with_flite(article)
+        # Fetch one headline from each category
+        for category in self.news_api.rss_feeds.keys():
+            article = await self.news_api.fetch_news(category)
+            if article:
+                news_data[category] = f"{article['title']} ({article['link']})"
+
+        if not news_data:
+            await self.response_manager.speak_with_flite("I checked, but there are no new headlines right now.")
+            return
+
+        # Play the weather/news intro sound
+        await self.passive_sound.play_weather_intro_sound()
+
+        # Format news for conversation history
+        formatted_news = "Here are today’s top headlines:\n" + "\n".join(f"{cat.capitalize()}: {news}" for cat, news in news_data.items())
+        self.llm_client.conversation_history.append({"role": "system", "content": formatted_news})
+
+        # Speak each headline aloud
+        for category, article in news_data.items():
+            await self.response_manager.speak_with_flite(f"{category.capitalize()} news: {article}")
     
     async def command_test_all_actions(self, spoken_text):
         """Test all available actions."""
