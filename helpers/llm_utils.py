@@ -78,16 +78,14 @@ class LLMClient:
 
     @staticmethod
     def clean_response(text):
+        # Remove all *text* patterns (including things like *stunned silence*)
+        text = re.sub(r"\*.*?\*", "", text)
         # Define replacements (all in lowercase for matching)
         replacements = {
-            "*" : "",
-            "beep": "",
             "brrr": "burr",
             "debug": "deebug",
             "hehe": "Heh Heh",
-            "rrrzzt": "",
-            "*beep*": " ",
-            "whirr": "Heh Heh"
+            "preload": "preeload",
         }
 
         # Function to match case dynamically

@@ -1,5 +1,7 @@
 print("=== STARTUP SCRIPT INITIATED ===")
 import warnings
+warnings.simplefilter('ignore')
+
 import asyncio
 from helpers.config import OLLAMALAPTOP
 """ 
@@ -18,22 +20,20 @@ from helpers.voice_recognition import VoiceprintManager
 from helpers.emotions import EmotionHandler, EmotionSoundManager
 from helpers.weather_commands import WeatherCommandManager
 from helpers.llm_utils import LLMClient
-from helpers.passive_actions import PassiveActionsManager
+from helpers.dynamic_passive_actions import PassiveActionsManager
 from helpers.system_prompts import get_system_prompt
 from helpers.general_utilities import GeneralUtilities
 from helpers.news_api import NewsFeed
-
-warnings.simplefilter('ignore')
 
 # Initialize everything at module level
 llm_client = LLMClient(server_host=OLLAMALAPTOP)
 voiceprint_manager = VoiceprintManager()
 command_manager = CommandManager(llm_client, picrawler_instance)
-response_manager = Response_Manager(picrawler_instance)
 audio_input = AudioInput(picrawler_instance)
 emotion_handler = EmotionHandler()
 emotion_sound_manager = EmotionSoundManager()
 actions_manager = PassiveActionsManager(picrawler_instance)
+response_manager = Response_Manager(picrawler_instance, actions_manager)  # Set once
 general_utils = GeneralUtilities(picrawler_instance)
 weather_fetch = WeatherCommandManager(llm_client, actions_manager, emotion_sound_manager, picrawler_instance)
 news_api = NewsFeed(picrawler_instance)
@@ -41,10 +41,6 @@ news_api = NewsFeed(picrawler_instance)
 
 async def main():
     print("Entered main()")
-    await response_manager.speak_with_flite("Beginning startup procedure and status check. Please stand by, system test underway.")
-
-
-async def main():
     await response_manager.speak_with_flite("Beginning startup procedure and status check. Please stand by, system test underway.")
     await response_manager.speak_with_flite("Servos powered. Listening initiated. Voice centers activated. Checking battery.")
     await general_utils.announce_battery_status()
@@ -103,8 +99,8 @@ async def main():
         # print(f"Hal's emotion: {hal_emotion}")
         emotion_sound_manager.play_sound(hal_emotion)
         # Speak the response
-        await response_manager.speak_with_dynamic_flite(response_text)
-
+        # await response_manager.speak_with_dynamic_flite(response_text)
+        await response_manager.fully_dynamic_response(response_text)
 
 if __name__ == "__main__":
     asyncio.run(main())

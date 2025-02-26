@@ -78,9 +78,10 @@ class NewsFeed():
 
         # Acknowledge news retrieval (but don't speak the news yet)
         if news_data:
-            await self.response_manager.speak_with_flite("News connection established. Headlines have been preloaded.")
+            await self.response_manager.speak_with_flite("News connection established. Headlines have been preeloaded.")
         else:
             await self.response_manager.speak_with_flite("Unable to retrieve news at this time.")
+ 
     @staticmethod
     def current_datetime():
         """Returns the current date and time as a formatted string."""

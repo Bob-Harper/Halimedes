@@ -1,19 +1,23 @@
 import subprocess
 import asyncio
+import re
+import os
+import random
 from helpers.emotions import get_voice_modifiers
 from helpers.emotions import EmotionHandler
 from helpers.passive_sounds import PassiveSoundsManager
-from helpers.new_movements import NewMovements
-from nltk.tokenize import sent_tokenize, TreebankWordTokenizer
-from nltk import pos_tag, RegexpParser
+from nltk.tokenize import sent_tokenize
+from rapidfuzz import process
 
 
 class Response_Manager:
-    def __init__(self, picrawler_instance):
-        self.crawler = picrawler_instance 
+    _actions_manager = None  # Store actions manager globally
 
+    def __init__(self, picrawler_instance, actions_manager=None):
+        self.crawler = picrawler_instance
         # Hal's voicefile
         self.voice_path = "/home/msutt/hal/flitevox/cmu_us_rms.flitevox"
+
         # Baseline values to create Hal's signature voice
         self.baseline_pitch = 50
         self.baseline_speed = 0.88  # note below, value is counterintuitive
@@ -21,13 +25,23 @@ class Response_Manager:
         pitch: flite default 100 - higher/deeper voice correlates to higher/lower number
         speed: flite default 1.0 - higher values stretch (longer), lower compresses (shorter)
         """
+
         self.emotion_handler = EmotionHandler()
         self.sound_manager = PassiveSoundsManager()
-        self.newmovements = NewMovements(self.crawler)
 
-        # Expanded sound and action keywords for detection
-        self.sound_keywords = ["whirr", "beep", "chirp", "giggle", "roar", "whoosh", "hum", "whistle"]
-        self.action_keywords = ["wave", "rotate", "spark", "beam", "twist", "wiggle"]
+        # Store actions_manager once (global for this class)
+        if actions_manager:
+            Response_Manager._actions_manager = actions_manager  
+
+    @classmethod
+    def get_actions_manager(cls):
+        """
+        Fetches the stored actions manager.
+        This allows accessing actions without passing it everywhere.
+        """
+        if cls._actions_manager is None:
+            raise ValueError("Actions manager has not been initialized in Response_Manager.")
+        return cls._actions_manager
 
     async def speak_with_flite(self, words, emotion="neutral"):
         """
@@ -90,90 +104,110 @@ class Response_Manager:
 
     async def fully_dynamic_response(self, full_text):
         """
-        Speak with adaptive pitch and speed modulation dynamically for each 
-        sentence fragment. Processes text descriptions of sound effects and actions
-        to swap them inline with actual sound effects and actions while conversing.
+        Processes an LLM-generated response, applying:
+        - Emotion-based speech modulation
+        - Inline sound effects
+        - Inline robot actions
         """
 
-        tokenizer = TreebankWordTokenizer()
+        # Parse the response into structured parts
+        processed_segments = self.process_and_replace_actions(full_text)
 
-        # Refined grammar to be stricter on what counts as sounds and actions
-        chunk_grammar = r"""
-            SOUND: {<JJ>*<NN|NNS>+<VBG>?<NN|NNS>*}  # Adjective + Nouns for valid sound descriptions
-            ACTION: {<VB.*><DT|JJ|NN.*>+}           # Verb + Descriptive phrases for actions like "wobbles legs"
+        for segment_type, content in processed_segments:
+            if segment_type == "text":
+                await self.speak_with_dynamic_flite(content)  # Speak segment
+
+            elif segment_type == "sound":
+                await self.sound_manager.play_emotion_sound(content)  # Play inline
+
+            elif segment_type == "action":
+                action_name, action_function = content  # Proper tuple unpacking
+                await asyncio.to_thread(action_function)  # Perform inline
+
+            # Short delay to allow natural timing
+            await asyncio.sleep(0.3)
+
+    @staticmethod
+    def process_and_replace_actions(response_text):
         """
-        chunk_parser = RegexpParser(chunk_grammar)
+        Parses an LLM response, extracting:
+        - Text for speech
+        - Sound effect markers
+        - Action markers
+        - Keeps everything in correct order.
+        """
 
-        # Common irrelevant nouns to ignore (these can be customized)
-        ignore_nouns = {"boy", "cat", "food", "fuel", "skills", "nevermind"}
+        # Define patterns for LLM markers
+        sound_effect_pattern = r"<sound effect: (.*?)>"
+        action_pattern = r"<action: (.*?)>"
 
-        try:
-            fragments = sent_tokenize(full_text)
-            for fragment in fragments:
-                print(f"[DEBUG] Analyzing fragment: '{fragment}'")
+        # Split response text based on markers
+        split_text = re.split(f"({sound_effect_pattern}|{action_pattern})", response_text)
 
-                tokens = tokenizer.tokenize(fragment)
-                tagged_tokens = pos_tag(tokens)
-                chunked_tree = chunk_parser.parse(tagged_tokens)
+        processed_segments = []
+        skip_next = False  # Prevent storing extra fragments
 
-                buffer = []  
-                sub_fragments = []
+        for i, chunk in enumerate(split_text):
+            if not chunk or chunk.strip() == "":
+                continue  # Ignore empty chunks
 
-                for subtree in chunked_tree:
-                    if isinstance(subtree, tuple):
-                        buffer.append(subtree[0])
+            if skip_next:
+                skip_next = False  # Skip this chunk (it was an isolated marker)
+                continue
 
-                    elif subtree.label() == "SOUND":
-                        detected_sound = " ".join(word for word, _ in subtree)
+            # Handle sound effects
+            sound_match = re.match(sound_effect_pattern, chunk)
+            if sound_match:
+                effect = sound_match.group(1).strip()
+                processed_segments.append(("sound", effect))
+                skip_next = True  # 🚨 Prevents the rogue category from getting stored
+                continue  # Skip further processing for this chunk
 
-                        # Skip irrelevant nouns that don’t represent actual sounds
-                        if detected_sound.lower() not in ignore_nouns:
-                            if buffer:
-                                sub_fragments.append(("speech", " ".join(buffer)))
-                                buffer = []
-                            sub_fragments.append(("sound", detected_sound))
-                            print(f"[DEBUG] Detected sound: '{detected_sound}'")
+            # Handle actions
+            action_match = re.match(action_pattern, chunk)
+            if action_match:
+                action = action_match.group(1).strip()
+                actions_manager = Response_Manager.get_actions_manager()
+                action_name, action_function = Response_Manager.get_mapped_action(actions_manager, action)
 
-                    elif subtree.label() == "ACTION":
-                        detected_action = " ".join(word for word, _ in subtree)
+                if action_function:
+                    processed_segments.append(("action", (action_name, action_function)))
+                    skip_next = True  # 🚨 Prevents the rogue category from getting stored
+                continue  # Skip further processing for this chunk
 
-                        # Ensure valid action phrases include key verbs
-                        if any(tag.startswith("VB") for _, tag in subtree):
-                            if buffer:
-                                sub_fragments.append(("speech", " ".join(buffer)))
-                                buffer = []
-                            sub_fragments.append(("action", detected_action))
-                            print(f"[DEBUG] Detected action: '{detected_action}'")
+            # ✅ If it's text and wasn't flagged for skipping, store it
+            processed_segments.append(("text", chunk.strip()))
 
-                if buffer:
-                    sub_fragments.append(("speech", " ".join(buffer)))
+        return processed_segments
+                        
+    @staticmethod
+    def get_mapped_action(passive_actions_manager, action_category):
+        """Fetches a valid action from the closest-matching category in PassiveActionsManager."""
 
-                # Process each sub-fragment inline
-                for frag_type, content in sub_fragments:
-                    if frag_type == "sound":
-                        print(f"[DEBUG] Playing sound for: '{content}'")
-                        await self.sound_manager.play_sound_indicator("/home/msutt/hal/sounds/passive/anticipation/n-clong-1.wav")
+        #  Extract just the category names (prevent functions from being passed)
+        available_categories = list(passive_actions_manager.actions_by_category.keys())
+        fallback_category = "subtle"  # Default fallback
 
-                    elif frag_type == "action":
-                        print(f"[DEBUG] Performing action for: '{content}'")
-                        await self.newmovements.tap_all_legs()
+        #  Always pick the closest match
+        best_match = process.extractOne(action_category, available_categories)
 
-                    elif frag_type == "speech":
-                        fragment_emotion = self.emotion_handler.analyze_text_emotion(content)
-                        emotion_settings = get_voice_modifiers(fragment_emotion)
-                        pitch = int(self.baseline_pitch * emotion_settings["pitch_factor"])
-                        speed = round(self.baseline_speed * emotion_settings["speed_factor"], 2)
+        matched_category = best_match[0] if best_match else fallback_category  # Ensure valid category
 
-                        print(f"Speaking sub-fragment '{content}' with emotion '{fragment_emotion}': pitch={pitch}, speed={speed}")
-                        command = [
-                            "flite",
-                            "-voice", self.voice_path,
-                            "--setf", f"int_f0_target_mean={pitch}",
-                            "--setf", f"duration_stretch={speed}",
-                            "-t", content,
-                        ]
-                        await asyncio.to_thread(subprocess.run, command, check=True)
+        #  Fetch an actual action from the chosen category
+        if matched_category in passive_actions_manager.actions_by_category:
+            action_name, action_function = random.choice(passive_actions_manager.actions_by_category[matched_category])
+            return action_name, action_function  #  Ensure we return both!
 
-        except Exception as e:
-            print(f"Error in adaptive speech, falling back to neutral: {e}")
-            await self.speak_with_flite(full_text)
+        return None, None  # Fail-safe return
+
+    @staticmethod
+    def get_mapped_sound(sound_category):
+        """Fetches the closest-matching emotion category for a sound effect."""
+        
+        available_folders = ["laugh", "anticipation", "surprise", "sadness", "fear", "anger"]
+        fallback_folder = "disgust"  # Fallback for extreme cases
+
+        # Always select the closest match, no confidence threshold
+        best_match = process.extractOne(sound_category, available_folders)
+
+        return best_match[0] if best_match else fallback_folder  # Always return a category name

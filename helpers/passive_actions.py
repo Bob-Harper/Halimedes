@@ -55,6 +55,12 @@ class PassiveActionsManager:
             ],
         }
 
+        self.category_weights = {
+            "subtle": 0.50,  # Small movements (50%)
+            "expressive": 0.35,  # Bigger gestures (35%)
+            "full-body": 0.15,  # Turning/walking (15%)
+        }
+
     async def handle_passive_actions(self, stop_event):
         """Alternate between sounds and actions while waiting for LLM response."""
         while not stop_event.is_set():
@@ -71,14 +77,8 @@ class PassiveActionsManager:
     async def actions_thinking_loop_single(self):
         """Perform a single thinking action with categorized weighting."""
 
-        category_weights = {
-            "subtle": 0.50,  # Small movements (50%)
-            "expressive": 0.35,  # Bigger gestures (35%)
-            "full-body": 0.15,  # Turning/walking (15%)
-        }
-
         # Pick a category based on weights
-        category = random.choices(list(self.actions_by_category.keys()), weights=category_weights.values(), k=1)[0]
+        category = random.choices(list(self.actions_by_category.keys()), weights=self.category_weights.values(), k=1)[0]
 
         # Pick a random action (EXTRACT the function from the tuple)
         action_name, action_function = random.choice(self.actions_by_category[category])

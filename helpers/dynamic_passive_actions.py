@@ -4,17 +4,63 @@ from helpers.new_movements import NewMovements
 from helpers.passive_sounds import PassiveSoundsManager
 from helpers.response_utils import Response_Manager
 import asyncio
-from nltk.tokenize import word_tokenize, sent_tokenize
-from nltk import pos_tag
 
 
 class PassiveActionsManager:
-    def __init__(self):
-        self.crawler = Picrawler()
+    def __init__(self, picrawler_instance):
+        self.crawler = picrawler_instance
         self.passive_sound = PassiveSoundsManager()
         self.newmovements = NewMovements(self.crawler)
-        self.response_manager = Response_Manager()
+        self.response_manager = Response_Manager(self.crawler, self)
+        self.actions_by_category = {
+            "subtle": [
+                ("Tap Front Right", self.newmovements.tap_front_right),
+                ("Tap Front Left", self.newmovements.tap_front_left),
+                ("Tap Rear Right", self.newmovements.tap_rear_right),
+                ("Tap Rear Left", self.newmovements.tap_rear_left),
+                ("Tap All Legs", self.newmovements.tap_all_legs),
+                ("Stand Tall", self.newmovements.stand_tall),
+                ("Look Left", lambda: [self.crawler.do_step(step, self.speed) for step in self.crawler.move_list["look_left"]]),
+                ("Look Right", lambda: [self.crawler.do_step(step, self.speed) for step in self.crawler.move_list["look_right"]]),
+                ("Sit", lambda: [self.crawler.do_step(step, self.speed) for step in self.crawler.move_list["sit"]]),
+                ("Stand", lambda: [self.crawler.do_step(step, self.speed) for step in self.crawler.move_list["stand"]]),
+                ("Look Up", lambda: [self.crawler.do_step(step, self.speed) for step in self.crawler.move_list["look_up"]]),
+                ("Look Down", lambda: [self.crawler.do_step(step, self.speed) for step in self.crawler.move_list["look_down"]]),
+                ("Wave", lambda: [self.crawler.do_step(step, self.speed) for step in self.crawler.move_list["wave"]]),
+            ],
+            "expressive": [
+                # ("Wiggle", lambda: asyncio.create_task(self.newmovements.run_wiggle_for_seconds(3))),
+                ("Pushup", lambda: self.newmovements.pushup(count=2, speed=self.speed)),
+                ("Twist", lambda: self.newmovements.twist(speed=self.speed)),
+                ("Handwork", lambda: self.newmovements.handwork(speed=self.speed)),
+            ],
+            "full-body": [
+                ("Turn Left Then Forward", lambda: [
+                    self.crawler.do_action("turn left angle", 1, self.speed, angle=30),
+                    self.crawler.do_action("turn right angle", 1, self.speed, angle=30)
+                ]),
+                ("Turn Right Then Forward", lambda: [
+                    self.crawler.do_action("turn right angle", 1, self.speed, angle=30),
+                    self.crawler.do_action("turn left angle", 1, self.speed, angle=30)
+                ]),
+                ("Step Forward Then Back", lambda: [
+                    self.crawler.do_action("forward", 1, self.speed),
+                    self.crawler.do_action("backward", 1, self.speed)
+                ]),
+                ("Step Back Then Forward", lambda: [
+                    self.crawler.do_action("backward", 1, self.speed),
+                    self.crawler.do_action("forward", 1, self.speed)
+                ]),
+            ],
+        }
 
+        self.category_weights = {
+            "subtle": 0.50,  # Small movements (50%)
+            "expressive": 0.35,  # Bigger gestures (35%)
+            "full-body": 0.15,  # Turning/walking (15%)
+        }
+
+        self.speed = 85  # Default movement speed
 
     async def handle_passive_actions(self, stop_event):
         """Alternate between sounds and actions while waiting for LLM response."""
@@ -33,50 +79,11 @@ class PassiveActionsManager:
             
     async def actions_thinking_loop_single(self):
         """Perform a single thinking action with categorized weighting."""
-        speed = 85  # Default speed for actions
-
-        # Define categorized actions
-        actions_by_category = {
-            "tapping": [
-                self.newmovements.tap_front_right,
-                self.newmovements.tap_front_left,
-                self.newmovements.tap_rear_right,
-                self.newmovements.tap_rear_left,
-                self.newmovements.tap_all_legs,
-            ],
-            "standing": [
-                self.newmovements.stand_tall,
-                self.newmovements.sway_all_legs,
-                lambda: self.crawler.do_step("stand", speed),
-                lambda: self.crawler.do_step("sit", speed),
-            ],
-            "turning": [
-                lambda: [self.crawler.do_action("turn left", 1, speed), self.crawler.do_action("turn right", 1, speed)],
-                lambda: [self.crawler.do_action("turn right", 1, speed), self.crawler.do_action("turn left", 1, speed)],
-            ],
-            "other": [
-                lambda: self.crawler.do_step("wave", speed),
-                lambda: self.crawler.do_step("look_left", speed),
-                lambda: self.crawler.do_step("look_right", speed),
-                lambda: self.crawler.do_step("look_up", speed),
-                lambda: self.crawler.do_step("look_down", speed),
-                self.newmovements.sit_down
-            ],
-        }
-
-        # Define weights for the categories
-        category_weights = {
-            "tapping": 0.4,
-            "standing": 0.3,
-            "turning": 0.2,
-            "other": 0.1,
-        }
-
         # Pick a category based on weights
-        category = random.choices(list(actions_by_category.keys()), weights=category_weights.values(), k=1)[0]
+        category = random.choices(list(self.actions_by_category.keys()), weights=self.category_weights.values(), k=1)[0]
 
         # Pick a random action from the chosen category
-        action = random.choice(actions_by_category[category])
+        action = random.choice(self.actions_by_category[category])
 
         # Execute the action
         await asyncio.to_thread(action)
@@ -103,64 +110,3 @@ class PassiveActionsManager:
         movement_task = asyncio.to_thread(self.newmovements.sit_down)
         # Wait for both tasks to complete
         await asyncio.gather(speak_task, movement_task)
-        
-    async def process_and_replace_actions(self, response_text):
-        """
-        Detects full sentences describing sounds or actions, and dynamically replaces them.
-        Returns the modified conversational text and the list of detected actions/sounds.
-        """
-        sentences = sent_tokenize(response_text)
-        modified_text = ""
-        detected_events = []
-
-        for sentence in sentences:
-            words = word_tokenize(sentence)
-            tagged_words = pos_tag(words)
-
-            # Detect if the sentence describes a sound effect
-            if any(word.lower() in self.sound_keywords for word, tag in tagged_words):
-                detected_events.append(("sound", sentence))
-                # print(f"Detected sound description: {sentence}")
-                continue  # Skip adding this sentence to the spoken text
-
-            # Detect if the sentence describes an action
-            if any(word.lower() in self.action_keywords for word, tag in tagged_words):
-                detected_events.append(("action", sentence))
-                print(f"Detected action description: {sentence}")
-                continue  # Skip adding this sentence to the spoken text
-
-            # Otherwise, keep the sentence as part of the spoken text
-            modified_text += sentence + " "
-
-        return modified_text.strip(), detected_events    
-    
-    def extract_sound_type(self, description):
-        """
-        Extracts the key sound keyword from the sentence.
-        """
-        for word in word_tokenize(description):
-            if word.lower() in self.sound_keywords:
-                return word.lower()  # Return the detected sound keyword
-        return "default_sound"  # Fallback if no keyword is found
-
-    def extract_action_type(self, description):
-        """
-        Extracts the key action phrase from the sentence.
-        """
-        words = word_tokenize(description)
-        for i, (word, tag) in enumerate(pos_tag(words)):
-            if word.lower() in self.action_keywords:
-                return ' '.join(words[i:i + 3])  # Return 3-word action phrase
-        return "default_action"  # Fallback if no action phrase is found
-
-def passive_wave(robot):
-    print("[DEBUG] Triggering passive wave")
-    return robot.wave()
-
-def passive_look_left(robot):
-    print("[DEBUG] Triggering passive look left")
-    return robot.look_left()
-
-def passive_look_right(robot):
-    print("[DEBUG] Triggering passive look right")
-    return robot.look_right()

@@ -64,7 +64,7 @@ class EmotionSoundManager:
 
         try:
             # print(f"Playing: {sound_file}")
-            subprocess.run(["aplay", sound_file], check=True)
+            subprocess.run(["aplay", sound_file], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 
         except subprocess.CalledProcessError as e:
             print(f"Error playing sound: {e}")

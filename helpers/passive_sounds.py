@@ -7,29 +7,30 @@ import os
 class PassiveSoundsManager:
     def __init__(self):
         self.music = Music() 
-
+        self.sounds_dir = "/home/msutt/hal/sounds/passive/"
 
     async def sounds_thinking_loop_single(self):
         """Play a single passive sound dynamically from a directory, supporting multiple file types."""
-        sounds_dir = "/home/msutt/hal/sounds/passive/positive"
+        thinking_emotion = "positive"
+        sounds_positive = os.path.join(self.sounds_dir,thinking_emotion)
         supported_extensions = {".wav"}
 
         # Get a list of all supported sound files in the directory
         try:
             passive_sounds = [
-                os.path.join(sounds_dir, file)
-                for file in os.listdir(sounds_dir)
+                os.path.join(sounds_positive, file)
+                for file in os.listdir(sounds_positive)
                 if any(file.lower().endswith(ext) for ext in supported_extensions)
             ]
         except FileNotFoundError:
-            print(f"Error: Directory '{sounds_dir}' not found.")
+            print(f"Error: Directory '{sounds_positive}' not found.")
             return
         except Exception as e:
             print(f"Error: {e}")
             return
 
         if not passive_sounds:
-            print(f"No supported sound files found in '{sounds_dir}'.")
+            print(f"No supported sound files found in '{sounds_positive}'.")
             return
 
         # Randomly select a sound file
@@ -47,7 +48,7 @@ class PassiveSoundsManager:
         supported_extensions = {".wav"}
         
         # Determine the directory for the given emotion
-        sounds_dir = os.path.join(self.sounds_base_dir, emotion)
+        sounds_dir = os.path.join(self.sounds_dir, emotion)
         try:
             # Collect all sound files in the emotion directory
             emotion_sounds = [
@@ -73,29 +74,29 @@ class PassiveSoundsManager:
 
     async def play_weather_intro_sound(self):
         """Play a random weather intro sound once."""
-        sounds_dir = "/home/msutt/hal/sounds/passive/announcement" 
+        play_announcement = "announcement"
+        sounds_announcement = os.path.join(self.sounds_dir,play_announcement)
         supported_extensions = {".wav"}
         try:
             weather_intro_sounds = [
-                os.path.join(sounds_dir, file)
-                for file in os.listdir(sounds_dir)
+                os.path.join(sounds_announcement, file)
+                for file in os.listdir(sounds_announcement)
                 if any(file.lower().endswith(ext) for ext in supported_extensions)
             ]
         except FileNotFoundError:
-            print(f"Error: Directory '{sounds_dir}' not found.")
+            print(f"Error: Directory '{sounds_announcement}' not found.")
             return
         except Exception as e:
             print(f"Error: {e}")
             return
 
         if not weather_intro_sounds:
-            print(f"No supported weather intro sounds found in '{sounds_dir}'.")
+            print(f"No supported weather intro sounds found in '{sounds_announcement}'.")
             return
 
         # Select and play a random sound
         sound_file = random.choice(weather_intro_sounds)
         await asyncio.to_thread(self.music.sound_play, sound_file, 75)
-
 
     async def play_sound_indicator(self, sound_file, volume=50):
         """
@@ -103,6 +104,7 @@ class PassiveSoundsManager:
         Uses the robot hat's music.sound_play for playback.
         """
         try:
+            # print(f"Playing sound: {sound_file} at volume {volume}")
             await asyncio.to_thread(self.music.sound_play, sound_file, volume)
         except Exception as e:
             print(f"Error playing sound: {e}")
