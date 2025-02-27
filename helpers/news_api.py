@@ -68,7 +68,7 @@ class NewsFeed():
         for category in self.rss_feeds.keys():
             article = await self.fetch_news(category)
             if article:
-                news_data[category] = f"{article['title']} ({article['link']})"
+                news_data[category] = f"{article['title']}"
             else:
                 print(f"No article added for category {category}")
 
