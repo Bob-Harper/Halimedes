@@ -61,30 +61,30 @@ class NewsFeed():
         
         return []
 
-async def startup_fetch_news(self, llm_client):
-    """Fetches and returns one random headline from the available news categories."""
-    news_data = {}
+    async def startup_fetch_news(self, llm_client):
+        """Fetches and returns one random headline from the available news categories."""
+        news_data = {}
 
-    for category in self.rss_feeds.keys():
-        article = await self.fetch_news(category)
-        if article:
-            news_data[category] = f"{article['title']} ({article['link']})"
+        for category in self.rss_feeds.keys():
+            article = await self.fetch_news(category)
+            if article:
+                news_data[category] = f"{article['title']} ({article['link']})"
+            else:
+                print(f"No article added for category {category}")
+
+        # Store all headlines in conversation history
+        if news_data:
+            news_summary = "Here are today's headlines:\n" + "\n".join(f"{cat.capitalize()}: {news}" for cat, news in news_data.items())
+            llm_client.conversation_history.append({"role": "system", "content": news_summary})
+
+            # ✅ Pick one random article for the startup greeting
+            selected_news = random.choice(list(news_data.values()))
+            await self.response_manager.speak_with_flite("News connection established. Headlines have been preeloaded.")
+            return selected_news
+
         else:
-            print(f"No article added for category {category}")
-
-    # Store all headlines in conversation history
-    if news_data:
-        news_summary = "Here are today's headlines:\n" + "\n".join(f"{cat.capitalize()}: {news}" for cat, news in news_data.items())
-        llm_client.conversation_history.append({"role": "system", "content": news_summary})
-
-        # ✅ Pick one random article for the startup greeting
-        selected_news = random.choice(list(news_data.values()))
-        await self.response_manager.speak_with_flite("News connection established. Headlines have been preeloaded.")
-        return selected_news
-
-    else:
-        await self.response_manager.speak_with_flite("Unable to retrieve news at this time.")
-        return None  # ✅ No news available
+            await self.response_manager.speak_with_flite("Unable to retrieve news at this time.")
+            return None  # ✅ No news available
     
     @staticmethod
     def current_datetime():
