@@ -45,10 +45,13 @@ async def main():
     await response_manager.speak_with_flite("Servos powered. Listening initiated. Voice centers activated. Checking battery.")
     await general_utils.announce_battery_status()
     await weather_fetch.startup_fetch_forecast()
-    await news_api.startup_fetch_news(llm_client)  # Only needs llm_client now
+    startup_news_item = await news_api.startup_fetch_news(llm_client)
     current_time = news_api.current_datetime()
     await response_manager.speak_with_flite(f"Today's date is {current_time}.")    
-    startup_words = "This is so exciting! what are we doing today?"
+    if startup_news_item:
+        startup_words = f"This is so exciting! What shall we talk about today? Oh, I know! Did you hear about this? {startup_news_item}"
+    else:
+        startup_words = "This is so exciting! What shall we talk about today?"
     await actions_manager.startup_speech_actions(startup_words)
 
     while True:
