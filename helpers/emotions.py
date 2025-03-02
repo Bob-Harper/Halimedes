@@ -23,6 +23,7 @@ emotion_voice_map = {
     "disgust": {"pitch_factor": 0.6, "speed_factor": 1.2},   # Low pitch, slower pace
     "anticipation": {"pitch_factor": 1.25, "speed_factor": 0.75}, # Faster and eager
     "negative": {"pitch_factor": 0.5, "speed_factor": 1.15},  # Deep pitch, slower
+    "announcment": {"pitch_factor": 0.85, "speed_factor": 1.1},  # Neutral, slower
 }
 
 

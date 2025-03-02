@@ -3,7 +3,7 @@ import asyncio
 from helpers.new_movements import NewMovements
 import subprocess
 from helpers.general_utilities import GeneralUtilities
-from helpers.passive_actions import PassiveActionsManager
+from helpers.dynamic_passive_actions import PassiveActionsManager
 from helpers.passive_sounds import PassiveSoundsManager
 from helpers.response_utils import Response_Manager
 from helpers.weather import WeatherHelper
@@ -154,30 +154,33 @@ class CommandManager:
     async def command_get_news(self, *_):
         """
         Fetch the latest headlines from each news category and speak them aloud.
+        Only the spoken articles are added to conversation history.
         """
-        news_data = {}
-
+        spoken_articles = {}
+        
         # Fetch one headline from each category
         for category in self.news_api.rss_feeds.keys():
             article = await self.news_api.fetch_news(category)
             if article:
-                news_data[category] = f"{article['title']} ({article['link']})"
-
-        if not news_data:
+                # Build the spoken text combining title and summary
+                spoken_articles[category] = f"{article['title']} ({article['description']})"
+        
+        if not spoken_articles:
             await self.response_manager.speak_with_flite("I checked, but there are no new headlines right now.")
             return
-
+        
         # Play the weather/news intro sound
         await self.passive_sound.play_weather_intro_sound()
+        
+        # Speak and add each headline individually to conversation history
+        for category, article_text in spoken_articles.items():
+            spoken_line = f"{category.capitalize()} news: {article_text}"
+            await self.response_manager.speak_with_flite(spoken_line)
+            self.llm_client.conversation_history.append({
+                "role": "system", 
+                "content": spoken_line
+            })
 
-        # Format news for conversation history
-        formatted_news = "Here are today’s top headlines:\n" + "\n".join(f"{cat.capitalize()}: {news}" for cat, news in news_data.items())
-        self.llm_client.conversation_history.append({"role": "system", "content": formatted_news})
-
-        # Speak each headline aloud
-        for category, article in news_data.items():
-            await self.response_manager.speak_with_flite(f"{category.capitalize()} news: {article}")
-    
     async def command_test_all_actions(self, spoken_text):
         """Test all available actions."""
         await self.response_manager.speak_with_flite(f"I heard you say {spoken_text}. Initiating action test.")

@@ -67,7 +67,7 @@ class PassiveActionsManager:
         while not stop_event.is_set():
             # Weighted random choice: 70% sound, 30% action
             # choice = random.choices(["sound", "action"], weights=[60, 40], k=1)[0]
-            choice = random.choices(["sound", "action"], weights=[100, 0], k=1)[0]  # Set to Only Sounds for Debugging
+            choice = random.choices(["sound", "action"], weights=[70, 30], k=1)[0]  # Set to Only Sounds for Debugging
 
 
             if choice == "sound":
@@ -110,3 +110,22 @@ class PassiveActionsManager:
         movement_task = asyncio.to_thread(self.newmovements.sit_down)
         # Wait for both tasks to complete
         await asyncio.gather(speak_task, movement_task)
+
+    async def test_all_actions(self):
+        """Test all actions in a sequence, announcing each before execution."""
+        for category, actions in self.actions_by_category.items():
+            for action_name, action in actions:
+                await self.response_manager.speak_with_flite(f"Testing action: {action_name}")
+                
+                try:
+                    if isinstance(action, list):
+                        for step in action:
+                            await asyncio.to_thread(step)
+                    else:
+                        await asyncio.to_thread(action)  # Execute movement
+                    
+                except Exception as e:
+                    print(f"Error executing {action_name}: {e}")
+                    await self.response_manager.speak_with_flite(f"Error executing {action_name}. Moving on.")
+                
+                await asyncio.sleep(1.0)  # Small delay between actions

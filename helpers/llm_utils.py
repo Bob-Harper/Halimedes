@@ -86,6 +86,8 @@ class LLMClient:
             "debug": "deebug",
             "hehe": "Heh Heh",
             "preload": "preeload",
+            "sci-fi": "sigh-fye",
+            "aww": "awe",
         }
 
         # Function to match case dynamically

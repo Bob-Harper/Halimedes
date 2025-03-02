@@ -4,6 +4,7 @@ import asyncio
 from datetime import datetime
 from helpers.response_utils import Response_Manager  
 import random
+from bs4 import BeautifulSoup
 
 
 class NewsFeed():
@@ -15,9 +16,6 @@ class NewsFeed():
         self.rss_feeds = {
             "nature": "https://www.natureconservancy.ca/system/rss/channel.jsp?feedID=464872245",
             "tech": "https://www.cbc.ca/webfeed/rss/rss-technology",
-            "health": "https://www.cbc.ca/webfeed/rss/rss-health",
-            "arts": "https://www.cbc.ca/webfeed/rss/rss-arts",
-            "national": "https://www.cbc.ca/webfeed/rss/rss-canada",  
         }
 
     async def fetch_news(self, category):
@@ -33,8 +31,6 @@ class NewsFeed():
 
         # Choose a random article from the list
         selected_article = random.choice(articles)
-        print(f"Fetched {len(articles)} articles for category {category}. Selecting one at random.")
-
         return selected_article
 
     async def fetch_news_feed(self, url, timeout=5):
@@ -49,7 +45,12 @@ class NewsFeed():
                     if response.status == 200:
                         data = await response.text()
                         feed = feedparser.parse(data)
-                        articles = [{"title": entry.title, "link": entry.link} for entry in feed.entries]
+                        articles = []
+                        for entry in feed.entries:
+                            # Prefer 'summary' if available, otherwise 'description'
+                            summary = self.extract_text(getattr(entry, 'summary', getattr(entry, 'description', '')))
+                            title = self.extract_text(entry.title)
+                            articles.append({"title": title, "description": summary})
                         return articles
                     else:
                         print(f"Failed to fetch RSS feed: {url} (Status Code: {response.status})")
@@ -63,30 +64,37 @@ class NewsFeed():
 
     async def startup_fetch_news(self, llm_client):
         """Fetches and returns one random headline from the available news categories."""
-        news_data = {}
-
+        articles = []
         for category in self.rss_feeds.keys():
             article = await self.fetch_news(category)
             if article:
-                news_data[category] = f"{article['title']}"
+                articles.append(article)  # article is a dict with 'title' and 'description'
             else:
                 print(f"No article added for category {category}")
-
-        # Store all headlines in conversation history
-        if news_data:
-            news_summary = "Here are today's headlines:\n" + "\n".join(f"{cat.capitalize()}: {news}" for cat, news in news_data.items())
-            llm_client.conversation_history.append({"role": "system", "content": news_summary})
-
-            # ✅ Pick one random article for the startup greeting
-            selected_news = random.choice(list(news_data.values()))
+        
+        if articles:
+            # Choose one random article from the list
+            selected_article = random.choice(articles)
+            # Add only the chosen article's title to conversation history
+            llm_client.conversation_history.append({
+                "role": "system", 
+                "content": selected_article["title"]
+            })
             await self.response_manager.speak_with_flite("News connection established. Headlines have been preeloaded.")
-            return selected_news
-
+            return selected_article["title"]
         else:
             await self.response_manager.speak_with_flite("Unable to retrieve news at this time.")
-            return None  # ✅ No news available
+            return None
+
     
     @staticmethod
     def current_datetime():
         """Returns the current date and time as a formatted string."""
         return datetime.now().strftime("%A, %B %d, %Y. The time is %I:%M %p.")
+
+    @staticmethod
+    def extract_text(content):
+        """Extract plain text from a string that might contain HTML."""
+        if content:
+            return BeautifulSoup(content, "html.parser").get_text(separator=" ", strip=True)
+        return ""

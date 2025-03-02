@@ -47,13 +47,12 @@ async def main():
     await weather_fetch.startup_fetch_forecast()
     startup_news_item = await news_api.startup_fetch_news(llm_client)
     current_time = news_api.current_datetime()
-    await response_manager.speak_with_flite(f"Today's date is {current_time}.")    
-    if startup_news_item:
-        startup_words = f"This is so exciting! What shall we talk about today? Oh, I know! Did you hear about this? {startup_news_item}"
-    else:
-        startup_words = "This is so exciting! What shall we talk about today?"
+    await response_manager.speak_with_flite(f"Today's date is {current_time}.", emotion="announcement")    
+    startup_words = "This is so exciting! What shall we talk about today?"
     await actions_manager.startup_speech_actions(startup_words)
-
+    if startup_news_item:
+        conversation_starter = f"Oh, I know! Did you hear about this? {startup_news_item}"
+        await response_manager.speak_with_flite(conversation_starter, emotion="announcement")
     while True:
         print("Entering the main loop, waiting for input...")
         spoken_text, raw_audio = await audio_input.recognize_speech_vosk(return_audio=True)  # Get input and raw audio
