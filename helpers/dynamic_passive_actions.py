@@ -83,10 +83,10 @@ class PassiveActionsManager:
         category = random.choices(list(self.actions_by_category.keys()), weights=self.category_weights.values(), k=1)[0]
 
         # Pick a random action from the chosen category
-        action = random.choice(self.actions_by_category[category])
+        action_name, action_function = random.choice(self.actions_by_category[category])  # ✅ Unpack the tuple
 
         # Execute the action
-        await asyncio.to_thread(action)
+        await asyncio.to_thread(action_function)  # ✅ Now it's actually calling a function
 
         # Short pause between actions
         await asyncio.sleep(1.0)
@@ -105,11 +105,9 @@ class PassiveActionsManager:
             pass
 
     async def shutdown_speech_actions(self, words):
-        # Run speech and movement concurrently
-        speak_task = asyncio.create_task(self.response_manager.speak_with_flite(words))
-        movement_task = asyncio.to_thread(self.newmovements.sit_down)
-        # Wait for both tasks to complete
-        await asyncio.gather(speak_task, movement_task)
+        """Speak shutdown message, then sit down after speech completes."""
+        await self.response_manager.speak_with_flite(words)  # ✅ Speech finishes first
+        await asyncio.to_thread(self.newmovements.sit_down)  # ✅ THEN movement starts
 
     async def test_all_actions(self):
         """Test all actions in a sequence, announcing each before execution."""
@@ -129,3 +127,13 @@ class PassiveActionsManager:
                     await self.response_manager.speak_with_flite(f"Error executing {action_name}. Moving on.")
                 
                 await asyncio.sleep(1.0)  # Small delay between actions
+
+""" 
+    async def shutdown_speech_actions(self, words):
+        # Run speech and movement concurrently
+        speak_task = asyncio.create_task(self.response_manager.speak_with_flite(words))
+        movement_task = asyncio.to_thread(self.newmovements.sit_down)
+        # Wait for both tasks to complete
+        await asyncio.gather(speak_task, movement_task)
+
+"""

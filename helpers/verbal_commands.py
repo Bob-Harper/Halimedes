@@ -14,7 +14,7 @@ import sys
 
 
 # Shutdown signal handler
-def handle_shutdown_signal(signal_number, frame):
+def handle_shutdown_signal(_signal_number, _frame):
     print("Shutdown signal received. Exiting gracefully...")
     sys.exit(0)
 
@@ -116,15 +116,22 @@ class CommandManager:
     async def command_exit_chat(self, spoken_text):
         """Exit chat mode but remain powered."""
         await self.response_manager.speak_with_flite(f"Verbal Command Detected: {spoken_text}. Please stand by.")
-        system_prompt = 'You are Halimeedees, a quirky alien robot exploring Earth. Do not use asterisks or actions. The time of the chatting is over, the time of doing something else has begun. Goodbye.'
+
+        system_prompt = (
+            "You are Halimeedees, a quirky alien robot exploring Earth. "
+            "Do not use asterisks or actions. The time of the chatting is over, "
+            "the time of doing something else has begun. Goodbye."
+        )
+
         response_text = await self.llm_client.send_message_async(system_prompt, spoken_text)
-        
-        # Wait for shutdown actions to complete
-        await self.passive_manager.shutdown_speech_actions(response_text)  
-        
-        # Add a delay to ensure the action visibly completes
-        await asyncio.sleep(1)  
-        return True  # Signal to break the loop
+
+        # ✅ Speech FIRST, THEN sit down (no concurrency issues)
+        await self.passive_manager.shutdown_speech_actions(response_text)
+
+        # ✅ Small delay to allow actions to visibly complete before exiting
+        await asyncio.sleep(1)
+
+        return True  # ✅ Signal main loop to exit
 
     async def command_help(self, spoken_text):
         """Provide verbal help."""
