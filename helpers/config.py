@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from gpiozero import LED, Button
 
 # Load .env once at startup
 load_dotenv()
@@ -16,3 +17,7 @@ OLLAMALAPTOP = os.getenv("OLLAMALAPTOP")
 HUGGY_TOKEN = os.getenv("HUGGY_TOKEN")
 NEWSAPIDOTORG = os.getenv("NEWSAPIDOTORG")
 NEWSAPIDOTCOM = os.getenv("NEWSAPIDOTCOM")
+
+# GPIO pins for hardware
+# Define but don't initialize
+LED_INDICATOR = LED(26)

@@ -6,7 +6,7 @@ import numpy as np
 import websockets
 from helpers.passive_sounds import PassiveSoundsManager
 from helpers.general_utilities import GeneralUtilities
-from gpiozero import LED
+from helpers.config import LED_INDICATOR
 
 
 class AudioInput:
@@ -19,7 +19,7 @@ class AudioInput:
         self.silence_threshold = silence_threshold
         self.silence_duration = silence_duration
         self.sample_rate = sample_rate
-        self.listening_led = LED(26)
+        self.listening_led = LED_INDICATOR  # Use the shared LED
 
     async def recognize_speech_vosk(self, server_url="ws://192.168.0.123:2700", return_audio=False):
         """

@@ -1,7 +1,8 @@
 print("=== STARTUP SCRIPT INITIATED ===")
+# STARTUP.PY AUTOSTART SERVICE IS DISABLED, HAL WILL BOOT STRAIGHT INTO WORK MODE
+
 import warnings
 warnings.simplefilter('ignore')
-
 import asyncio
 from helpers.config import OLLAMALAPTOP
 """ 
@@ -12,7 +13,6 @@ prevent multiple initializations of the Picrawler class.
 from helpers.picrawler import Picrawler 
 # Create a single instance of Picrawler to pass through
 picrawler_instance = Picrawler()
-
 from helpers.response_utils import Response_Manager
 from helpers.listener_utils import AudioInput
 from helpers.verbal_commands import CommandManager

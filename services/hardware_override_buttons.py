@@ -1,73 +1,61 @@
-import signal
-import sys
 import os
-from gpiozero import Button, LED, DigitalInputDevice
+import time
+from robot_hat import Pin
 
-# GPIO Setup
-USR_BUTTON = Button(25, pull_up=True, bounce_time=0.1)  # User Button
-RST_BUTTON = Button(16, pull_up=True, bounce_time=0.1)  # Reset Button
-LED_INDICATOR = LED(26)  # LED
-HAT_STATUS = DigitalInputDevice(12, pull_up=False)  # GPIO12 detects Hat power
+# Define pins for buttons and LED
+USR_BUTTON = Pin(25, Pin.IN, Pin.PULL_UP)
+RST_BUTTON = Pin(16, Pin.IN, Pin.PULL_UP)
+LED = Pin("LED", Pin.OUT)
 
-# Constants
-HOLD_DURATION = 3  # Seconds for hold actions
-DOUBLE_TAP_DELAY = 0.5  # Seconds for double-tap detection
+HOLD_TIME = 3  # Hold duration for confirming actions
 
+def detect_button_hold(pin):
+    """Detects if a button is held for `HOLD_TIME`. Returns True if held long enough, False if released early."""
+    start_time = time.time()
+    LED.on()  # LED ON while holding
 
-def cleanup_and_exit(signum, frame):
-    HAT_STATUS.close()  # Release GPIO12
-    USR_BUTTON.close()
-    RST_BUTTON.close()
-    LED_INDICATOR.off()
-    sys.exit(0)
+    initial_value = pin.value()
 
+    while time.time() - start_time < HOLD_TIME:
+        if pin.value() != initial_value:  # Button released early
+            LED.off()
+            return False
+        time.sleep(0.1)
 
-# Handle Ctrl+C and termination signals
-signal.signal(signal.SIGINT, cleanup_and_exit)
-signal.signal(signal.SIGTERM, cleanup_and_exit)
+    print(f"[DEBUG] {pin} hold confirmed at {HOLD_TIME} sec! Action triggered.")
+    LED.off()
+    return True  # Confirmation reached
 
+def button_listener():
+    """Listens for button events in a non-blocking loop."""
+    print("[INFO] Button monitoring started. Waiting for button events...")
 
-# Function to check if the Hat is ON/OFF
-def is_hat_on():
-    return HAT_STATUS.value  # Returns True if Hat is ON
+    while True:
+        usr_pressed = USR_BUTTON.value()
+        rst_pressed = RST_BUTTON.value()
 
+        if usr_pressed and rst_pressed:
+            print("[DEBUG] Both buttons pressed")
+            if detect_button_hold(USR_BUTTON) and detect_button_hold(RST_BUTTON):
+                print("[DEBUG] Both buttons held: Initiating Shutdown")
+                LED.on()
+                # os.system("sudo shutdown -h now")  # Uncomment to enable shutdown
 
-def usr_pressed():
-    if is_hat_on():
-        LED_INDICATOR.on()
-    else:
-        LED_INDICATOR.off()
+        elif usr_pressed:
+            print("[DEBUG] USR button pressed.")
+            if detect_button_hold(USR_BUTTON):
+                print("[DEBUG] USR_BUTTON held: Shutting down startup.py")
+                LED.on()
+                # os.system("sudo systemctl stop hal_startup.service")  # Uncomment to enable shutdown
 
+        elif rst_pressed:
+            print("[DEBUG] RST button pressed.")
+            if detect_button_hold(RST_BUTTON):
+                print("[DEBUG] RST button held: Rebooting system")
+                LED.on()
+                # os.system("sudo reboot")  # Uncomment to enable reboot
 
-def rst_pressed():
-    if is_hat_on():
-        LED_INDICATOR.off()
-    else:
-        LED_INDICATOR.on()
+        time.sleep(0.1)  # Prevent CPU overuse
 
-
-def usr_released():
-    if is_hat_on():
-        LED_INDICATOR.off()
-    else:
-        LED_INDICATOR.on()
-    os.system("sudo systemctl stop hal_startup.service")  # Actually stop Hal    
-
-
-def rst_released():
-    if is_hat_on():
-        LED_INDICATOR.off()
-    else:
-        LED_INDICATOR.on()
-    os.system("sudo shutdown -h now")  # Actually shut down    
-
-
-# Assign button functions
-USR_BUTTON.when_pressed = usr_pressed
-USR_BUTTON.when_released = usr_released
-RST_BUTTON.when_pressed = rst_pressed
-RST_BUTTON.when_released = rst_released
-
-# Start monitoring buttons
-from signal import pause
-pause()
+if __name__ == "__main__":
+    button_listener()
