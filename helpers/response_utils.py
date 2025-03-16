@@ -160,7 +160,7 @@ class Response_Manager:
             if sound_match:
                 effect = sound_match.group(1).strip()
                 processed_segments.append(("sound", effect))
-                skip_next = True  # 🚨 Prevents the rogue category from getting stored
+                skip_next = True  # Prevents the rogue category from getting stored
                 continue  # Skip further processing for this chunk
 
             # Handle actions
@@ -172,10 +172,10 @@ class Response_Manager:
 
                 if action_function:
                     processed_segments.append(("action", (action_name, action_function)))
-                    skip_next = True  # 🚨 Prevents the rogue category from getting stored
+                    skip_next = True  # Prevents the rogue category from getting stored
                 continue  # Skip further processing for this chunk
 
-            # ✅ If it's text and wasn't flagged for skipping, store it
+            # If it's text and wasn't flagged for skipping, store it
             processed_segments.append(("text", chunk.strip()))
 
         return processed_segments

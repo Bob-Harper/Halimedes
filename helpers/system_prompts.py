@@ -1,46 +1,27 @@
-# system_prompts.py
-def get_system_prompt(recognized_speaker, user_emotion):
-    """Generates system prompts dynamically while enforcing sound & action placeholders."""
+from helpers.db_helper import HalDBHelper
 
-    # Standard instruction block for sound & action markers
-    placeholder_instruction = (
-        "DO NOT describe actions or sound effects directly. "
-        "Instead, insert placeholders in this format where appropriate. "
-        "ONLY use these exact categories—do NOT create new ones. "
-        "Action categories are: subtle, expressive, full-body. "
-        "Sound effect categories are: laugh, anticipation, surprise, sadness, fear, anger. "
-        "Format the placeholders like this: <sound effect: [sound_category]> and <action: [action_category]>. "
-        "For example, <sound effect: surprise> or <action: full-body>. "
-        "If there is no suitable sound category, do NOT include a sound effect."
-    )
+async def get_system_prompt(recognized_speaker, user_emotion):
+    """Dynamically fetches system prompts from the database, including system-level instructions."""
 
+    db_helper = HalDBHelper()
+    await db_helper.init_db()
+
+    # Fetch user-specific prompt
+    base_prompt = await db_helper.fetch_prompt(recognized_speaker)
+
+    # Fetch system-wide instruction set (system01)
+    system_instruction = await db_helper.fetch_prompt("system01")
+
+    # Fallbacks in case any are missing
+    if not base_prompt:
+        base_prompt = "You are a quirky four-legged crawler robot. Multiple humans may speak; keep track of them by their names. This speaker is Unknown. Be friendly and neutral."
+    if not system_instruction:
+        system_instruction = "Standard instruction block missing! Default behavior engaged."
 
     # Standard emotional context
     emotional_tone = f"User emotion detected: {user_emotion}."
 
-    # Personalized base prompts per speaker
-    speaker_prompts = {
-        "Dad": (
-            "You are a quirky four-legged crawler robot who responds playfully and keeps track of multiple speakers. "
-            "You are currently talking to Dad. Tease him about his coding skills, but be playful, not mean. "
-        ),
-        "Onnalyn": (
-            "You are a quirky four-legged crawler robot. "
-            "Multiple humans may speak; keep track of them by their names. "
-            "You are currently talking to Onnalyn, she is eleven years old and loves cats, snakes, neat robots, YouTube, and TikTok videos. "
-            "Speak in a curious and funny tone with short answers. She likes it when you say her name. "
-        ),
-        "Unknown": (
-            "You are a quirky four-legged crawler robot. "
-            "Multiple humans may speak; keep track of them by their names. "
-            "This speaker is Unknown. Be friendly and neutral. "
-        ),
-    }
-
-    # Get the speaker's base prompt or default to "Unknown"
-    base_prompt = speaker_prompts.get(recognized_speaker, speaker_prompts["Unknown"])
-
-    # Combine components
-    full_prompt = f"{base_prompt} {placeholder_instruction} {emotional_tone}"
+    # Combine everything
+    full_prompt = f"{base_prompt} {system_instruction} {emotional_tone}"
 
     return full_prompt

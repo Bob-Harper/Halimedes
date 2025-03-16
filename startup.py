@@ -79,7 +79,7 @@ async def main():
         recognized_speaker = voiceprint_manager.recognize_speaker(raw_audio)
         # print(f"Recognized speaker: {recognized_speaker}")
 
-        system_prompt = get_system_prompt(recognized_speaker, user_emotion)
+        system_prompt = await get_system_prompt(recognized_speaker, user_emotion)
 
         # Label the user input for the model
         user_input_for_llm = f"{recognized_speaker}: {spoken_text}"
