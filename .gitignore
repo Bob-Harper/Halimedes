@@ -10,3 +10,6 @@ pyannote/
 voiceprints/
 classes/
 .venv/
+eyes/data/
+oops/
+services/
