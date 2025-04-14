@@ -1,13 +1,14 @@
 import time
 from classes.dualeye_driver import eye_left, eye_right
-from helpers.eye_loader import load_eye_profile
+from eyes.eye_loader import load_eye_profile
 from PIL import Image
 import numpy as np
 import random
 
-profile = load_eye_profile("180blue")  # or whatever .json name you're using
+# profile = load_eye_profile("googly01")  # DEFAULT
+profile = load_eye_profile("hitech28")  # or whatever .json name you're using
 full_img = profile.image
-SCLERA_SIZE = profile.sclera_radius
+SCLERA_SIZE = profile.sclera_size
 SOURCE_SIZE = 180  # Always convert eye textures to this pixel size
 WIDTH = HEIGHT = 160
 # Pre-rendered gaze positions (centered, left, right, up, down)
@@ -56,8 +57,8 @@ def dual_blink_close(speed=0.02):
         eye.fill_rect(0, HEIGHT // 2 - 2, WIDTH, 4, 0x0000)
 
 
-def dual_blink_open(source_image, pupil_size=1.0, speed=0.02):
-    warped = warp_pupil(source_image, pupil_size)
+def dual_blink_open(source_image, pupil_size=1.0, x_off=10, y_off=10, speed=0.02):
+    warped = warp_pupil(source_image, pupil_size, x_off=x_off, y_off=y_off)
     eyelids_applied = apply_eyelids(warped, top=32, bottom=32, left=0, right=0)
     rgb_buf = bytearray()
     for y in range(160):
@@ -75,7 +76,6 @@ def dual_blink_open(source_image, pupil_size=1.0, speed=0.02):
         y1 = HEIGHT - i - 1
         if y1 < y0:
             continue
-
         for eye in (eye_left, eye_right):
             eye.set_window(0, y0, WIDTH - 1, y1)
             for row in range(y0, y1 + 1):
@@ -87,10 +87,10 @@ def dual_blink_open(source_image, pupil_size=1.0, speed=0.02):
         time.sleep(speed)
 
 
-def dual_blink_cycle(source_image, pupil_size=1.0, close_speed=0.02, open_speed=0.02, hold=0.1):
+def dual_blink_cycle(source_image, pupil_size=1.0, x_off=10, y_off=10, close_speed=0.02, open_speed=0.02, hold=0.1):
     dual_blink_close(speed=close_speed)
     time.sleep(hold)
-    dual_blink_open(source_image, pupil_size=pupil_size, speed=open_speed)
+    dual_blink_open(source_image, pupil_size=pupil_size, x_off=x_off, y_off=y_off, speed=open_speed)
 
 
 def warp_pupil(source_img, pupil_size=1.0, output_size=160, x_off=10, y_off=10):
@@ -158,7 +158,7 @@ def apply_eyelids(img, top=0, bottom=0, left=0, right=0):
 
     return Image.fromarray(arr)
 
-def smooth_gaze_transition(from_x, from_y, to_x, to_y, from_pupil, to_pupil, steps=6, delay=0.02):
+def smooth_gaze_transition(from_x, from_y, to_x, to_y, from_pupil, to_pupil, steps=8, delay=0.015):
     """
     Smoothly animate gaze and pupil size from current to target.
     """
@@ -204,11 +204,14 @@ def main():
 
             # Occasionally blink
             if random.random() < 0.15:
-                dual_blink_cycle(full_img, pupil_size=pupil, close_speed=0.015, open_speed=0.03, hold=0.05)
+                dual_blink_cycle(full_img, pupil_size=pupil, x_off=current_x, y_off=current_y,
+                                close_speed=0.015, open_speed=0.03, hold=0.05)
+
 
     except KeyboardInterrupt:
         print("\nNo coffee? ... shutting down.")
-        dual_blink_cycle(full_img, pupil_size=1.2, close_speed=0.04, open_speed=0.06)
+        dual_blink_cycle(full_img, pupil_size=current_pupil, x_off=current_x, y_off=current_y,
+                        close_speed=0.04, open_speed=0.06)
         time.sleep(0.5)
         dual_blink_close(speed=0.1)
 
