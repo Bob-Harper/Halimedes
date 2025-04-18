@@ -3,6 +3,7 @@ import random
 from eyes.eye_loader import load_eye_profile
 from eyes.eye_animator import EyeAnimator
 
+
 def run_eye_preview(profile_name):
     profile = load_eye_profile(profile_name)
     animator = EyeAnimator(profile)
@@ -49,7 +50,7 @@ def run_eye_preview(profile_name):
     end_time = "infinite"
     while end_time == "infinite":
         new_x, new_y = random.choice(gaze_coords)
-        pupil = random.uniform(pupil_min, pupil_max)
+        pupil = snap(random.uniform(pupil_min, pupil_max), step=.1)
         animator.smooth_gaze(new_x, new_y, pupil)
         time.sleep(random.uniform(0.4, 1.0))
 
@@ -62,10 +63,14 @@ def run_eye_preview(profile_name):
             )
 
 
+def snap(value, step=0.01):
+    return round(step * round(value / step), 2)
+
+
 if __name__ == "__main__":
     # CHANGE THIS to whatever profile you want to test.  current suggested default: - googly01 * ACTUAL default
  
-    profile_name = "googly01"  # <- filename without .json extension.
+    profile_name = "artdeco01"  # <- filename without .json extension.
 
     try:
         run_eye_preview(profile_name)
