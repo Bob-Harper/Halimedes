@@ -70,7 +70,7 @@ def snap(value, step=0.01):
 if __name__ == "__main__":
     # CHANGE THIS to whatever profile you want to test.  current suggested default: - googly01 * ACTUAL default
  
-    profile_name = "artdeco01"  # <- filename without .json extension.
+    profile_name = "vector03"  # <- filename without .json extension.
 
     try:
         run_eye_preview(profile_name)
@@ -80,13 +80,15 @@ if __name__ == "__main__":
 """
 Eye textures with working CFG values:
 
-- vector04 * possible default
+- vector04 * possible defaultvector04
 - hitech28
 - hitech06
 - hitech10
 - hitech13
 - hitech16 * possible default
 - googly01 * ACTUAL default
+- bluetech01 * possible default
 
-
+  "pupil_min": 0.975,
+  "pupil_max": 1.3,
 """
