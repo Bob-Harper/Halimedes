@@ -26,28 +26,18 @@ def smooth_gaze(to_x, to_y, to_pupil, steps=8, delay=0.015):
         steps, delay
     )
 
-# ROTATION CORRECTION: 90° clockwise
 def map_face_to_gaze(face_x, face_y):
-    # Safe bounds
-    face_x = max(100, min(540, face_x))
-    face_y = max(100, min(380, face_y))
+    # Safe bounds (based on what we observed)
+    face_x = max(100, min(540, face_x))  # Horizontal clamp
+    face_y = max(100, min(380, face_y))  # Vertical clamp
 
-    # Swap X and Y due to rotation
-    corrected_x = face_y
-    corrected_y = 640 - face_x  # Inverted X because of rotation
+    # Normalize to 0.0–1.0
+    norm_x = (face_x - 100) / (540 - 100)
+    norm_y = (face_y - 100) / (380 - 100)
 
-    # Normalize
-    norm_x = (corrected_x - 100) / (380 - 100)  # Now using Y as X
-    norm_y = (corrected_y - 100) / (540 - 100)  # Now using X as Y
-
-    # Flip for correct mirrored gaze (optional depending on setup)
-    norm_x = 1.0 - norm_x
-    norm_y = 1.0 - norm_y
-
-    # To gaze offsets
-    x_off = norm_x * 20
-    y_off = norm_y * 20
-
+    # flipping needed — image is correct
+    x_off = norm_x * 20         # Left/Right is good
+    y_off = (1.0 - norm_y) * 20 # Flip vertical: top becomes bottom
     return x_off, y_off
 
 
@@ -71,7 +61,7 @@ def main():
                 last_seen_face = time.time()
                 last_face_coords = (x_off, y_off)
 
-                smooth_gaze(x_off, y_off, to_pupil=1.0)
+                smooth_gaze(x_off, y_off, to_pupil=1.2)
 
             else:
                 time_since_seen = time.time() - last_seen_face
@@ -79,7 +69,7 @@ def main():
                 if time_since_seen < face_timeout:
                     # Use last known position
                     x_off, y_off = last_face_coords
-                    smooth_gaze(x_off, y_off, to_pupil=1.0)
+                    smooth_gaze(x_off, y_off, to_pupil=1.3)
                 else:
                     # Timeout expired — return to center
                     smooth_gaze(10, 10, to_pupil=1.0)
