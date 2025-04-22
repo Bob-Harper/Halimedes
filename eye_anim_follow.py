@@ -3,12 +3,17 @@ from time import sleep
 from eyes.eye_loader import load_eye_profile
 from eyes.eye_animator import EyeAnimator
 import time
+import random
+
+last_blink_time = time.time()
+blink_interval = random.uniform(8, 10)
 
 profile = load_eye_profile("real_owl")
 animator = EyeAnimator(profile)
 last_seen_face = time.time()
 face_timeout = 0.75  # seconds before we reset to center
 last_face_coords = (10, 10)  # start centered
+
 
 def smooth_gaze_transition(from_x, from_y, to_x, to_y, from_pupil, to_pupil, steps=8, delay=0.015):
     for i in range(1, steps + 1):
@@ -18,6 +23,7 @@ def smooth_gaze_transition(from_x, from_y, to_x, to_y, from_pupil, to_pupil, ste
         animator.draw_gaze(interp_x, interp_y, pupil_size=interp_pupil)
         time.sleep(delay)
 
+
 def smooth_gaze(to_x, to_y, to_pupil, steps=8, delay=0.015):
     animator.smooth_gaze_transition(
         animator.current_x, animator.current_y,
@@ -25,6 +31,7 @@ def smooth_gaze(to_x, to_y, to_pupil, steps=8, delay=0.015):
         animator.current_pupil, to_pupil,
         steps, delay
     )
+
 
 def map_face_to_gaze(face_x, face_y):
     # Safe bounds (based on what we observed)
@@ -41,11 +48,10 @@ def map_face_to_gaze(face_x, face_y):
     return x_off, y_off
 
 
-
 def main():
-    global last_seen_face, last_face_coords
+    global last_seen_face, last_face_coords, last_blink_time, blink_interval
     Vilib.camera_start(vflip=False, hflip=False)
-    Vilib.display(local=True, web=False)
+    # Vilib.display(local=True, web=False)
     Vilib.face_detect_switch(True)
 
     print("[Hal Vision] Active — tracking enabled. Ctrl+C to stop.")
@@ -67,12 +73,17 @@ def main():
                 time_since_seen = time.time() - last_seen_face
 
                 if time_since_seen < face_timeout:
-                    # Use last known position
                     x_off, y_off = last_face_coords
                     smooth_gaze(x_off, y_off, to_pupil=1.3)
                 else:
-                    # Timeout expired — return to center
                     smooth_gaze(10, 10, to_pupil=1.0)
+
+            # BLINK CHECK
+            now = time.time()
+            if now - last_blink_time > blink_interval:
+                animator.blink()
+                last_blink_time = now
+                blink_interval = random.uniform(8, 10)
 
             sleep(0.2)
 

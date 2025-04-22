@@ -1,7 +1,6 @@
 import subprocess
 import asyncio
 import re
-import os
 import random
 from helpers.emotions import get_voice_modifiers
 from helpers.emotions import EmotionHandler
@@ -13,7 +12,7 @@ from rapidfuzz import process
 class Response_Manager:
     _actions_manager = None  # Store actions manager globally
 
-    def __init__(self, picrawler_instance, actions_manager=None):
+    def __init__(self, picrawler_instance, actions_manager=None, eye_animator=None):
         self.crawler = picrawler_instance
         # Hal's voicefile
         self.voice_path = "/home/msutt/hal/flitevox/cmu_us_rms.flitevox"
@@ -28,7 +27,7 @@ class Response_Manager:
 
         self.emotion_handler = EmotionHandler()
         self.sound_manager = PassiveSoundsManager()
-
+        self.eye_animator = eye_animator
         # Store actions_manager once (global for this class)
         if actions_manager:
             Response_Manager._actions_manager = actions_manager  
@@ -124,11 +123,37 @@ class Response_Manager:
                 action_name, action_function = content  # Proper tuple unpacking
                 await asyncio.to_thread(action_function)  # Perform inline
 
+            elif segment_type == "gaze":
+                await asyncio.to_thread(self.eye_animator.apply_gaze_mode, content)
+
+            elif segment_type == "face":
+                await asyncio.to_thread(self.eye_animator.set_expression, content)
+
             # Short delay to allow natural timing
             await asyncio.sleep(0.3)
 
     @staticmethod
-    def process_and_replace_actions(response_text):
+    def remap_llm_gaze(direction):
+        """
+        Translate LLM directions (up/down/left/right) to match Hal's eye orientation.
+        """
+
+        # Observed behavior:
+        # LLM says 'up'    => Hal looks left
+        # LLM says 'right' => Hal looks up
+
+        translation = {
+            "up": "left",
+            "down": "right",
+            "left": "up",
+            "right": "down",
+            "center": "center",
+            "wander": "wander"
+        }
+
+        return translation.get(direction, "center")
+
+    def process_and_replace_actions(self, response_text):
         """
         Parses an LLM response, extracting:
         - Text for speech
@@ -140,9 +165,11 @@ class Response_Manager:
         # Define patterns for LLM markers
         sound_effect_pattern = r"<sound effect: (.*?)>"
         action_pattern = r"<action: (.*?)>"
-
+        gaze_pattern = r"<gaze: (.*?)>"
+        face_pattern = r"<face: (.*?)>"
         # Split response text based on markers
-        split_text = re.split(f"({sound_effect_pattern}|{action_pattern})", response_text)
+        split_text = re.split(f"({sound_effect_pattern}|{action_pattern}|{gaze_pattern}|{face_pattern})", 
+                              response_text)
 
         processed_segments = []
         skip_next = False  # Prevent storing extra fragments
@@ -174,6 +201,23 @@ class Response_Manager:
                     processed_segments.append(("action", (action_name, action_function)))
                     skip_next = True  # Prevents the rogue category from getting stored
                 continue  # Skip further processing for this chunk
+
+            # Gaze handling with remap
+            gaze_match = re.match(gaze_pattern, chunk)
+            if gaze_match:
+                gaze_type = gaze_match.group(1).strip()
+                remapped_gaze = self.remap_llm_gaze(gaze_type)  # <-- apply translation
+                processed_segments.append(("gaze", remapped_gaze))
+                skip_next = True
+                continue
+
+            # Expression handling
+            face_match = re.match(face_pattern, chunk)
+            if face_match:
+                expr = face_match.group(1).strip()
+                processed_segments.append(("face", expr))
+                skip_next = True
+                continue
 
             # If it's text and wasn't flagged for skipping, store it
             processed_segments.append(("text", chunk.strip()))

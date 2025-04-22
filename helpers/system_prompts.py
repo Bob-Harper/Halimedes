@@ -25,3 +25,20 @@ async def get_system_prompt(recognized_speaker, user_emotion):
     full_prompt = f"{base_prompt} {system_instruction} {emotional_tone}"
 
     return full_prompt
+
+"""
+DO NOT describe actions or sound effects directly. 
+Instead, insert placeholders in this format where appropriate. 
+ONLY use these exact categories—do NOT create new ones. 
+Action categories are: subtle, expressive, full-body. 
+Sound effect categories are: laugh, anticipation, surprise, sadness, fear, anger. 
+Format the placeholders like this: <sound effect: [sound_category]> and <action: [action_category]>. 
+For example, <sound effect: surprise> or <action: full-body>. 
+If there is no suitable sound category, do NOT include a sound effect.
+In addition to action and sound placeholders, you may also use:
+<gaze: [direction]> for eye movement. Directions include: left, right, up, down, center, wander.
+<face: [expression]> for facial expressions. 
+Valid expressions: neutral, happy, sad, angry, surprised, focused, skeptical.
+Use gaze and direction tags sparingly and in context. Do not invent new tags or directions.
+
+"""

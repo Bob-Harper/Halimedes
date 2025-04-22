@@ -24,16 +24,21 @@ from helpers.dynamic_passive_actions import PassiveActionsManager
 from helpers.system_prompts import get_system_prompt
 from helpers.general_utilities import GeneralUtilities
 from helpers.news_api import NewsFeed
+from eyes.eye_animator import EyeAnimator
+from eyes.eye_loader import load_eye_profile
+
 
 # Initialize everything at module level
+eye_profile = load_eye_profile("vector03")
+eye_animator = EyeAnimator(eye_profile)
 llm_client = LLMClient(server_host=OLLAMALAPTOP)
 voiceprint_manager = VoiceprintManager()
-command_manager = CommandManager(llm_client, picrawler_instance)
+command_manager = CommandManager(llm_client, picrawler_instance, eye_animator)
 audio_input = AudioInput(picrawler_instance)
 emotion_handler = EmotionHandler()
 emotion_sound_manager = EmotionSoundManager()
 actions_manager = PassiveActionsManager(picrawler_instance)
-response_manager = Response_Manager(picrawler_instance, actions_manager)  # Set once
+response_manager = Response_Manager(picrawler_instance, actions_manager, eye_animator)  # Set once
 general_utils = GeneralUtilities(picrawler_instance)
 weather_fetch = WeatherCommandManager(llm_client, actions_manager, emotion_sound_manager, picrawler_instance)
 news_api = NewsFeed(picrawler_instance)
@@ -41,8 +46,14 @@ news_api = NewsFeed(picrawler_instance)
 
 async def main():
     print("Entered main()")
+    
+    eye_animator.draw_gaze(10, 10, pupil_size=1.0)
+    eye_animator.set_expression("asleep")
     await response_manager.speak_with_flite("Beginning startup procedure and status check. Please stand by, system test underway.")
-    await response_manager.speak_with_flite("Servos powered. Listening initiated. Voice centers activated. Checking battery.")
+    await response_manager.speak_with_flite("Servos powered. Camera online. Interactive Visual Display initiating.")
+    eye_animator.dual_blink_open(pupil_size=0.8, x_off=10, y_off=10, speed=0.3)
+    await response_manager.speak_with_flite("Gaze tracking initiated. Eye animation system online.")
+    await response_manager.speak_with_flite("Listening initiated. Voiceprint recognition active. Voice centers activated. Checking battery.")
     await general_utils.announce_battery_status()
     await weather_fetch.startup_fetch_forecast()
     startup_news_item = await news_api.startup_fetch_news(llm_client)
@@ -101,7 +112,6 @@ async def main():
         # print(f"Hal's emotion: {hal_emotion}")
         emotion_sound_manager.play_sound(hal_emotion)
         # Speak the response
-        # await response_manager.speak_with_dynamic_flite(response_text)
         await response_manager.fully_dynamic_response(response_text)
 
 if __name__ == "__main__":
