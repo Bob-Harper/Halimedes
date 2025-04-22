@@ -10,5 +10,5 @@ pyannote/
 voiceprints/
 classes/
 .venv/
-eyes/
-services/
+eyes/cache
+eyes/images
