@@ -1,0 +1,59 @@
+# eye_loader.py
+import json
+from pathlib import Path
+from PIL import Image
+
+class EyeProfile:
+    def __init__(self, name, config, image):
+        self.name = name
+        self.image = image
+        self.texture_path = config["image_path"]
+        self.directional = config.get("directional", False)
+        self.sclera_size = config.get("sclera_size", 80)
+        self.iris_radius = config.get("iris_radius", 42)
+        self.pupil_radius = config.get("pupil_radius", 20)
+        self.pupil_min = config.get("pupil_min", 0.5)
+        self.pupil_max = config.get("pupil_max", 1.5)
+        self.feather_width = config.get("feather_width", 8)
+        self.eyelid_top = config.get("eyelid_top", 0)
+        self.eyelid_bottom = config.get("eyelid_bottom", 0)
+        self.eyelid_left = config.get("eyelid_left", 0)
+        self.eyelid_right = config.get("eyelid_right", 0)
+        self.perspective_skew = config.get("perspective_skew", 0.01)
+        self.perspective_scale = config.get("perspective_scale", 0.15)
+        self.perspective_shift = config.get("perspective_shift", 0.02)
+        self.x_off = config.get("x_off", 10)
+        self.y_off = config.get("y_off", 10)
+        self.close_speed = config.get("close_speed", 0.01)
+        self.open_speed = config.get("open_speed", 0.03)
+        self.hold = config.get("hold", 0.08)
+        self.animation_style = config.get("animation_style", "default")
+        self.expression_profile = config.get("expression_profile", "default")
+        self.use_case = config.get("use_case", "default")
+
+
+def load_eye_profile(profile_name):
+    base_path = Path(__file__).parent.parent  # step out of /helpers
+    config_path = base_path / "eyes" / "images" / f"{profile_name}.json"
+
+    if not config_path.exists():
+        raise FileNotFoundError(f"No profile named '{profile_name}' in eyes/images/")
+
+    with open(config_path, "r") as f:
+        config = json.load(f)
+
+    texture_path = Path(config["image_path"])
+    if not texture_path.exists():
+        raise FileNotFoundError(f"Texture file '{texture_path}' not found.")
+
+    img = Image.open(texture_path).convert('RGB')
+
+    if img.width != img.height:
+        print(f"[WARNING] Eye texture is not square ({img.width}x{img.height})")
+    if img.width != 180:
+        img = img.resize((180, 180), resample=Image.LANCZOS)
+    if config.get("directional", False):
+        img = img.rotate(90, expand=True)
+
+    return EyeProfile(profile_name, config, img)
+
