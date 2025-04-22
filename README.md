@@ -15,7 +15,7 @@ Halimedes is a four-legged Raspberry Pi–powered crawler bot that can:
 ## Features
 
 - **Face tracking:** Realtime eye-gaze tracking using PiCamera and Vilib
-- **Voiceprint recognition:** Different prompts for Dad, Onnalyn, Unknowns, and more
+- **Voiceprint recognition:** Different prompts for Dad, Unknowns, and more
 - **Emotion-aware sound system:** Reacts with custom SFX based on emotion or intent
 - **LLM-powered dialogue:** Modular responses with embedded `<action>`, `<sound effect>`, `<gaze>`, and `<face>` tags
 - **Smooth animation:** Blinks, saccades, and expressions driven by a unified `EyeAnimator` engine
