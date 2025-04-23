@@ -1,4 +1,7 @@
 # test_eye_animator.py
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent / "eyes"))
 import time
 from eyes.eye_loader import load_eye_profile
 from eyes.eye_animator import EyeAnimator
@@ -6,7 +9,7 @@ from eyes.eye_animator import EyeAnimator
 def main():
     print("🔥 Halimedes Sanity Check: INITIATING")
     try:
-        profile = load_eye_profile("vector03", config_dir="eyes/images")
+        profile = load_eye_profile("vector03", config_dir="eyes/eye_assets")
         hal = EyeAnimator(profile)
     except Exception as e:
         print(f"💥 INIT FAILURE: {e}")

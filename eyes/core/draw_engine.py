@@ -3,12 +3,17 @@ from PIL import Image
 import numpy as np
 from .eyelid_masker import apply_eyelids
 from core.eyelid_controller import EyelidController
-
+from .eye_deform import EyeDeformer
 
 class DrawEngine:
     def __init__(self, profile):
         self.profile = profile
-        self.deformer = profile.deformer
+        self.deformer = EyeDeformer(
+            sclera_size=profile.sclera_size,
+            texture_name=profile.name
+        )
+        self.deformer.cache.warm_up_cache(kind="spherical", verbose=True)
+        self.deformer.cache.warm_up_cache(kind="pupil", verbose=True)
         self.image = profile.image
         self.eyelids = {
             'top': profile.eyelid_top,
