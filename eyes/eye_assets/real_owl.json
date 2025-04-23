@@ -1,18 +1,18 @@
 {
   "sclera_size": 80,
-  "iris_radius": 42,
+  "iris_radius": 28,
   "pupil_radius": 20,
   "feather_width": 8,
   "directional": true,
-  "pupil_min": 0.975,
+  "pupil_min": 0.95,
   "pupil_max": 1.3,
-  "eyelid_top": 16,
-  "eyelid_bottom": 16,
+  "eyelid_top": 48,
+  "eyelid_bottom": 36,
   "eyelid_left": 0,
   "eyelid_right": 0,
   "perspective_skew": 0.01,
   "perspective_scale": 0.15,
-  "perspective_shift": 0.02,
+  "perspective_shift": 0.03,
   "x_off": 10,
   "y_off": 10,
   "close_speed": 0.01,
@@ -21,6 +21,5 @@
   "animation_style": "default",
   "expression_profile": "default",
   "use_case": "passive",
-  "image_path": "/home/msutt/hal/eyes/images/hitech18.png",
-  "sclera_radius": 85
+  "image_path": "real_owl.png"
 }

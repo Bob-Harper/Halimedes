@@ -1,11 +1,11 @@
 {
   "sclera_size": 80,
-  "iris_radius": 52,
+  "iris_radius": 42,
   "pupil_radius": 20,
-  "feather_width": 0,
+  "feather_width": 8,
   "directional": true,
-  "pupil_min": 0.95,
-  "pupil_max": 1.1,
+  "pupil_min": 1.1,
+  "pupil_max": 1.5,
   "eyelid_top": 16,
   "eyelid_bottom": 16,
   "eyelid_left": 0,
@@ -21,6 +21,6 @@
   "animation_style": "default",
   "expression_profile": "default",
   "use_case": "passive",
-  "image_path": "/home/msutt/hal/eyes/images/vector02.png",
+  "image_path": "hitech16.png",
   "sclera_radius": 85
 }

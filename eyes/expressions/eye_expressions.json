@@ -1,0 +1,65 @@
+{
+    "neutral": {
+        "lid_top_left": 36,
+        "lid_top_right": 36,
+        "lid_bottom_left": 40,
+        "lid_bottom_right": 40,
+        "gaze_x": 10,
+        "gaze_y": 10,
+        "pupil_size": 1.0
+    },
+    "happy": {
+        "lid_top_left": 28,
+        "lid_top_right": 28,
+        "lid_bottom_left": 50,
+        "lid_bottom_right": 50,
+        "gaze_x": 10,
+        "gaze_y": 10,
+        "pupil_size": 1.1
+    },
+    "sad": {
+        "lid_top_left": 55,
+        "lid_top_right": 55,
+        "lid_bottom_left": 20,
+        "lid_bottom_right": 20,
+        "gaze_x": 10,
+        "gaze_y": 12,
+        "pupil_size": 0.95
+    },
+    "angry": {
+        "lid_top_left": 65,
+        "lid_top_right": 65,
+        "lid_bottom_left": 15,
+        "lid_bottom_right": 15,
+        "gaze_x": 10,
+        "gaze_y": 11,
+        "pupil_size": 1.0
+    },
+    "focused": {
+        "lid_top_left": 48,
+        "lid_top_right": 48,
+        "lid_bottom_left": 48,
+        "lid_bottom_right": 48,
+        "gaze_x": 10,
+        "gaze_y": 10,
+        "pupil_size": 0.9
+    },
+    "skeptical": {
+        "lid_top_left": 32,
+        "lid_top_right": 60,
+        "lid_bottom_left": 36,
+        "lid_bottom_right": 36,
+        "gaze_x": 9,
+        "gaze_y": 10,
+        "pupil_size": 1.0
+    },
+    "surprised": {
+        "lid_top_left": 18,
+        "lid_top_right": 18,
+        "lid_bottom_left": 60,
+        "lid_bottom_right": 60,
+        "gaze_x": 10,
+        "gaze_y": 9,
+        "pupil_size": 1.15
+    }
+}
