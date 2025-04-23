@@ -8,7 +8,6 @@ flitevox/
 archive/
 pyannote/
 voiceprints/
-classes/
 .venv/
 eyes/cache
-eyes/images
+classes/face_recognition_models
