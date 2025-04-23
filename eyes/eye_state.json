@@ -1,0 +1,9 @@
+{
+    "lid_top_left": 36,
+    "lid_top_right": 36,
+    "lid_bottom_left": 40,
+    "lid_bottom_right": 40,
+    "gaze_x": 10,
+    "gaze_y": 10,
+    "pupil_size": 1.0
+}

@@ -1,8 +1,8 @@
 {
   "sclera_size": 80,
-  "iris_radius": 52,
+  "iris_radius": 38,
   "pupil_radius": 20,
-  "feather_width": 0,
+  "feather_width": 8,
   "directional": true,
   "pupil_min": 0.985,
   "pupil_max": 1.3,
@@ -12,7 +12,7 @@
   "eyelid_right": 0,
   "perspective_skew": 0.01,
   "perspective_scale": 0.15,
-  "perspective_shift": 0.2,
+  "perspective_shift": 0.02,
   "x_off": 10,
   "y_off": 10,
   "close_speed": 0.01,
@@ -21,6 +21,6 @@
   "animation_style": "default",
   "expression_profile": "default",
   "use_case": "passive",
-  "image_path": "/home/msutt/hal/eyes/images/hitech36.png",
+  "image_path": "hitech26.png",
   "sclera_radius": 85
 }

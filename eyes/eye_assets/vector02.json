@@ -21,6 +21,6 @@
   "animation_style": "default",
   "expression_profile": "default",
   "use_case": "passive",
-  "image_path": "/home/msutt/hal/eyes/images/vector03.png",
+  "image_path": "vector02.png",
   "sclera_radius": 85
 }

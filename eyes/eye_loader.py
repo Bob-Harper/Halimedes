@@ -1,12 +1,12 @@
-# eye_loader.py
 import json
 from pathlib import Path
 from PIL import Image
 
-class EyeProfile:
-    def __init__(self, name, config, image):
+class EyeConfig:
+    def __init__(self, name, config_path, config, image):
         self.name = name
         self.image = image
+        self.config_path = config_path
         self.texture_path = config["image_path"]
         self.directional = config.get("directional", False)
         self.sclera_size = config.get("sclera_size", 80)
@@ -32,21 +32,21 @@ class EyeProfile:
         self.use_case = config.get("use_case", "default")
 
 
-def load_eye_profile(profile_name):
-    base_path = Path(__file__).parent.parent  # step out of /helpers
-    config_path = base_path / "eyes" / "images" / f"{profile_name}.json"
+def load_eye_profile(profile_name, config_dir="eyes/eye_assets"):
+    config_path = Path(config_dir) / f"{profile_name}.json"
 
     if not config_path.exists():
-        raise FileNotFoundError(f"No profile named '{profile_name}' in eyes/images/")
+        raise FileNotFoundError(f"[EyeLoader] No profile named '{profile_name}' in {config_dir}/")
 
     with open(config_path, "r") as f:
         config = json.load(f)
 
-    texture_path = Path(config["image_path"])
+    # Resolve texture path relative to the config file
+    texture_path = (config_path.parent / config["image_path"]).resolve()
     if not texture_path.exists():
-        raise FileNotFoundError(f"Texture file '{texture_path}' not found.")
+        raise FileNotFoundError(f"[EyeLoader] Texture file '{texture_path}' not found.")
 
-    img = Image.open(texture_path).convert('RGB')
+    img = Image.open(texture_path).convert("RGB")
 
     if img.width != img.height:
         print(f"[WARNING] Eye texture is not square ({img.width}x{img.height})")
@@ -55,5 +55,4 @@ def load_eye_profile(profile_name):
     if config.get("directional", False):
         img = img.rotate(90, expand=True)
 
-    return EyeProfile(profile_name, config, img)
-
+    return EyeConfig(profile_name, config_path, config, img)
