@@ -10,7 +10,7 @@ Halimedes is a four-legged Raspberry Pi–powered crawler bot that can:
 - Respond with voice, actions, and expressions
 - Use LLM-generated responses with embedded sound and action tags
 - Recognize who he's talking to and adjust tone accordingly
-- Remember (eventually) what you told him, and probably use it against you
+- (soon) Remember what you told him, and probably (defintely) use it against you
 
 ## Features
 
@@ -19,7 +19,7 @@ Halimedes is a four-legged Raspberry Pi–powered crawler bot that can:
 - **Emotion-aware sound system:** Reacts with custom SFX based on emotion or intent
 - **LLM-powered dialogue:** Modular responses with embedded `<action>`, `<sound effect>`, `<gaze>`, and `<face>` tags
 - **Smooth animation:** Blinks, saccades, and expressions driven by a unified `EyeAnimator` engine
-- **Upcoming:** Memory embedding + recall, weather & news display, servo-driven scanning for lost faces, and LED-based flashlight system because lasers are a lawsuit waiting to happen
+- **Upcoming:** Memory embedding + recall, weather & news display, servo-driven scanning for lost faces, and LED-based flashlight system because a laser is awesome and fun but also a lawsuit waiting to happen.
 
 ## Setup
 
