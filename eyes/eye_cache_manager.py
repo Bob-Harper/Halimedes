@@ -5,7 +5,7 @@ import numpy as np
 from helpers.global_config import EYE_CACHE_PATH
 import hashlib
 
-class CacheManager:
+class EyeCacheManager:
     def __init__(self, texture_name="default"):
         self.base_dir = EYE_CACHE_PATH
         self.texture_name = texture_name
@@ -108,3 +108,6 @@ class CacheManager:
         def __getattr__(self, name):
             if name == "texture_cache_dir":
                 raise AttributeError("Use pupil_dir or spherical_dir instead of texture_cache_dir.")
+
+    def debug_key(self, **kwargs):
+        print(f"[DEBUG] Key: {self._generate_key(**kwargs)}")

@@ -1,6 +1,6 @@
-from core.draw_engine import DrawEngine
-from core.blink_engine import BlinkEngine
-from core.gaze_interpolator import GazeInterpolator
+from .core.draw_engine import DrawEngine
+from .core.blink_engine import BlinkEngine
+from .core.gaze_interpolator import GazeInterpolator
 
 
 class EyeAnimator:

@@ -28,10 +28,10 @@ class GazeInterpolator:
 
     def apply_gaze_mode(self, mode):
         modes = {
-            "left": (5, 10),
-            "right": (15, 10),
-            "up": (10, 5),
-            "down": (10, 15),
+            "left": (10, 20),
+            "right": (10, 0),
+            "up": (20, 10),
+            "down": (0, 10),
             "center": (10, 10),
             "wander": (
                 random.randint(6, 14),
