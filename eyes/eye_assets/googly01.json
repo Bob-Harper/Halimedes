@@ -1,6 +1,6 @@
 {
-  "sclera_size": 88,
-  "iris_radius": 37,
+  "sclera_size": 80,
+  "iris_radius": 44,
   "pupil_radius": 37,
   "feather_width": 1,
   "directional": true,
@@ -12,7 +12,7 @@
   "eyelid_right": 0,
   "perspective_skew": 0.01,
   "perspective_scale": 0.15,
-  "perspective_shift": 0.16,
+  "perspective_shift": 0.03,
   "x_off": 10,
   "y_off": 10,
   "close_speed": 0.01,
@@ -21,6 +21,5 @@
   "animation_style": "default",
   "expression_profile": "default",
   "use_case": "passive",
-  "image_path": "googly01.png",
-  "sclera_radius": 80
+  "image_path": "googly01.png"
 }

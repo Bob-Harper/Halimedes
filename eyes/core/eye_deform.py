@@ -1,14 +1,14 @@
 from PIL import Image
 import numpy as np
 import cv2
-from eyes.eye_cache_manager import CacheManager
+from eyes.eye_cache_manager import EyeCacheManager
 
 
 class EyeDeformer:
     def __init__(self, sclera_size=85, output_size=160, texture_name="default"):
         self.sclera_size = sclera_size
         self.output_size = output_size
-        self.cache = CacheManager(texture_name=texture_name)
+        self.cache = EyeCacheManager(texture_name=texture_name)
         self.cache.warm_up_cache("pupil")
 
 
@@ -22,17 +22,30 @@ class EyeDeformer:
         feather_width=8,
         perspective_shift=0.02,
         output_size=160
-        ):
-
+    ):
+        """
+        Full rendering pipeline for a deformed eye frame.
+        - Pupil warp applied first.
+        - Gaze translated via crop.
+        - THEN spherical deformation applied (visual only).
+        """
         sample_x, sample_y = self.get_or_generate_pupil_warp_map(
             pupil_size=pupil_size,
             iris_radius=iris_radius,
-            feather_width=feather_width,
+            feather_width=feather_width
         )
-        warped_img = self.apply_pupil_warp(source_img, sample_x, sample_y)
-        warped_img = self.apply_spherical_warp(warped_img, x_off=x_off, y_off=y_off, strength=perspective_shift)
-        final_crop = self.crop_to_display(warped_img, x_off, y_off, output_size)
-        return Image.fromarray(final_crop.astype(np.uint8), mode='RGB')
+
+        warped_pupil = self.apply_pupil_warp(source_img, sample_x, sample_y)
+
+        gaze_aligned = self.crop_to_display(warped_pupil, x_off, y_off, output_size)
+
+        final_img = self.apply_spherical_warp(gaze_aligned, x_off=x_off, y_off=y_off, strength=perspective_shift)
+
+        # === Step 3: Apply spherical warp (visual effect only) ===
+        final_img = self.apply_spherical_warp(gaze_aligned, x_off=x_off, y_off=y_off, strength=perspective_shift)
+
+        return Image.fromarray(final_img.astype(np.uint8), mode='RGB')
+
 
     def get_or_generate_spherical_map(self, x_off=10, y_off=10, strength=0.03):
         key_dict = {
@@ -61,8 +74,9 @@ class EyeDeformer:
         r = np.sqrt(dx**2 + dy**2)
         z = np.sqrt(1.0 - np.clip(r**2, 0, 1))
 
-        dx += norm_x * strength * z
-        dy += norm_y * strength * z
+        shift_scale = strength / 2  # or even 0.75 depending on lens type
+        dx += norm_x * shift_scale * z
+        dy += norm_y * shift_scale * z
 
         map_x = (dx * center_x + center_x).astype(np.float32)
         map_y = (dy * center_y + center_y).astype(np.float32)
