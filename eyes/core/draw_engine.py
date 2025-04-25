@@ -26,7 +26,7 @@ class DrawEngine:
         self.lid_control = EyelidController()
 
     def generate_frame(self, x_off, y_off, pupil_size=1.0):
-        key = (x_off, y_off, pupil_size)
+        key = self._cache_key(x_off, y_off, pupil_size)
         if key not in self.gaze_cache:
             warped = self.deformer.generate_eye_frame(
                 self.image,
@@ -56,3 +56,7 @@ class DrawEngine:
             eye.set_window(0, 0, self.width - 1, self.height - 1)
             for i in range(0, len(buf), 1024):
                 eye.write_data(buf[i:i + 1024])
+
+    def _cache_key(self, x, y, pupil):
+        lids = self.lid_control.get_mask_config()
+        return (x, y, pupil, lids["top"], lids["bottom"], lids["left"], lids["right"])

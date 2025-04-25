@@ -83,10 +83,10 @@ class PassiveActionsManager:
         category = random.choices(list(self.actions_by_category.keys()), weights=self.category_weights.values(), k=1)[0]
 
         # Pick a random action from the chosen category
-        action_name, action_function = random.choice(self.actions_by_category[category])  # ✅ Unpack the tuple
+        action_name, action_function = random.choice(self.actions_by_category[category])  #  Unpack the tuple
 
         # Execute the action
-        await asyncio.to_thread(action_function)  # ✅ Now it's actually calling a function
+        await asyncio.to_thread(action_function)  #  Now it's actually calling a function
 
         # Short pause between actions
         await asyncio.sleep(1.0)
@@ -106,8 +106,8 @@ class PassiveActionsManager:
 
     async def shutdown_speech_actions(self, words):
         """Speak shutdown message, then sit down after speech completes."""
-        await self.response_manager.speak_with_flite(words)  # ✅ Speech finishes first
-        await asyncio.to_thread(self.newmovements.sit_down)  # ✅ THEN movement starts
+        await self.response_manager.speak_with_flite(words)  #  Speech finishes first
+        await asyncio.to_thread(self.newmovements.sit_down)  #  THEN movement starts
 
     async def test_all_actions(self):
         """Test all actions in a sequence, announcing each before execution."""
