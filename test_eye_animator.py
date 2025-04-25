@@ -1,7 +1,5 @@
 # test_eye_animator.py
-import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).parent / "eyes"))
+from helpers.global_config import EYE_ASSETS_PATH
 import time
 from eyes.eye_loader import load_eye_profile
 from eyes.eye_animator import EyeAnimator
@@ -11,7 +9,7 @@ from eyes.core.blink_engine import BlinkEngine
 def main():
     print("Halimedes Sanity Check: INITIATING")
     try:
-        profile = load_eye_profile("googly01", config_dir="eyes/eye_assets")
+        profile = load_eye_profile("googly01")
         hal = EyeAnimator(profile)
         hal.blinker = BlinkEngine(hal.drawer)
     except Exception as e:

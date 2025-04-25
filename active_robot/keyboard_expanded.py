@@ -1,15 +1,15 @@
-from helpers.picrawler import Picrawler
+from .picrawler import Picrawler
 from time import sleep
 import readchar
 import asyncio
-from helpers.new_movements import NewMovements
+from .picrawler_extended import PicrawlerExtended
 
 
 class RobotKeyboard:
     def __init__(self):
         self.speed = 99
         self.picrawler = Picrawler()
-        self.new_movements = NewMovements(self.picrawler)
+        self.new_movements = PicrawlerExtended(self.picrawler)
         self.manual = '''
         Press keys on keyboard to control PiCrawler!
             W: Forward                  1: Sit

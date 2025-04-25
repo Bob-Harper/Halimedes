@@ -1,11 +1,11 @@
 import asyncio
 from time import sleep
 import os
-from classes.ios_controller import SunFounderController
-from helpers.picrawler import Picrawler
-from helpers.new_movements import NewMovements
-from classes.robot_hat import Pin, Ultrasonic, utils
-from classes.vilib import Vilib
+from active_robot.ios_controller import SunFounderController
+from active_robot.picrawler import Picrawler
+from active_robot.picrawler_extended import PicrawlerExtended
+from active_robot.robot_hat import Pin, Ultrasonic, utils
+from vision.vilib import Vilib
 utils.reset_mcu()
 sleep(0.5)
 
@@ -13,7 +13,7 @@ class RobotRemoteControl:
     def __init__(self):
         self.controller = SunFounderController()
         self.picrawler = Picrawler()
-        self.new_movements = NewMovements(self.picrawler)
+        self.new_movements = PicrawlerExtended(self.picrawler)
         self.speed = 85  # Default speed
         self.turn_angle = 30 # Default angle
         self.sonar = Ultrasonic(Pin("D2") ,Pin("D3"))

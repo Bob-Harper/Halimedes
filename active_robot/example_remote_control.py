@@ -1,6 +1,6 @@
 from sunfounder_controller import SunFounderController
-from helpers.picrawler import Picrawler
-from classes.robot_hat import Pin, Ultrasonic, utils
+from .picrawler import Picrawler
+from .robot_hat import Pin, Ultrasonic, utils
 from vilib import Vilib
 import os
 from time import sleep
