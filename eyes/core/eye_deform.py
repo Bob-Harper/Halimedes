@@ -1,7 +1,7 @@
 from PIL import Image
 import numpy as np
 import cv2
-from eyes.cache_manager import CacheManager
+from eyes.eye_cache_manager import CacheManager
 
 
 class EyeDeformer:

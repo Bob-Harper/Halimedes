@@ -4,26 +4,26 @@ print("=== STARTUP SCRIPT INITIATED ===")
 import warnings
 warnings.simplefilter('ignore')
 import asyncio
-from helpers.config import OLLAMALAPTOP
+from helpers.global_config import OLLAMALAPTOP
 """ 
 Import the Picrawler class from the picrawler module first 
 to pass through to all helper classes that use it.  This should
 prevent multiple initializations of the Picrawler class.
  """
-from helpers.picrawler import Picrawler 
+from active_robot.picrawler import Picrawler 
 # Create a single instance of Picrawler to pass through
 picrawler_instance = Picrawler()
-from helpers.response_utils import Response_Manager
-from helpers.listener_utils import AudioInput
-from helpers.verbal_commands import CommandManager
-from helpers.voice_recognition import VoiceprintManager
-from helpers.emotions import EmotionHandler, EmotionSoundManager
-from helpers.weather_commands import WeatherCommandManager
-from helpers.llm_utils import LLMClient
-from helpers.dynamic_passive_actions import PassiveActionsManager
-from helpers.system_prompts import get_system_prompt
-from helpers.general_utilities import GeneralUtilities
-from helpers.news_api import NewsFeed
+from helpers.response_manager import Response_Manager
+from helpers.audio_input_manager import AudioInputManager
+from audio_input.verbal_commands import CommandManager
+from audio_input.voice_recognition_manager import VoiceRecognitionManager
+from helpers.emotional_sounds_manager import EmotionHandler, EmotionalSoundsManager
+from helpers.weather_command_manager import WeatherCommandManager
+from helpers.llm_client_handler import LLMClientHandler
+from helpers.passive_actions_manager import PassiveActionsManager
+from helpers.system_prompt_fetch import system_prompt_fetch
+from helpers.general_utilities_manager import GeneralUtilitiesManager
+from helpers.news_handler import NewsHandler
 from eyes.eye_animator import EyeAnimator
 from eyes.eye_loader import load_eye_profile
 
@@ -31,17 +31,17 @@ from eyes.eye_loader import load_eye_profile
 # Initialize everything at module level
 eye_profile = load_eye_profile("vector03")
 eye_animator = EyeAnimator(eye_profile)
-llm_client = LLMClient(server_host=OLLAMALAPTOP)
-voiceprint_manager = VoiceprintManager()
+llm_client = LLMClientHandler(server_host=OLLAMALAPTOP)
+voiceprint_manager = VoiceRecognitionManager()
 command_manager = CommandManager(llm_client, picrawler_instance, eye_animator)
-audio_input = AudioInput(picrawler_instance)
+audio_input = AudioInputManager(picrawler_instance)
 emotion_handler = EmotionHandler()
-emotion_sound_manager = EmotionSoundManager()
+emotion_sound_manager = EmotionalSoundsManager()
 actions_manager = PassiveActionsManager(picrawler_instance)
 response_manager = Response_Manager(picrawler_instance, actions_manager, eye_animator)  # Set once
-general_utils = GeneralUtilities(picrawler_instance)
+general_utils = GeneralUtilitiesManager(picrawler_instance)
 weather_fetch = WeatherCommandManager(llm_client, actions_manager, emotion_sound_manager, picrawler_instance)
-news_api = NewsFeed(picrawler_instance)
+news_api = NewsHandler(picrawler_instance)
 
 
 async def main():
@@ -90,7 +90,7 @@ async def main():
         recognized_speaker = voiceprint_manager.recognize_speaker(raw_audio)
         # print(f"Recognized speaker: {recognized_speaker}")
 
-        system_prompt = await get_system_prompt(recognized_speaker, user_emotion)
+        system_prompt = await system_prompt_fetch(recognized_speaker, user_emotion)
 
         # Label the user input for the model
         user_input_for_llm = f"{recognized_speaker}: {spoken_text}"

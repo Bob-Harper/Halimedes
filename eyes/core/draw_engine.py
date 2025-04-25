@@ -1,8 +1,6 @@
-from classes.dualeye_driver import eye_left, eye_right
-from PIL import Image
-import numpy as np
+from eyes.dualeye_driver import eye_left, eye_right
 from .eyelid_masker import apply_eyelids
-from core.eyelid_controller import EyelidController
+from .eyelid_controller import EyelidController
 from .eye_deform import EyeDeformer
 
 class DrawEngine:

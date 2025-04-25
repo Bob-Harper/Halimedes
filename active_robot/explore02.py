@@ -1,7 +1,7 @@
-from robot_hat import Ultrasonic, Pin
-from helpers.picrawler import Picrawler
-from helpers.new_movements import NewMovements
-from helpers.response_utils import speak_with_flite
+from .robot_hat import Ultrasonic, Pin
+from .picrawler import Picrawler
+from .picrawler_extended import PicrawlerExtended
+from helpers.response_manager import Response_Manager
 import asyncio
 import collections
 
@@ -11,7 +11,7 @@ class ExplorerRobot:
         # Initialize the ultrasonic sensor
         self.sonar = Ultrasonic(Pin("D2"), Pin("D3"))
         self.crawler = Picrawler()
-        self.new_movements = NewMovements(self.crawler)
+        self.new_movements = PicrawlerExtended(self.crawler)
         self.alert_distance = alert_distance  # Distance to stop or avoid (in cm)
         self.speed = speed  # Movement speed
         self.running = True
@@ -21,6 +21,8 @@ class ExplorerRobot:
         self.current_position = (0, 0)
         self.grid[self.current_position[1]][self.current_position[0]] = "X"
         self.direction = (0, -1)  # Default direction is "up" (forward)
+        self.response = Response_Manager(self.crawler)
+
 
     def read_distance(self):
         """Read distance from ultrasonic sensor."""
@@ -62,7 +64,7 @@ class ExplorerRobot:
                         queue.append(((nx, ny), path + [(direction, (dx, dy))]))
 
         print("No unexplored cells remaining.")
-        await speak_with_flite("All areas have been mapped. Stopping exploration.")
+        await self.response.self.response.speak_with_flite("All areas have been mapped. Stopping exploration.")
         self.running = False
 
     def update_direction(self, turn):
@@ -105,12 +107,12 @@ class ExplorerRobot:
                         self.current_position = next_position
                     else:
                         print(f"Next position out of bounds: {next_position}. Turning instead.")
-                        await speak_with_flite("Boundary detected. Recalculating.")
+                        await self.response.self.response.speak_with_flite("Boundary detected. Recalculating.")
                         self.crawler.do_action("turn left", 1, self.speed)
                         self.update_direction("left")
                 else:
                     print("Obstacle detected!")
-                    await speak_with_flite("Obstacle detected! Recalculating.")
+                    await self.response.self.response.speak_with_flite("Obstacle detected! Recalculating.")
                     self.crawler.do_action("backward", 1, self.speed)
                     await asyncio.sleep(1)
                     
@@ -153,7 +155,7 @@ class ExplorerRobot:
                     )
                 else:
                     print("Obstacle detected!")
-                    await speak_with_flite("Obstacle detected! Recalculating.")
+                    await self.response.self.response.speak_with_flite("Obstacle detected! Recalculating.")
                     self.crawler.do_action("backward", 1, self.speed)
                     await asyncio.sleep(1)
                     

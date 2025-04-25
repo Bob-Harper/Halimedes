@@ -1,5 +1,5 @@
 import json
-from pathlib import Path
+from helpers.global_config import EYE_ASSETS_PATH
 from PIL import Image
 
 class EyeConfig:
@@ -32,11 +32,11 @@ class EyeConfig:
         self.use_case = config.get("use_case", "default")
 
 
-def load_eye_profile(profile_name, config_dir="eyes/eye_assets"):
-    config_path = Path(config_dir) / f"{profile_name}.json"
+def load_eye_profile(profile_name):
+    config_path = EYE_ASSETS_PATH / f"{profile_name}.json"
 
     if not config_path.exists():
-        raise FileNotFoundError(f"[EyeLoader] No profile named '{profile_name}' in {config_dir}/")
+        raise FileNotFoundError(f"[EyeLoader] No profile named '{profile_name}' in {config_path}/")
 
     with open(config_path, "r") as f:
         config = json.load(f)

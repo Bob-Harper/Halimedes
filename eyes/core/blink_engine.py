@@ -1,6 +1,6 @@
 import time
-from classes.dualeye_driver import eye_left, eye_right
-from core.draw_engine import DrawEngine
+from eyes.dualeye_driver import eye_left, eye_right
+from .draw_engine import DrawEngine
 
 class BlinkEngine:
     def __init__(self, drawer: DrawEngine):

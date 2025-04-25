@@ -1,4 +1,4 @@
-from core.draw_engine import DrawEngine
+from .draw_engine import DrawEngine
 
 class EyeAnimator:
     def __init__(self, profile):
