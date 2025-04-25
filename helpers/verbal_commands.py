@@ -126,13 +126,13 @@ class CommandManager:
 
         response_text = await self.llm_client.send_message_async(system_prompt, spoken_text)
         self.eye_animator.dual_blink_close(speed=0.3)
-        # ✅ Speech FIRST, THEN sit down (no concurrency issues)
+        #  Speech FIRST, THEN sit down (no concurrency issues)
         await self.passive_manager.shutdown_speech_actions(response_text)
 
-        # ✅ Small delay to allow actions to visibly complete before exiting
+        #  Small delay to allow actions to visibly complete before exiting
         await asyncio.sleep(1)
 
-        return True  # ✅ Signal main loop to exit
+        return True  #  Signal main loop to exit
 
     async def command_help(self, spoken_text):
         """Provide verbal help."""

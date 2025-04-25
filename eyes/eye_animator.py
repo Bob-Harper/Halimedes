@@ -30,10 +30,22 @@ class EyeAnimator:
     def smooth_gaze(self, x, y, pupil=1.0):
         self.interpolator.smooth_gaze(x, y, pupil)
 
-    def set_expression(self, name):
-        self.drawer.lid_control.set_expression(name)
+    def set_expression(self, mood):
+        self.drawer.lid_control.set_expression(mood)
+        self.drawer.gaze_cache.clear()
         self.draw_gaze(
             self.state["x"],
             self.state["y"],
             pupil=self.state["pupil"]
-        )        
+        )
+
+    def transition_expression(self, mood, speed=0.02):
+        self.set_expression(mood)
+        buf = self.drawer.generate_frame(
+            x_off=self.state["x"],
+            y_off=self.state["y"],
+            pupil_size=self.state["pupil"]
+        )
+
+        self.blinker.dual_blink_close(speed)
+        self.blinker.dual_blink_open(buf, speed)
