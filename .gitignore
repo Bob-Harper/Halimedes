@@ -13,3 +13,4 @@ audio_output/flitevox/cmu_us_rms.flitevox
 _deprecated
 eyes/cache
 vision/face_recognition_models
+audio_input/vosk/libvosk.so
