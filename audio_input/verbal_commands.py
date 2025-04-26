@@ -1,6 +1,6 @@
 from rapidfuzz import fuzz
 import asyncio
-from active_robot.picrawler_extended import PicrawlerExtended
+from body.picrawler_extended import PicrawlerExtended
 import subprocess
 from helpers.general_utilities_manager import GeneralUtilitiesManager
 from helpers.passive_actions_manager import PassiveActionsManager
