@@ -1,5 +1,5 @@
 {
-  "sclera_size": 80,
+  "sclera_size": 60,
   "iris_radius": 28,
   "pupil_radius": 20,
   "feather_width": 8,
@@ -12,7 +12,7 @@
   "eyelid_right": 0,
   "perspective_skew": 0.01,
   "perspective_scale": 0.15,
-  "perspective_shift": 0.03,
+  "perspective_shift": 0.06,
   "x_off": 10,
   "y_off": 10,
   "close_speed": 0.01,

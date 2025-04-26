@@ -9,7 +9,7 @@ from eyes.core.blink_engine import BlinkEngine
 def main():
     print("Halimedes Sanity Check: INITIATING")
     try:
-        profile = load_eye_profile("vector03")
+        profile = load_eye_profile("real_owl")
         hal = EyeAnimator(profile)
         hal.blinker = BlinkEngine(hal.drawer)
     except Exception as e:

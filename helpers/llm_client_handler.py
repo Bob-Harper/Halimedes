@@ -10,12 +10,21 @@ MAX_TOKEN_COUNT represents the character count limit for conversation history.
 
 For quick testing, use a smaller value (e.g., 512). For production or complex tasks,
 consider increasing this value (e.g., 2048) to enhance conversational memory.
+
+gemma3:4b                          a2af6cc3eb7f    3.3 GB    2 days ago
+gemma3:1b                          8648f39daa8f    815 MB    2 days ago
+wizard-vicuna-uncensored:latest    72fc3c2b99dc    3.8 GB    5 months ago
+mannix/llava-phi3:iq2_s            e057e6453da9    1.9 GB    6 months ago
+tinyllama:latest                   2644915ede35    637 MB    6 months ago
+llava-llama3:latest                44c161b1f465    5.5 GB    6 months ago
+me/llama3.1-python:latest          74f77feb57b9    5.7 GB    6 months ago
+llama3.2:latest                    a80c4f17acd5    2.0 GB    6 months ago
 """
 MAX_TOKEN_COUNT = 4096  # Adjust as needed
 
 
 class LLMClientHandler:
-    def __init__(self, server_host, model='llama3.2'):
+    def __init__(self, server_host, model='tinyllama'):
         self.server_host = server_host
         self.model = model
         self.max_tokens = MAX_TOKEN_COUNT
