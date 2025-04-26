@@ -1,8 +1,8 @@
 import subprocess
-from helpers.global_config import VOICE_MODEL_PATH, VOICE_MODEL_NAME
+from helpers.global_config import SPEECH_MODEL_PATH, SPEECH_MODEL_NAME
 
 def speak_with_flite(words):
-    voice_path=VOICE_MODEL_PATH/VOICE_MODEL_NAME 
+    voice_path=SPEECH_MODEL_PATH/SPEECH_MODEL_NAME 
     try:
         # Construct the Flite command
         command = [

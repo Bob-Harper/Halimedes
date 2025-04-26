@@ -16,7 +16,7 @@ def main():
     print("\n=== Voiceprint Recording & Embedding Utility ===")
 
     # Prompt for speaker name
-    speaker_name = input("Enter speaker name (no spaces, e.g. 'bob' or 'onnalyn'): ").strip()
+    speaker_name = input("Enter speaker name (no spaces, e.g. 'bob' or 'cleopatra'): ").strip()
     if not speaker_name:
         speaker_name = "new_speaker"
 
