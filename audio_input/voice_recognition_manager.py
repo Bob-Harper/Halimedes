@@ -1,20 +1,28 @@
 import os
 import torch
 import torchaudio
+from helpers.global_config import (
+# Voice recognition config 
+VOICE_RECOGNITION_MODEL_PATH,
+VOICE_RECOGNITION_MODEL_NAME,
+VOICEPRINT_MODEL_DIR,
+# These will be moved to DB after testing phase
+VOICEPRINT_USER1_NAME,
+VOICEPRINT_USER1_MODEL,
+VOICEPRINT_USER2_NAME,
+VOICEPRINT_USER2_MODEL
+)
 
 
 class VoiceRecognitionManager:
-    MODEL_PATH = "/home/msutt/hal/pyannote/embedding/pytorch_model.bin"
-    VOICEPRINT_DIR = "/home/msutt/hal/voiceprints"
-
     def __init__(self):
-        self.model_path = self.MODEL_PATH
-        self.voiceprint_dir = self.VOICEPRINT_DIR
+        self.model_path = os.path.join(VOICE_RECOGNITION_MODEL_PATH, VOICE_RECOGNITION_MODEL_NAME)
+        self.voiceprint_dir = VOICEPRINT_MODEL_DIR
         self.model = self._load_model()
         # Load all known speaker embeddings here
         self.embeddings = {
-            "Dad": self.load_embedding("dad_embedding.pt"),
-            "Onnalyn": self.load_embedding("onnalyn_embedding.pt"),
+            VOICEPRINT_USER1_NAME: self.load_embedding(VOICEPRINT_USER1_MODEL),
+            VOICEPRINT_USER2_NAME: self.load_embedding(VOICEPRINT_USER2_MODEL),
             # Add more speakers here as needed
         }
         self.threshold = 0.2  # If highest similarity is below this, treat speaker as Unknown.
