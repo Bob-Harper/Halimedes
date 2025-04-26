@@ -1,5 +1,5 @@
 import random
-from active_robot.picrawler_extended import PicrawlerExtended
+from body.picrawler_extended import PicrawlerExtended
 from helpers.passive_sounds_manager import PassiveSoundsManager
 from helpers.response_manager import Response_Manager
 import asyncio

@@ -10,7 +10,7 @@ Import the Picrawler class from the picrawler module first
 to pass through to all helper classes that use it.  This should
 prevent multiple initializations of the Picrawler class.
  """
-from active_robot.picrawler import Picrawler 
+from body.picrawler import Picrawler 
 # Create a single instance of Picrawler to pass through
 picrawler_instance = Picrawler()
 from helpers.response_manager import Response_Manager

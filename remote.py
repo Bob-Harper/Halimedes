@@ -1,10 +1,10 @@
 import asyncio
 from time import sleep
 import os
-from active_robot.ios_controller import SunFounderController
-from active_robot.picrawler import Picrawler
-from active_robot.picrawler_extended import PicrawlerExtended
-from active_robot.robot_hat import Pin, Ultrasonic, utils
+from body.ios_controller import SunFounderController
+from body.picrawler import Picrawler
+from body.picrawler_extended import PicrawlerExtended
+from body.robot_hat import Pin, Ultrasonic, utils
 from vision.vilib import Vilib
 utils.reset_mcu()
 sleep(0.5)
