@@ -1,7 +1,8 @@
 import subprocess
+from helpers.global_config import VOICE_MODEL_PATH, VOICE_MODEL_NAME
 
 def speak_with_flite(words):
-    voice_path="/home/msutt/hal/flitevox/cmu_us_rms.flitevox"
+    voice_path=VOICE_MODEL_PATH/VOICE_MODEL_NAME 
     try:
         # Construct the Flite command
         command = [

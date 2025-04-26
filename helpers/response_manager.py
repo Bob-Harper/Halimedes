@@ -5,6 +5,8 @@ import random
 from helpers.emotional_sounds_manager import get_voice_modifiers
 from helpers.emotional_sounds_manager import EmotionHandler
 from helpers.passive_sounds_manager import PassiveSoundsManager
+from helpers.global_config import VOICE_MODEL_PATH, VOICE_MODEL_NAME
+
 from nltk.tokenize import sent_tokenize
 from rapidfuzz import process
 
@@ -15,8 +17,45 @@ class Response_Manager:
     def __init__(self, picrawler_instance, actions_manager=None, eye_animator=None):
         self.crawler = picrawler_instance
         # Hal's voicefile
-        self.voice_path = "/home/msutt/hal/flitevox/cmu_us_rms.flitevox"
-
+        self.voice_path = VOICE_MODEL_PATH/VOICE_MODEL_NAME 
+        # Ensure the voice file exists
+        if not self.voice_path.exists():
+            raise FileNotFoundError(f"Voice model not found at {self.voice_path}. Please check the path.")
+        # Ensure the voice file is a .flitevox file
+        if not self.voice_path.suffix == ".flitevox":
+            raise ValueError(f"Voice model must be a .flitevox file. Found: {self.voice_path.suffix}")
+        # Ensure the voice file is not empty
+        if self.voice_path.stat().st_size == 0:
+            raise ValueError(f"Voice model file is empty: {self.voice_path}. Please check the file.")
+        # Ensure the voice file is not corrupted
+        try:
+            with open(self.voice_path, 'rb') as f:
+                f.read(1)
+        except Exception as e:  # Handle any file read errors
+            raise ValueError(f"Voice model file is corrupted: {self.voice_path}. Error: {e}")
+        # Ensure the voice file is not a directory
+        if self.voice_path.is_dir():
+            raise ValueError(f"Voice model path is a directory: {self.voice_path}. Please check the path.")
+        # Ensure the voice file is not a symlink
+        if self.voice_path.is_symlink():
+            raise ValueError(f"Voice model path is a symlink: {self.voice_path}. Please check the path.")
+        # Ensure the voice file is not a socket
+        if self.voice_path.is_socket():
+            raise ValueError(f"Voice model path is a socket: {self.voice_path}. Please check the path.")
+        # Ensure the voice file is not a FIFO
+        if self.voice_path.is_fifo():
+            raise ValueError(f"Voice model path is a FIFO: {self.voice_path}. Please check the path.")
+        # Ensure the voice file is not a character device
+        if self.voice_path.is_char():
+            raise ValueError(f"Voice model path is a character device: {self.voice_path}. Please check the path.")
+        # Ensure the voice file is not a block device
+        if self.voice_path.is_block():
+            raise ValueError(f"Voice model path is a block device: {self.voice_path}. Please check the path.")
+        # Ensure the voice file is not a named pipe
+        if self.voice_path.is_fifo():
+            raise ValueError(f"Voice model path is a named pipe: {self.voice_path}. Please check the path.")
+        # Jordan, if you are reading this, phone me immediately, I don't care what time it is.  Call me now.
+        
         # Baseline values to create Hal's signature voice
         self.baseline_pitch = 50
         self.baseline_speed = 0.88  # note below, value is counterintuitive
