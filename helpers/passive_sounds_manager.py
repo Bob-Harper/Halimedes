@@ -2,12 +2,12 @@ from robot_hat import Music
 import asyncio
 import random
 import os
-
+from helpers.global_config import SOUND_ASSETS_PATH
 
 class PassiveSoundsManager:
     def __init__(self):
         self.music = Music() 
-        self.sounds_dir = "/home/msutt/hal/sounds/passive/"
+        self.sounds_dir = SOUND_ASSETS_PATH
 
     async def sounds_thinking_loop_single(self):
         """Play a single passive sound dynamically from a directory, supporting multiple file types."""

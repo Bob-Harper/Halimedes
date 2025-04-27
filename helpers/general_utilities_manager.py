@@ -54,3 +54,12 @@ class GeneralUtilitiesManager:
         elif status == "Unknown":  
             await self.response_manager.speak_with_flite("Battery not detected. Proceed with caution, recheck battery status regularly.")
 
+    @staticmethod
+    def check_eyeanimator_health(eye_animator):
+        """Quick diagnostic to check EyeAnimator internal state."""
+        print("=== EyeAnimator Health Check ===")
+        print(f"State: {eye_animator.state}")
+        print(f"Drawer Profile: {eye_animator.drawer.profile}")
+        print(f"Blink Engine Connected: {hasattr(eye_animator, 'blinker')}")
+        print(f"Interpolator Connected: {hasattr(eye_animator, 'interpolator')}")
+        print("=== End of EyeAnimator Health Check ===")

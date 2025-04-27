@@ -3,6 +3,7 @@ from nrclex import NRCLex
 import os
 import random
 import subprocess
+from helpers.global_config import SOUND_ASSETS_PATH
 
 """ 
 multipliers adjust cadence to simulate emotional changes during speech compared to neutral default.
@@ -37,7 +38,7 @@ def get_voice_modifiers(emotion):
 
 class EmotionalSoundsManager:
     def __init__(self):
-        self.emotion_base_dir = "/home/msutt/hal/sounds/passive"
+        self.emotion_base_dir = SOUND_ASSETS_PATH
 
     def get_emotion_directory(self, emotion):
         """Returns the appropriate sound directory for the given emotion."""
@@ -73,24 +74,11 @@ class EmotionalSoundsManager:
 
 class EmotionHandler:
     def __init__(self):
-        """
-        Initialize the EmotionHandler.
-        Args:
-            sound_base_dir (str): Path to the base directory containing emotion sound folders.
-        """
         self.sia = SentimentIntensityAnalyzer()
         self.emotion_categories = ['fear', 'anger', 'anticipation', 'trust', 'surprise',
                                     'positive', 'negative', 'sadness', 'disgust', 'joy']
 
     def analyze_text_emotion(self, text):
-        """
-        Analyze the emotion of the given text using NRCLex and SIA.
-        Args:
-            text (str): Input text to analyze.
-
-        Returns:
-            str: The predominant emotion or "neutral".
-        """
         if not text:
             return "neutral"
 
