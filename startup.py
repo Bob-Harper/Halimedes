@@ -1,6 +1,6 @@
 print("=== STARTUP SCRIPT INITIATED ===")
 # STARTUP.PY AUTOSTART SERVICE IS DISABLED, HAL WILL BOOT STRAIGHT INTO WORK MODE
-
+import time
 import warnings
 warnings.simplefilter('ignore')
 import asyncio
@@ -19,6 +19,7 @@ from audio_input.verbal_commands import CommandManager
 from audio_input.voice_recognition_manager import VoiceRecognitionManager
 from helpers.emotional_sounds_manager import EmotionHandler, EmotionalSoundsManager
 from helpers.weather_command_manager import WeatherCommandManager
+from helpers.prompt_template_manager import PromptTemplateManager
 from helpers.llm_client_handler import LLMClientHandler
 from helpers.passive_actions_manager import PassiveActionsManager
 from helpers.system_prompt_fetch import system_prompt_fetch
@@ -27,10 +28,12 @@ from helpers.news_handler import NewsHandler
 from eyes.eye_animator import EyeAnimator
 from eyes.eye_loader import load_eye_profile
 
-
 # Initialize everything at module level
 eye_profile = load_eye_profile("vector03")
 eye_animator = EyeAnimator(eye_profile)
+time.sleep(1.4)
+eye_animator.finalize_init()
+template_manager = PromptTemplateManager(model_name="gemma3:1b")
 llm_client = LLMClientHandler(server_host=OLLAMALAPTOP)
 voiceprint_manager = VoiceRecognitionManager()
 command_manager = CommandManager(llm_client, picrawler_instance, eye_animator)
@@ -46,13 +49,13 @@ news_api = NewsHandler(picrawler_instance)
 
 async def main():
     print("Entered main()")
-    
-    eye_animator.draw_gaze(10, 10, pupil_size=1.0)
-    eye_animator.set_expression("asleep")
     await response_manager.speak_with_flite("Beginning startup procedure and status check. Please stand by, system test underway.")
     await response_manager.speak_with_flite("Servos powered. Camera online. Interactive Visual Display initiating.")
-    eye_animator.dual_blink_open(pupil_size=0.8, x_off=10, y_off=10, speed=0.3)
+    eye_animator.transition_expression("asleep")
+    time.sleep(0.4)
+    eye_animator.draw_gaze(10, 10, pupil=1.0)
     await response_manager.speak_with_flite("Gaze tracking initiated. Eye animation system online.")
+    eye_animator.dual_blink_open(pupil=0.8, x_off=10, y_off=10, speed=0.3)
     await response_manager.speak_with_flite("Listening initiated. Voiceprint recognition active. Voice centers activated. Checking battery.")
     await general_utils.announce_battery_status()
     await weather_fetch.startup_fetch_forecast()
@@ -94,12 +97,14 @@ async def main():
 
         # Label the user input for the model
         user_input_for_llm = f"{recognized_speaker}: {spoken_text}"
-        print(f"{recognized_speaker}: {spoken_text}")
-        # print(f"{recognized_speaker} emotion: {user_emotion}")
+        print(f"{recognized_speaker}: emotion: {user_emotion}\n{spoken_text}")
+
+        # Use PromptTemplateManager to wrap prompt properly for this model
+        final_prompt = template_manager.build_prompt(user_input_for_llm)
 
         # Handle passive actions while LLM processes
         thinking_task = asyncio.create_task(actions_manager.handle_passive_actions(stop_event))
-        response_text = await llm_client.send_message_async(system_prompt, user_input_for_llm)
+        response_text = await llm_client.send_message_async(system_prompt, final_prompt)
         stop_event.set()
         await thinking_task  # Wait for background actions to finish
 

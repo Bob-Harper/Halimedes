@@ -23,11 +23,14 @@ NEWSAPIDOTCOM = os.getenv("NEWSAPIDOTCOM")
 # Define but don't initialize
 LED_INDICATOR = LED(26)
 
-# Paths are now kept in .env so we dont need to hardcode and take 
-# forever fixing after a refactor because vscode is a bitch
+# Paths are now kept in .env so we dont need to hardcode 
+
+# DualEye Display 
 EYE_ASSETS_PATH = Path(os.getenv("EYE_ASSETS_PATH"))
-SOUND_ASSETS_PATH = Path(os.getenv("SOUND_ASSETS_PATH"))
 EYE_CACHE_PATH = Path(os.getenv("EYE_CACHE_PATH"))
+
+# Sound Files
+SOUND_ASSETS_PATH = Path(os.getenv("SOUND_ASSETS_PATH"))
 
 # Core SPEECH model 
 SPEECH_MODEL_PATH = Path(os.getenv("SPEECH_MODEL_PATH"))

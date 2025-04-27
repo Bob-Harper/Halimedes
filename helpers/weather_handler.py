@@ -3,7 +3,7 @@ import datetime
 from collections import defaultdict
 from helpers.global_config import (
     OPEN_WEATHER_1DAY, OPEN_WEATHER_5DAY, OPEN_WEATHER,
-    DEFAULT_WEATHER_LAT, DEFAULT_WEATHER_LONG
+    DEFAULT_WEATHER_LAT, DEFAULT_WEATHER_LONG, SOUND_ASSETS_PATH
 )
 params = {
     "lat": DEFAULT_WEATHER_LAT,
@@ -14,7 +14,7 @@ params = {
 
 class WeatherHandler:
     def __init__(self):
-        self.weather_intro_dir = "/home/msutt/hal/sounds/weather"
+        self.weather_intro_dir = SOUND_ASSETS_PATH/"weather"
 
     @staticmethod
     def get_wind_speed_description(speed):

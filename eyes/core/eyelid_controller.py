@@ -15,7 +15,7 @@ class EyelidController:
             "focused":  {"top": 48, "bottom": 48, "left": 0,  "right": 0},
             "skeptical":{"top_left": 32, "top_right": 60, "bottom": 36, "left": 4, "right": 0},
             "surprised":{"top": 18, "bottom": 60, "left": 0,  "right": 0},
-            "asleep":   {"top": 80, "bottom": 80, "left": 0,  "right": 0}
+            "asleep":   {"top": 84, "bottom": 84, "left": 0,  "right": 0}
         }
 
     def set_expression(self, name):

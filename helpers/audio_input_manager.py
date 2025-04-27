@@ -6,7 +6,7 @@ import numpy as np
 import websockets
 from helpers.passive_sounds_manager import PassiveSoundsManager
 from helpers.general_utilities_manager import GeneralUtilitiesManager
-from helpers.global_config import LED_INDICATOR
+from helpers.global_config import LED_INDICATOR, SOUND_ASSETS_PATH
 
 
 class AudioInputManager:
@@ -29,7 +29,7 @@ class AudioInputManager:
         Returns the transcript and optionally the raw audio.
         """
         # Turn on Indicators for Active Listening.
-        await self.sound_manager.play_sound_indicator("/home/msutt/hal/sounds/passive/excited/n-talk3.wav", 10)
+        await self.sound_manager.play_sound_indicator(SOUND_ASSETS_PATH/"excited/n-talk3.wav", 10)
         led_task = asyncio.create_task(self._led_blip())
 
         audio_array = await asyncio.to_thread(self.record_until_silence)
@@ -42,7 +42,7 @@ class AudioInputManager:
             await led_task
         except asyncio.CancelledError:
             pass
-        await self.sound_manager.play_sound_indicator("/home/msutt/hal/sounds/passive/excited/n-talk1.wav", 10)
+        await self.sound_manager.play_sound_indicator(SOUND_ASSETS_PATH/"excited/n-talk1.wav", 10)
         self.listening_led.off()
 
         try:

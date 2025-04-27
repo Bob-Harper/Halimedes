@@ -26,13 +26,16 @@ def main():
         "focused", "skeptical", "surprised", "asleep", "neutral", 
     ]
 
-    # for mood in expressions:
-    #     try:
-    #         print(f"Setting expression: {mood}")
-    #         hal.transition_expression(mood)  # or sad, skeptical, whatever
-    #     except Exception as e:
-    #         print(f"Expression '{mood}' failed: {e}")
-    #         break
+    for mood in expressions:
+        try:
+            print(f"Setting expression: {mood}")
+            hal.dual_blink_close(speed=0.02)
+            hal.set_expression(mood)  # or sad, skeptical, whatever
+            hal.dual_blink_open(pupil=0.8, x_off=10, y_off=10, speed=0.3)
+            time.sleep(1.4)
+        except Exception as e:
+            print(f"Expression '{mood}' failed: {e}")
+            break
 
     gaze_modes = ["center", "left", "center", "right", "center", "up", "center", "down", "center", "wander"]
 
