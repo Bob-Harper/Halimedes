@@ -1,6 +1,7 @@
 print("=== STARTUP SCRIPT INITIATED ===")
 # STARTUP.PY AUTOSTART SERVICE IS DISABLED, HAL WILL BOOT STRAIGHT INTO WORK MODE
 import time
+import asyncio
 import warnings
 warnings.simplefilter('ignore')
 import asyncio
@@ -54,6 +55,9 @@ async def main():
     eye_animator.transition_expression("asleep")
     time.sleep(0.4)
     eye_animator.draw_gaze(10, 10, pupil=1.0)
+    # Start the passive blink loop
+    asyncio.create_task(eye_animator.idle_blink_loop())
+
     await response_manager.speak_with_flite("Gaze tracking initiated. Eye animation system online.")
     eye_animator.dual_blink_open(pupil=0.8, x_off=10, y_off=10, speed=0.3)
     await response_manager.speak_with_flite("Listening initiated. Voiceprint recognition active. Voice centers activated. Checking battery.")

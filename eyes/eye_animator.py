@@ -1,4 +1,6 @@
 import time 
+import random
+import asyncio
 from .core.draw_engine import DrawEngine
 from .core.blink_engine import BlinkEngine
 from .core.gaze_interpolator import GazeInterpolator
@@ -89,3 +91,11 @@ class EyeAnimator:
         self.state.update({"x": x, "y": y, "pupil": pupil})
         self.drawer.gaze_cache.clear()
         self.draw_gaze(x, y, pupil)
+
+    async def idle_blink_loop(self):
+        """Continuously blink at random intervals while running."""
+        while True:
+            wait_time = random.uniform(4, 10)  # seconds between blinks
+            await asyncio.sleep(wait_time)
+            if self.last_buf:
+                self.blink()
