@@ -1,12 +1,9 @@
-# test_eye_animator.py
-from helpers.global_config import EYE_ASSETS_PATH
-import time
+import asyncio
 from eyes.eye_loader import load_eye_profile
 from eyes.eye_animator import EyeAnimator
 from eyes.core.blink_engine import BlinkEngine
 
-
-def main():
+async def main():
     print("Halimedes Sanity Check: INITIATING")
     try:
         profile = load_eye_profile("real_owl")
@@ -15,40 +12,29 @@ def main():
     except Exception as e:
         print(f"INIT FAILURE: {e}")
         return
+
     print("DRAW TEST: Centered eye, no expression")
     hal.drawer.gaze_cache.clear()
     hal.draw_gaze(10, 10, 1.0)
-    time.sleep(1)
+    await asyncio.sleep(1)           # ← non-blocking
     print("Profile loaded, animator online.")
+    # start blinking in the background
+    blink_task = asyncio.create_task(hal.idle_blink_loop())
 
-    expressions = [
-        "happy", "sad", "angry",
-        "focused", "skeptical", "surprised", "asleep", "neutral", 
-    ]
-
-    for mood in expressions:
+    for mood in ["test", "happy","sad","angry","focused","skeptical","surprised","asleep","neutral"]:
+        print(f"Setting expression: {mood}")
         try:
-            print(f"Setting expression: {mood}")
-            hal.dual_blink_close(speed=0.02)
-            hal.set_expression(mood)  # or sad, skeptical, whatever
-            hal.dual_blink_open(pupil=0.8, x_off=10, y_off=10, speed=0.3)
-            time.sleep(1.4)
+            await hal.smooth_transition_expression(mood)
+            await asyncio.sleep(2)
+            for mode in ["center","left","center","right","center","up","center","down","center","wander"]:
+                print(f"Gaze mode: {mode}")
+                hal.apply_gaze_mode(mode)
+                await asyncio.sleep(1)
         except Exception as e:
             print(f"Expression '{mood}' failed: {e}")
             break
 
-    gaze_modes = ["center", "left", "center", "right", "center", "up", "center", "down", "center", "wander"]
-
-    for mode in gaze_modes:
-        try:
-            print(f"Gaze mode: {mode}")
-            hal.apply_gaze_mode(mode)
-            time.sleep(1.4)
-        except Exception as e:
-            print(f"Gaze mode '{mode}' failed: {e}")
-            break
-
-    print("Finished sanity pass. If nothing exploded, Hal is operational.")
-    hal.apply_gaze_mode(mode)
+    print("Finished sanity pass. Hal is operational.")
+    blink_task.cancel()
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
