@@ -52,14 +52,14 @@ async def main():
     print("Entered main()")
     await response_manager.speak_with_flite("Beginning startup procedure and status check. Please stand by, system test underway.")
     await response_manager.speak_with_flite("Servos powered. Camera online. Interactive Visual Display initiating.")
-    eye_animator.transition_expression("asleep")
+    eye_animator.transition_expression("skeptical")
     time.sleep(0.4)
     eye_animator.draw_gaze(10, 10, pupil=1.0)
     # Start the passive blink loop
     asyncio.create_task(eye_animator.idle_blink_loop())
-
+    eye_animator.dual_blink_open(pupil=0.8, x_off=0, y_off=0, speed=0.3)
+    #eye_animator.transition_expression("Neutral")
     await response_manager.speak_with_flite("Gaze tracking initiated. Eye animation system online.")
-    eye_animator.dual_blink_open(pupil=0.8, x_off=10, y_off=10, speed=0.3)
     await response_manager.speak_with_flite("Listening initiated. Voiceprint recognition active. Voice centers activated. Checking battery.")
     await general_utils.announce_battery_status()
     await weather_fetch.startup_fetch_forecast()

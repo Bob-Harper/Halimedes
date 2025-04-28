@@ -99,3 +99,36 @@ class EyeAnimator:
             await asyncio.sleep(wait_time)
             if self.last_buf:
                 self.blink()
+
+
+    async def smooth_transition_expression(self, mood, steps=20, delay=0.02):
+        """Smoothly transition from current eyelid positions to new expression over multiple frames."""
+        target = self.drawer.lid_control.expression_map.get(mood)
+        if not target:
+            print(f"[EyeAnimator] Unknown expression '{mood}'")
+            return
+
+        # Determine start and end positions
+        current = self.drawer.lid_control.lids.copy()
+
+        for step in range(1, steps + 1):
+            intermediate = {}
+
+            # Gradually interpolate each lid value
+            for lid in ['top', 'bottom', 'left', 'right']:
+                start_value = current.get(lid, 0)
+                end_value = target.get(lid, start_value)
+                interpolated_value = start_value + (end_value - start_value) * (step / steps)
+                intermediate[lid] = int(interpolated_value)
+
+            # Apply this intermediate lid config
+            self.drawer.lid_control.lids.update(intermediate)
+            buf = self.drawer.generate_frame(
+                x_off=self.state["x"],
+                y_off=self.state["y"],
+                pupil_size=self.state["pupil"]
+            )
+            self.drawer.display(buf)
+            self.last_buf = buf
+
+            await asyncio.sleep(delay)  # Short pause to allow human eye to see animation

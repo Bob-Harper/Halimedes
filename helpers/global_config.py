@@ -28,6 +28,8 @@ LED_INDICATOR = LED(26)
 # DualEye Display 
 EYE_ASSETS_PATH = Path(os.getenv("EYE_ASSETS_PATH"))
 EYE_CACHE_PATH = Path(os.getenv("EYE_CACHE_PATH"))
+EYE_EXPRESSIONS_PATH = Path(os.getenv("EYE_EXPRESSIONS_PATH"))
+EYE_EXPRESSIONS_FILE = Path(os.getenv("EYE_EXPRESSIONS_FILE"))
 
 # Sound Files
 SOUND_ASSETS_PATH = Path(os.getenv("SOUND_ASSETS_PATH"))

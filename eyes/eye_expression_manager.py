@@ -1,5 +1,6 @@
 import json
 import os
+import time
 
 class EyeExpressionManager:
     def __init__(self, animator, multi_file=False):
@@ -56,3 +57,23 @@ class EyeExpressionManager:
 
         except Exception as e:
             print(f"[ExpressionManager] Error applying '{name}': {e}")
+
+    def smooth_transition_expression(self, mood, steps=20, delay=0.02):
+        """Smoothly interpolate to a new expression over multiple frames."""
+        old_lids = self.drawer.lid_control.get_mask_config()
+        self.drawer.lid_control.set_expression(mood)
+        new_lids = self.drawer.lid_control.get_mask_config()
+
+        # Revert to old to start transition
+        self.drawer.lid_control.lids.update(old_lids)
+
+        # Stepwise interpolation
+        for step in range(1, steps + 1):
+            intermediate = {}
+            for key in old_lids:
+                start = old_lids.get(key, 0)
+                end = new_lids.get(key, 0)
+                intermediate[key] = int(start + (end - start) * (step / steps))
+            self.drawer.lid_control.lids.update(intermediate)
+            self.draw_gaze(self.state["x"], self.state["y"], pupil=self.state["pupil"])
+            time.sleep(delay)

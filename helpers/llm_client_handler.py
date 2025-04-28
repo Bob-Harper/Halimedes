@@ -36,39 +36,47 @@ class LLMClientHandler:
             }
         ]
 
-    def truncate_history(self):
-        # Estimate tokens by character count (1 token ≈ 4 chars)
-        token_count = len(self.conversation_history[0]['content']) // 4
-        truncated_history = [self.conversation_history[0]]
+    def build_chat_sequence(self, system_prompt, user_input):
+        """
+        Builds a structured conversation history for models like Gemma that expect <|user|> / <|assistant|> blocks.
+        """
+        chat_sequence = []
 
-        for message in reversed(self.conversation_history[1:]):
-            message_token_count = len(message['content']) // 4
-            if token_count + message_token_count > self.max_tokens:
-                break
-            truncated_history.insert(1, message)
-            token_count += message_token_count
+        # Start with system prompt
+        chat_sequence.append({
+            'role': 'system',
+            'content': system_prompt
+        })
 
-        self.conversation_history = truncated_history
+        # Replay conversation history
+        for message in self.conversation_history:
+            chat_sequence.append({
+                'role': message['role'],
+                'content': message['content']
+            })
 
+        # Append new user input
+        chat_sequence.append({
+            'role': 'user',
+            'content': user_input
+        })
+
+        return chat_sequence
+    
     async def send_message_async(self, system_prompt, user_input):
         """Send a message to the LLM and get the response asynchronously."""
-        # Update the system prompt without removing the original
-        self.conversation_history[0] = {'role': 'system', 'content': system_prompt}
         
-        # Add the user's input to the conversation
-        self.conversation_history.append({'role': 'user', 'content': user_input})
-        
-        # Truncate history to fit token limits
-        self.truncate_history()
-       
         try:
+            # Build proper chat sequence
+            chat_payload = self.build_chat_sequence(system_prompt, user_input)
+
             # Send request to the LLM server
             response = await asyncio.to_thread(
                 requests.post,
                 f"{self.server_host}/api/chat",
                 json={
                     'model': self.model,
-                    'messages': self.conversation_history,
+                    'messages': chat_payload,
                     'stream': False
                 }
             )
@@ -78,9 +86,17 @@ class LLMClientHandler:
             response_text = response.json().get('message', {}).get('content', '')
             response_text = self.clean_response(response_text)
             
-            # Add Hal's response to the conversation history
-            self.conversation_history.append({'role': 'assistant', 'content': response_text})
+            # Save assistant's reply into history
+            self.conversation_history.append({
+                'role': 'assistant',
+                'content': response_text
+            })
+
+            # Truncate history if needed
+            self.truncate_history()
+
             return response_text
+
         except Exception as e:
             print(f"Error communicating with LLM: {e}")
             return "I'm sorry, I couldn't process that."
@@ -118,3 +134,26 @@ class LLMClientHandler:
         cleaned_text = pattern.sub(case_sensitive_replace, text)
 
         return cleaned_text.strip()
+
+    def truncate_history(self):
+        """Smarter history trimming based on max token count."""
+        if not self.conversation_history:
+            return
+
+        token_count = 0
+        truncated_history = []
+
+        # Always preserve the system prompt first
+        if self.conversation_history[0]['role'] == 'system':
+            truncated_history.append(self.conversation_history[0])
+            token_count += len(self.conversation_history[0]['content']) // 4
+
+        # Add messages until limit is hit
+        for message in reversed(self.conversation_history[1:]):
+            message_token_count = len(message['content']) // 4
+            if token_count + message_token_count > self.max_tokens:
+                continue  # Skip this message (too big)
+            truncated_history.insert(1, message)
+            token_count += message_token_count
+
+        self.conversation_history = truncated_history
