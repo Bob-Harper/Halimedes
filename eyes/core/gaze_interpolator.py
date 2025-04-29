@@ -34,8 +34,8 @@ class GazeInterpolator:
             "down": (0, 10),
             "center": (10, 10),
             "wander": (
-                random.randint(6, 14),
-                random.randint(6, 14)
+                random.randint(0, 20),
+                random.randint(0, 20)
             )
         }
         if mode not in modes:

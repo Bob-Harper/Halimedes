@@ -1,68 +1,17 @@
-# hal_face_tracker.py
-import time
-import random
-from vilib import Vilib
-from eyes.eye_loader import load_eye_profile
-from eyes.eye_animator import EyeAnimator
-from vision.face_tracking import map_face_to_gaze
+import asyncio
+from eyes.eye_loader   import load_eye_profile
+from eyes.eye_animator import EyeAnimator, BlinkEngine
+from vision.face_tracking import FaceTracker
 
-# === Initialization ===
-profile = load_eye_profile("vector03")  # or "real_owl", up to you
-animator = EyeAnimator(profile)
+async def main():
+    profile  = load_eye_profile("real_owl")
+    animator = EyeAnimator(profile)
+    animator.blinker = BlinkEngine(animator.drawer)
+    asyncio.create_task(animator.idle_blink_loop())
+    await animator.smooth_transition_expression("neutral")
 
-# Face tracking parameters
-last_seen_face = time.time()
-face_timeout = 0.75  # seconds before resetting to center
-last_face_coords = (10, 10)  # Default center
-last_blink_time = time.time()
-blink_interval = random.uniform(8, 10)  # Randomize first blink
-
-
-def main():
-    global last_seen_face, last_face_coords, last_blink_time, blink_interval
-
-    print("[Hal Vision] Activating...")
-    Vilib.camera_start(vflip=False, hflip=False)
-    Vilib.display(local=True, web=False)  # Optional
-    Vilib.face_detect_switch(True)
-
-    try:
-        while True:
-            if Vilib.face_obj_parameter['n'] > 0:
-                face_x = Vilib.detect_obj_parameter['human_x']
-                face_y = Vilib.detect_obj_parameter['human_y']
-
-                x_off, y_off = map_face_to_gaze(face_x, face_y)
-
-                last_seen_face = time.time()
-                last_face_coords = (x_off, y_off)
-
-                animator.smooth_gaze(x_off, y_off, pupil=1.3)
-
-            else:
-                time_since_seen = time.time() - last_seen_face
-
-                if time_since_seen < face_timeout:
-                    x_off, y_off = last_face_coords
-                    animator.smooth_gaze(x_off, y_off, pupil=1.3)
-                else:
-                    animator.smooth_gaze(x_off, y_off, pupil=1.1)
-
-            # BLINK CHECK
-            now = time.time()
-            if now - last_blink_time > blink_interval:
-                animator.blink()
-                last_blink_time = now
-                blink_interval = random.uniform(4, 10)
-
-            time.sleep(0.2)
-
-    except KeyboardInterrupt:
-        print("\n[Hal Vision] Deactivating...")
-
-    finally:
-        Vilib.camera_close()
-
+    tracker = FaceTracker(animator)
+    await tracker.track()
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
