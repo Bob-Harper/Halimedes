@@ -33,7 +33,6 @@ from eyes.eye_loader import load_eye_profile
 eye_profile = load_eye_profile("vector03")
 eye_animator = EyeAnimator(eye_profile)
 time.sleep(1.4)
-eye_animator.finalize_init()
 template_manager = PromptTemplateManager(model_name="gemma3:1b")
 llm_client = LLMClientHandler(server_host=OLLAMALAPTOP)
 voiceprint_manager = VoiceRecognitionManager()

@@ -111,7 +111,7 @@ class EyeDeformer:
         radius = np.sqrt(dx**2 + dy**2)
         angle = np.arctan2(dy, dx)
 
-        dilation = 1.0 / pupil_size
+        dilation = 1 / float(pupil_size)
         warped_radius = radius.copy()
 
         inner_mask = radius <= iris_radius

@@ -47,6 +47,10 @@ class EyelidController:
         neutral = expression_map.get("neutral", {})
         # ensure all four corners exist
         self.lids = {
+            "top":  neutral.get("lid_top",  36),
+            "bottom": neutral.get("lid_bottom", 40),
+            "left":  neutral.get("lid_left",  0),
+            "right": neutral.get("lid_right", 0),
             "top_left":  neutral.get("lid_top_left",  36),
             "top_right": neutral.get("lid_top_right", 36),
             "bottom_left":  neutral.get("lid_bottom_left",  40),
