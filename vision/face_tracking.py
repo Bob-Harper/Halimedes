@@ -23,7 +23,7 @@ class FaceTracker:
         centered = gaze_range / 2
         self.last_coords = (centered, centered)
 
-    def map_face_to_gaze(face_x, face_y):
+    def map_face_to_gaze(self, face_x, face_y):
         # clamp to your active detection window
         face_x = max(100, min(540, face_x))
         face_y = max(100, min(380, face_y))
@@ -69,7 +69,10 @@ class FaceTracker:
 
                 self.animator.smooth_gaze(x_off, y_off, pupil=pupil)
                 await asyncio.sleep(0.2)
-
+        except asyncio.CancelledError:
+            # (optional) clean up or just swallow
+            pass
+        
         finally:
             Vilib.camera_close()
 

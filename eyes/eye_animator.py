@@ -23,10 +23,6 @@ class EyeAnimator:
         time.sleep(0.1)  # short SPI bus stabilization
         self.drawer.gaze_cache.clear()  # clear the gaze cache
         self.last_buf = None  # clear the last buffer for blinking
-
-    def finalize_init(self):
-        """After everything loaded, finalize internal modules."""
-        self.blinker = BlinkEngine(self.drawer)
         
     def draw_gaze(self, x, y, pupil=1.0):
         self.state.update({"x": x, "y": y, "pupil": pupil})
