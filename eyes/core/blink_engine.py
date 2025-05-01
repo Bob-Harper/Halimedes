@@ -1,12 +1,20 @@
+from typing import Protocol
 import time
+import random
+import asyncio
 from eyes.dualeye_driver import eye_left, eye_right
-from .draw_engine import DrawEngine
+
+
+class AnimatorWithBuffer(Protocol):
+    """Just enough for BlinkEngine to know about last_buf."""
+    last_buf: bytearray  # or whatever type your buffers are
+
 
 class BlinkEngine:
-    def __init__(self, drawer: DrawEngine):
-        self.drawer = drawer
-        self.width = 160
-        self.height = 160
+    def __init__(self, animator: AnimatorWithBuffer) -> None:
+        self.animator = animator
+        self.width    = 160
+        self.height   = 160
 
     def dual_blink_close(self, speed=0.02):
         for i in range(0, self.height // 2 + 1, 4):
@@ -40,3 +48,13 @@ class BlinkEngine:
         self.dual_blink_close(speed=close_speed)
         time.sleep(hold)
         self.dual_blink_open(buf, speed=open_speed)
+
+    async def idle_blink_loop(self):
+        while True:
+            wait = random.uniform(4, 10)
+            await asyncio.sleep(wait)
+
+            buf = self.animator.last_buf
+            if buf is not None:
+                self.blink(buf)
+

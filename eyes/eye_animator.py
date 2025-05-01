@@ -1,8 +1,6 @@
 import time 
-import random
 import asyncio
 from .core.draw_engine import DrawEngine
-from .core.blink_engine import BlinkEngine
 from .core.gaze_interpolator import GazeInterpolator
 
 
@@ -30,32 +28,6 @@ class EyeAnimator:
         self.drawer.display(buf)
         self.last_buf = buf  # Store for blink refresh
 
-    def blink(self):
-        if self.blinker is None:
-            print("[EyeAnimator] Warning: Blinker was missing. Auto-attaching now.")
-            self.blinker = BlinkEngine(self.drawer)
-        self.blinker.blink(self.last_buf)
-
-    def dual_blink_close(self, speed=0.02):
-        if self.blinker is None:
-            print("[EyeAnimator] Warning: Blinker was missing. Auto-attaching now.")
-            self.blinker = BlinkEngine(self.drawer)
-        self.blinker.dual_blink_close(speed=speed)
-
-    def dual_blink_open(self, pupil=1.0, x_off=0, y_off=0, speed=0.02):
-        if self.blinker is None:
-            print("[EyeAnimator] Warning: Blinker was missing. Auto-attaching now.")
-            self.blinker = BlinkEngine(self.drawer)
-        self.draw_gaze(
-            self.state["x"] + x_off,
-            self.state["y"] + y_off,
-            pupil=pupil
-        )
-        if self.last_buf:
-            self.blinker.dual_blink_open(self.last_buf, speed=speed)
-        else:
-            print("[EyeAnimator] Warning: No last_buf available for dual_blink_open")
-
     def apply_gaze_mode(self, mode):
         self.interpolator.apply_gaze_mode(mode)
 
@@ -81,21 +53,6 @@ class EyeAnimator:
 
         self.blinker.dual_blink_close(speed)
         self.blinker.dual_blink_open(buf, speed)
-
-    def direct_gaze(self, x, y, pupil=1.0):
-        """Directly update gaze without interpolation."""
-        self.state.update({"x": x, "y": y, "pupil": pupil})
-        self.drawer.gaze_cache.clear()
-        self.draw_gaze(x, y, pupil)
-
-    async def idle_blink_loop(self):
-        """Continuously blink at random intervals while running."""
-        while True:
-            wait_time = random.uniform(4, 10)  # seconds between blinks
-            await asyncio.sleep(wait_time)
-            if self.last_buf:
-                self.blink()
-
 
     async def smooth_transition_expression(self, mood, steps=20, delay=0.02):
         """Smoothly transition from current eyelid positions to new expression over multiple frames."""

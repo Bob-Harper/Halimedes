@@ -28,10 +28,12 @@ from helpers.general_utilities_manager import GeneralUtilitiesManager
 from helpers.news_handler import NewsHandler
 from eyes.eye_animator import EyeAnimator
 from eyes.eye_loader import load_eye_profile
+from eyes.core.blink_engine import BlinkEngine
 
 # Initialize everything at module level
 eye_profile = load_eye_profile("vector03")
 eye_animator = EyeAnimator(eye_profile)
+blinker = BlinkEngine
 time.sleep(1.4)
 template_manager = PromptTemplateManager(model_name="gemma3:1b")
 llm_client = LLMClientHandler(server_host=OLLAMALAPTOP)
@@ -56,7 +58,7 @@ async def main():
     eye_animator.draw_gaze(10, 10, pupil=1.0)
     # Start the passive blink loop
     asyncio.create_task(eye_animator.idle_blink_loop())
-    eye_animator.dual_blink_open(pupil=0.8, x_off=0, y_off=0, speed=0.3)
+    blinker.dual_blink_open(pupil=0.8, x_off=0, y_off=0, speed=0.3)
     #eye_animator.transition_expression("Neutral")
     await response_manager.speak_with_flite("Gaze tracking initiated. Eye animation system online.")
     await response_manager.speak_with_flite("Listening initiated. Voiceprint recognition active. Voice centers activated. Checking battery.")
