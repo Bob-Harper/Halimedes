@@ -1,6 +1,5 @@
 import asyncio
 from abc import ABC, abstractmethod
-
 from eyes.eye_animator    import EyeAnimator
 from vision.face_tracking import FaceTracker
 from .gaze_override import GazeOverride
@@ -19,14 +18,15 @@ class BaseChannel(ABC):
 
 
 class GazeChannel(BaseChannel):
-    def __init__(self, animator: EyeAnimator, tracker: FaceTracker) -> None:
+    def __init__(self,
+                 animator: EyeAnimator,
+                 tracker:   FaceTracker,
+    ) -> None:
         self.animator   = animator
-        self.tracker   = tracker
+        self.tracker    = tracker
         self._overrides: List[ChannelSequence] = []
-        # One-off gaze overrides queue:
-        self._overrides = []
-        # Kick off your battle-tested face-tracker:
-        self._task = asyncio.create_task(self.tracker.track())
+        # start face-tracker; it calls animator.smooth_gaze() itself
+        self._task      = asyncio.create_task(self.tracker.track())
 
     def trigger_override(self, x: float, y: float, duration: float = 1.0) -> None:
         self._overrides.append(GazeOverride(self.animator, x, y, duration))
@@ -34,10 +34,10 @@ class GazeChannel(BaseChannel):
     def update(self, dt: float) -> None:
         if self._overrides:
             seq = self._overrides[0]
-            seq.update(dt)            # calls animator.direct_gaze(...)
+            seq.update(dt)
             if seq.finished:
                 self._overrides.pop(0)
-        # else: FaceTracker.track() is still running in the background
+        # else: tracker is still running in background
 
 
 class ExpressionChannel(BaseChannel):
@@ -59,13 +59,23 @@ class ExpressionChannel(BaseChannel):
 
 
 class BlinkChannel(BaseChannel):
-    def __init__(self, animator: EyeAnimator) -> None:
-        # let EyeAnimator drive its own forever loop
-        self._task = asyncio.create_task(animator.idle_blink_loop())
+    def __init__(self, engine) -> None:
+        """
+        engine is your real BlinkEngine(animator) instance.
+        We schedule its idle_blink_loop() directly.
+        """
+        self.engine = engine
+        self._task  = asyncio.create_task(self.engine.idle_blink_loop())
 
-    def update(self, dt: float):
-        # blink completely internal—no per-frame code needed
+    def update(self, dt: float) -> None:
+        # BlinkEngine is fully autonomous now
         pass
+
+    def blink_now(self) -> None:
+        """If you want to force-blink manually."""
+        buf = self.engine.animator.last_buf
+        if buf is not None:
+            self.engine.blink(buf)
 
 
 class ActionChannel(BaseChannel):

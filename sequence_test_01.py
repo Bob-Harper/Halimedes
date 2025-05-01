@@ -4,6 +4,7 @@ import time
 
 from sequencers.eye_channels import GazeChannel, ExpressionChannel, BlinkChannel, ActionChannel
 from sequencers.eye_behaviours  import EyeBehaviorManager
+from eyes.core.blink_engine import BlinkEngine
 from eyes.eye_animator import EyeAnimator
 from vision.face_tracking    import FaceTracker
 from eyes.eye_loader   import load_eye_profile
@@ -24,20 +25,20 @@ class DummySequence:
 
 
 async def main():
-    profile  = load_eye_profile("real_owl")
+    profile  = load_eye_profile("vector03")
     animator = EyeAnimator(profile)
     tracker  = FaceTracker(animator)
     gaze   = GazeChannel(animator, tracker)
     expr   = ExpressionChannel(animator)
     action = ActionChannel()
-    _ = BlinkChannel(animator)    
+    blinker  = BlinkEngine(animator)
+    _ = BlinkChannel(blinker)
     manager = EyeBehaviorManager(gaze, expr, action)
-
-    # start your blink loop (runs forever in background).  _ = BlinkChannel(animator)
-    # BlinkChannel’s __init__ already kicked off animator.idle_blink_loop()
 
     # Example: set an initial expression
     expr.set_mood("happy")
+    animator.draw_gaze(10, 10, pupil=1.0)
+    blinker.blink(animator.last_buf)
     # Schedule a dummy action 2 seconds in
     asyncio.get_event_loop().call_later(
         2.0,

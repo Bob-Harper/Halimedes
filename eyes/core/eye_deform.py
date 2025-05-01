@@ -24,27 +24,33 @@ class EyeDeformer:
         output_size=160
     ):
         """
-        Full rendering pipeline for a deformed eye frame.
-        - Pupil warp applied first.
-        - Gaze translated via crop.
-        - THEN spherical deformation applied (visual only).
+        1) Pupil warp → cache keyed on pupil_size, iris_radius, feather_width
+        2) Gaze‐aligned crop
+        3) Spherical warp → cache keyed on x_off, y_off, strength
         """
-        sample_x, sample_y = self.get_or_generate_pupil_warp_map(
+
+        # --- 1) Pupil layer ---
+        pupil_maps = self.get_or_generate_pupil_warp_map(
             pupil_size=pupil_size,
             iris_radius=iris_radius,
             feather_width=feather_width
         )
+        warped_pupil = self.apply_pupil_warp(source_img, *pupil_maps)
 
-        warped_pupil = self.apply_pupil_warp(source_img, sample_x, sample_y)
-
+        # --- 2) Gaze align ---
         gaze_aligned = self.crop_to_display(warped_pupil, x_off, y_off, output_size)
 
-        final_img = self.apply_spherical_warp(gaze_aligned, x_off=x_off, y_off=y_off, strength=perspective_shift)
+        # --- 3) Spherical layer ---
+        final_img = self.apply_spherical_warp(
+            gaze_aligned,
+            x_off=x_off,
+            y_off=y_off,
+            strength=perspective_shift
+        )
 
-        # === Step 3: Apply spherical warp (visual effect only) ===
-        final_img = self.apply_spherical_warp(gaze_aligned, x_off=x_off, y_off=y_off, strength=perspective_shift)
-
+        # No eyelid masking here—draw_engine will apply that as a separate layer
         return Image.fromarray(final_img.astype(np.uint8), mode='RGB')
+
 
 
     def get_or_generate_spherical_map(self, x_off=10, y_off=10, strength=0.03):
@@ -89,19 +95,27 @@ class EyeDeformer:
         return cv2.remap(image, map_x, map_y, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
             
     def get_or_generate_pupil_warp_map(self, pupil_size, iris_radius, feather_width):
+        # Build the cache key
         key_dict = {
             "pupil_size": round(float(pupil_size), 3),
             "iris_radius": iris_radius,
             "feather_width": feather_width,
         }
 
-        cached = self.cache.load_map(key_dict)
+        # Try loading from cache
+        cached = self.cache.load_map(key_dict, kind="pupil")
         if cached is not None:
-            # print(f"[get_or_generate_pupil_warp_map] Using preloaded pupil map for key {key_dict}")
-            return cached
-        # print("[get_or_generate_pupil_warp_map] calculating realtime pupil map, no key_dict found")
+            # The cache should store a tuple (sample_x, sample_y)
+            try:
+                sample_x, sample_y = cached
+                return sample_x, sample_y
+            except Exception as e:
+                print(f"[PupilWarp] ERROR unpacking cached data for {key_dict}: {e!r}")
 
-        # Regenerate from scratch
+        # Cache miss or unpack failure → regenerate the maps
+        print(f"[PupilWarp] Generating new map for key {key_dict}")
+
+        # Prepare coordinate grid
         h = w = 180
         center_x = w // 2
         center_y = h // 2
@@ -111,24 +125,29 @@ class EyeDeformer:
         radius = np.sqrt(dx**2 + dy**2)
         angle = np.arctan2(dy, dx)
 
-        dilation = 1 / float(pupil_size)
+        # Apply scale inside the iris
+        scale = float(pupil_size)
         warped_radius = radius.copy()
-
         inner_mask = radius <= iris_radius
-        warped_radius[inner_mask] = radius[inner_mask] ** dilation
+        warped_radius[inner_mask] = radius[inner_mask] * scale
 
+        # Feather zone: blend back to original radius
         if feather_width > 0:
             feather_mask = (radius > iris_radius) & (radius <= iris_radius + feather_width)
-            feather_blend = np.clip((radius - iris_radius) / feather_width, 0, 1)
+            t = (radius[feather_mask] - iris_radius) / feather_width
             warped_radius[feather_mask] = (
-                warped_radius[feather_mask] * (1 - feather_blend[feather_mask]) +
-                radius[feather_mask] * feather_blend[feather_mask]
+                warped_radius[feather_mask] * (1 - t) +
+                radius[feather_mask]        * t
             )
 
+        # Outside iris+feather: warped_radius already equals original radius
+
+        # Convert back to sample coordinates
         sample_x = warped_radius * np.cos(angle) + center_x
         sample_y = warped_radius * np.sin(angle) + center_y
 
-        self.cache.save_map(key_dict, (sample_x, sample_y))
+        # Save to cache for next time
+        self.cache.save_map(key_dict, (sample_x, sample_y), kind="pupil")
 
         return sample_x, sample_y
 
