@@ -7,7 +7,7 @@ class FaceTracker:
     def __init__(self, animator,
                  clamp_x=(100,540), clamp_y=(100,380),
                  gaze_range=20, timeout=0.75,
-                 visible_pupil=1.0, hidden_pupil=0.9):
+                 visible_pupil=1.15, hidden_pupil=0.8):
         self.animator = animator
         self.min_x, self.max_x = clamp_x
         self.min_y, self.max_y = clamp_y

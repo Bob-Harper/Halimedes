@@ -25,7 +25,7 @@ class DummySequence:
 
 
 async def main():
-    profile  = load_eye_profile("vector03")
+    profile  = load_eye_profile("owl03")
     animator = EyeAnimator(profile)
     tracker  = FaceTracker(animator)
     gaze   = GazeChannel(animator, tracker)

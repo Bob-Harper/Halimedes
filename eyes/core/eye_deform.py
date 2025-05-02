@@ -5,13 +5,21 @@ from eyes.eye_cache_manager import EyeCacheManager
 
 
 class EyeDeformer:
-    def __init__(self, sclera_size=85, output_size=160, texture_name="default"):
+    def __init__(
+            self, 
+            sclera_size=85, 
+            output_size=160, 
+            texture_name="default", 
+            pupil_warp_strength=1.0
+            ):
         self.sclera_size = sclera_size
         self.output_size = output_size
         self.cache = EyeCacheManager(texture_name=texture_name)
         self.cache.warm_up_cache("pupil")
+        self.warp_strength = pupil_warp_strength
+        print(f"[Deformer INIT] warp_strength = {self.warp_strength}")
 
-
+    
     def generate_eye_frame(
         self,
         source_img,
@@ -93,29 +101,20 @@ class EyeDeformer:
     def apply_spherical_warp(self, image, x_off=10, y_off=10, strength=0.03):
         map_x, map_y = self.get_or_generate_spherical_map(x_off, y_off, strength)
         return cv2.remap(image, map_x, map_y, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
-            
-    def get_or_generate_pupil_warp_map(self, pupil_size, iris_radius, feather_width):
-        # Build the cache key
-        key_dict = {
-            "pupil_size": round(float(pupil_size), 3),
-            "iris_radius": iris_radius,
-            "feather_width": feather_width,
-        }
 
-        # Try loading from cache
+    def get_or_generate_pupil_warp_map(self, pupil_size, iris_radius, feather_width):
+        # 1) Build the cache key and try loading (you can leave this or comment it out while debugging)
+        key_dict = {
+            "pupil_size":    round(float(pupil_size), 3),
+            "iris_radius":   iris_radius,
+            "feather_width": feather_width,
+            "warp_strength": self.warp_strength,
+        }
         cached = self.cache.load_map(key_dict, kind="pupil")
         if cached is not None:
-            # The cache should store a tuple (sample_x, sample_y)
-            try:
-                sample_x, sample_y = cached
-                return sample_x, sample_y
-            except Exception as e:
-                print(f"[PupilWarp] ERROR unpacking cached data for {key_dict}: {e!r}")
+            return cached
 
-        # Cache miss or unpack failure → regenerate the maps
-        print(f"[PupilWarp] Generating new map for key {key_dict}")
-
-        # Prepare coordinate grid
+        # 2) Regenerate the map from scratch
         h = w = 180
         center_x = w // 2
         center_y = h // 2
@@ -123,32 +122,32 @@ class EyeDeformer:
         dx = xx - center_x
         dy = yy - center_y
         radius = np.sqrt(dx**2 + dy**2)
-        angle = np.arctan2(dy, dx)
+        angle  = np.arctan2(dy, dx)
 
-        # Apply scale inside the iris
-        scale = float(pupil_size)
-        warped_radius = radius.copy()
-        inner_mask = radius <= iris_radius
-        warped_radius[inner_mask] = radius[inner_mask] * scale
+        # 3) Compute scale factor
+        delta = pupil_size - 1.0
+        scale = 1.0 - delta * self.warp_strength
 
-        # Feather zone: blend back to original radius
-        if feather_width > 0:
-            feather_mask = (radius > iris_radius) & (radius <= iris_radius + feather_width)
-            t = (radius[feather_mask] - iris_radius) / feather_width
-            warped_radius[feather_mask] = (
-                warped_radius[feather_mask] * (1 - t) +
-                radius[feather_mask]        * t
-            )
+        # 4) Compute warp
+        norm = np.clip(radius / iris_radius, 0.0, 1.0)
+        
+        # warp_factor = 1 + (scale - 1) * (1 - norm)  # Linear warp gentle taper
+        warp_factor = 1 + (scale - 1) * (1 - norm)**2  # Quadratic warp normal taper
+        # warp_factor = 1 + (scale - 1) * (1 - norm**2)  # Quadratic warp stronger taper
+        # warp_factor = 1 + (scale - 1) * (1 - norm)**3  # Cubic warp stupidly strong taper
 
-        # Outside iris+feather: warped_radius already equals original radius
+        # 5) Apply it
+        warped_radius = radius * warp_factor
 
-        # Convert back to sample coordinates
+        # 6) Leave all outside the iris untouched
+        warped_radius[radius > iris_radius] = radius[radius > iris_radius]
+
+        # 8) Convert radii back to x/y sampling coords
         sample_x = warped_radius * np.cos(angle) + center_x
         sample_y = warped_radius * np.sin(angle) + center_y
 
-        # Save to cache for next time
+        # 9) Cache & return
         self.cache.save_map(key_dict, (sample_x, sample_y), kind="pupil")
-
         return sample_x, sample_y
 
     def apply_pupil_warp(self, source_img, sample_x, sample_y):
@@ -191,3 +190,72 @@ class EyeDeformer:
         crop_x = np.clip(crop_x, 0, w - output_size)
         crop_y = np.clip(crop_y, 0, h - output_size)
         return image[crop_y:crop_y + output_size, crop_x:crop_x + output_size]
+    
+"""             
+    def get_or_generate_pupil_warp_map(self, pupil_size, iris_radius, feather_width):
+        # Build the cache key
+        key_dict = {
+            "pupil_size": round(float(pupil_size), 3),
+            "iris_radius": iris_radius,
+            "feather_width": feather_width,
+        }
+
+        # Try loading from cache
+        cached = self.cache.load_map(key_dict, kind="pupil")
+        if cached is not None:
+            # The cache should store a tuple (sample_x, sample_y)
+            try:
+                sample_x, sample_y = cached
+                return sample_x, sample_y
+            except Exception as e:
+                print(f"[PupilWarp] ERROR unpacking cached data for {key_dict}: {e!r}")
+
+        # Cache miss or unpack failure → regenerate the maps
+        print(f"[PupilWarp] Generating new map for key {key_dict}")
+
+        # Prepare coordinate grid
+        h = w = 180
+        center_x = w // 2
+        center_y = h // 2
+        yy, xx = np.meshgrid(np.arange(h), np.arange(w), indexing='xy')
+        dx = xx - center_x
+        dy = yy - center_y
+        radius = np.sqrt(dx**2 + dy**2)
+        angle = np.arctan2(dy, dx)
+
+        # Apply scale inside the iris
+        # scale = float(pupil_size)
+
+        # Use the configured warp_strength
+        delta = pupil_size - 1.0
+        scale = 1.0 - delta * self.warp_strength
+
+        # prepare warped_radius defaulting to identity everywhere
+        warped_radius = radius.copy()
+
+        # 1) Inner iris: warp by scale
+        inner = radius <= iris_radius
+        warped_radius[inner] = radius[inner] * scale
+
+        # 2) Feather zone: blend back to identity
+        if feather_width > 0:
+            feather = (radius > iris_radius) & (radius <= iris_radius + feather_width)
+            t = (radius[feather] - iris_radius) / feather_width
+            warped_radius[feather] = (
+                warped_radius[feather] * (1 - t) +
+                radius[feather]        * t
+            )
+
+        # 3) Outer zone: do nothing – warped_radius already == radius
+
+        # NO global clipping here!
+        # warped_radius stays > iris_radius for outer pixels, sampling identity.
+
+        # finally compute sample coords
+        sample_x = warped_radius * np.cos(angle) + center_x
+        sample_y = warped_radius * np.sin(angle) + center_y
+        # Save to cache for next time
+        self.cache.save_map(key_dict, (sample_x, sample_y), kind="pupil")
+
+        return sample_x, sample_y
+ """

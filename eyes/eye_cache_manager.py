@@ -35,7 +35,7 @@ class EyeCacheManager:
         key = self._generate_key(**key_dict)
 
         if hasattr(self, '_preloaded_maps') and key in self._preloaded_maps:
-            print(f"[CacheManager] Used preloaded map for key {key}")
+            # print(f"[CacheManager] Used preloaded map for key {key}")
             return self._preloaded_maps[key]
             # Fallback to disk load
         ext = ".npz" if kind == "spherical" else ".npy"

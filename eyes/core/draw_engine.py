@@ -8,7 +8,8 @@ class DrawEngine:
         self.profile = profile
         self.deformer = EyeDeformer(
             sclera_size=profile.sclera_size,
-            texture_name=profile.name
+            texture_name=profile.name,
+            pupil_warp_strength=profile.pupil_warp_strength,
         )
         self.deformer.cache.warm_up_cache(kind="spherical", verbose=True)
         self.deformer.cache.warm_up_cache(kind="pupil", verbose=True)
