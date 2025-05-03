@@ -36,7 +36,7 @@ async def main():
     for mood in ["happy","sad","angry","focused","skeptical","surprised","asleep","neutral"]:
         print(f"Setting expression: {mood}")
         try:
-            await hal.smooth_transition_expression(mood)
+            await hal.set_expression(mood)
             await asyncio.sleep(2)
             for mode in ["center","left","center","right","center","up","center","down","center","wander"]:
                 print(f"Gaze mode: {mode}")

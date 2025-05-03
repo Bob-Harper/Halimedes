@@ -107,7 +107,7 @@ class CommandManager:
         """Shutdown the robot."""
         await self.response_manager.speak_with_flite(f"Verbal Command Detected: {spoken_text}. Please stand by.")
         system_prompt = 'You are Halimeedees, a quirky alien robot exploring Earth. Do not use asterisks or actions. No more chat for you, It is time to shut down and rest now.  Goodnight.'
-        response_text = await self.llm_client.send_message_async(system_prompt, spoken_text)
+        response_text = await self.llm_client.send_message_async(spoken_text)
         # Small delay to ensure the message is heard before the shutdown
         await asyncio.sleep(1)
         await self.passive_manager.shutdown_speech_actions(response_text)        
@@ -124,8 +124,7 @@ class CommandManager:
             "the time of doing something else has begun. Goodbye."
         )
 
-        response_text = await self.llm_client.send_message_async(system_prompt, spoken_text)
-        self.eye_animator.dual_blink_close(speed=0.3)
+        response_text = await self.llm_client.send_message_async(system_prompt)
         #  Speech FIRST, THEN sit down (no concurrency issues)
         await self.passive_manager.shutdown_speech_actions(response_text)
 

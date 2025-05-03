@@ -21,6 +21,7 @@ class EyeAnimator:
         time.sleep(0.1)  # short SPI bus stabilization
         self.drawer.gaze_cache.clear()  # clear the gaze cache
         self.last_buf = None  # clear the last buffer for blinking
+        self.current_expression = None  # track what’s live now
         
     def draw_gaze(self, x, y, pupil=1.0):
         self.state.update({"x": x, "y": y, "pupil": pupil})
@@ -34,54 +35,72 @@ class EyeAnimator:
     def smooth_gaze(self, x, y, pupil=1.0):
         self.interpolator.smooth_gaze(x, y, pupil)
 
-    def set_expression(self, mood):
+    async def set_expression(self, mood: str, smooth: bool = None):
+        """
+        Public API: switch to `mood`.  
+        If `smooth` is True, always tween; if False, always snap;  
+        if None (default), auto-decide: snap on first call, tween thereafter.
+
+        examples:
+        # “Perform for the audience” instantly:
+        await hal.set_expression("neutral")
+
+        # Later, do a polished cross-fade:
+        await hal.set_expression("surprised")    # smooth auto
+
+        # If you have to reset quickly (no tween):
+        await hal.set_expression("neutral", smooth=False)
+        """
+        do_smooth = smooth
+        if do_smooth is None:
+            # first time or resetting?
+            do_smooth = (self.current_expression is not None 
+                         and self.current_expression != mood)
+
+        if do_smooth:
+            await self._smooth_expression(mood)
+        else:
+            self._instant_expression(mood)
+
+    def _instant_expression(self, mood: str):
+        """
+        Immediately snap to `mood`—no tween.
+        """
         self.drawer.lid_control.set_expression(mood)
         self.drawer.gaze_cache.clear()
-        self.draw_gaze(
-            self.state["x"],
-            self.state["y"],
-            pupil=self.state["pupil"]
-        )
-
-    def transition_expression(self, mood, speed=0.02):
-        self.set_expression(mood)
         buf = self.drawer.generate_frame(
-            x_off=self.state["x"],
-            y_off=self.state["y"],
-            pupil_size=self.state["pupil"]
+            self.state["x"], self.state["y"], pupil_size=self.state["pupil"]
         )
+        self.drawer.display(buf)
+        self.last_buf = buf
+        self.current_expression = mood
 
-        self.blinker.dual_blink_close(speed)
-        self.blinker.dual_blink_open(buf, speed)
-
-    async def smooth_transition_expression(self, mood, steps=20, delay=0.02):
-        """Smoothly transition from current eyelid positions to new expression over multiple frames."""
-        target = self.drawer.lid_control.expression_map.get(mood)
+    async def _smooth_expression(self, mood: str, steps=20, delay=0.02):
+        """
+        Tween from the current expression corners to the new `mood`.
+        """
+        expr_map = self.drawer.lid_control.expression_map
+        target = expr_map.get(mood)
         if not target:
             print(f"[EyeAnimator] Unknown expression '{mood}'")
             return
 
-        # Determine start and end positions
-        current = self.drawer.lid_control.lids.copy()
-
+        start_cfg = self.drawer.lid_control.lids.copy()
         for step in range(1, steps + 1):
-            intermediate = {}
+            frac = step / steps
+            interp_cfg = {}
+            for corner in ("top_left","top_right","bottom_left","bottom_right"):
+                s = start_cfg.get(corner, 0)
+                e = target.get(corner, s)
+                interp_cfg[corner] = int(s + (e - s) * frac)
 
-            # Gradually interpolate each lid value
-            for lid in ['top', 'bottom', 'left', 'right']:
-                start_value = current.get(lid, 0)
-                end_value = target.get(lid, start_value)
-                interpolated_value = start_value + (end_value - start_value) * (step / steps)
-                intermediate[lid] = int(interpolated_value)
-
-            # Apply this intermediate lid config
-            self.drawer.lid_control.lids.update(intermediate)
+            self.drawer.lid_control.lids.update(interp_cfg)
+            self.drawer.gaze_cache.clear()
             buf = self.drawer.generate_frame(
-                x_off=self.state["x"],
-                y_off=self.state["y"],
-                pupil_size=self.state["pupil"]
+                self.state["x"], self.state["y"], pupil_size=self.state["pupil"]
             )
             self.drawer.display(buf)
             self.last_buf = buf
+            await asyncio.sleep(delay)
 
-            await asyncio.sleep(delay)  # Short pause to allow human eye to see animation
+        self.current_expression = mood

@@ -1,6 +1,5 @@
 import json
 import os
-import time
 
 class EyeExpressionManager:
     def __init__(self, animator, multi_file=False):
