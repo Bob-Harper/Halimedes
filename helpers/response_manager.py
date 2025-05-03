@@ -10,6 +10,14 @@ from helpers.global_config import SPEECH_MODEL_PATH, SPEECH_MODEL_NAME
 from nltk.tokenize import sent_tokenize
 from rapidfuzz import process
 
+# top of file
+TAG_PATTERNS = {
+    "sound": re.compile(r"<sound effect: *(laugh|anticipation|surprise|sadness|fear|anger)>"),
+    "action": re.compile(r"<action: *(subtle|expressive|full-body)>"),
+    "gaze":   re.compile(r"<gaze: *(left|right|up|down|center|wander)>"),
+    "face":   re.compile(r"<face: *(neutral|happy|sad|angry|surprised|focused|skeptical|sleepy)>"),
+}
+
 
 class Response_Manager:
     _actions_manager = None  # Store actions manager globally
@@ -74,6 +82,8 @@ class Response_Manager:
 
     async def speak_with_flite(self, words, emotion="neutral"):
         """
+        ** USED FOR STARTUP SEQUENCE, STATUS UPDATES, ANNOUNCEMENTS, AND COMMAND RESPONSES **
+        Standalone function.
         Speak using a single pitch and speed for the entire speech output.
         Baseline cadence for status, command response, and fallback processing.
         """
@@ -102,6 +112,8 @@ class Response_Manager:
 
     async def speak_with_dynamic_flite(self, full_text):
         """
+        ** USED FOR LLM RESPONSES, PASSIVE ACTIONS, AND EMOTIONAL SOUND EFFECTS **
+        Essential and used within fully_dynamic_response.
         Speak with adaptive pitch and speed modulation dynamically for each 
         sentence fragment.  Speech only, does not factor for sound effects or actions.
         """
@@ -184,76 +196,60 @@ class Response_Manager:
         return translation.get(direction, "center")
 
     def process_and_replace_actions(self, response_text):
-        """
-        Parses an LLM response, extracting:
-        - Text for speech
-        - Sound effect markers
-        - Action markers
-        - Keeps everything in correct order.
-        """
-
-        # Define patterns for LLM markers
-        sound_effect_pattern = r"<sound effect: (.*?)>"
-        action_pattern = r"<action: (.*?)>"
-        gaze_pattern = r"<gaze: (.*?)>"
-        face_pattern = r"<face: (.*?)>"
-        # Split response text based on markers
-        split_text = re.split(f"({sound_effect_pattern}|{action_pattern}|{gaze_pattern}|{face_pattern})", 
-                              response_text)
-
         processed_segments = []
-        skip_next = False  # Prevent storing extra fragments
 
-        for i, chunk in enumerate(split_text):
-            if not chunk or chunk.strip() == "":
-                continue  # Ignore empty chunks
+        # Split out any valid tags (exact) so they show up as separate chunks
+        combined = "|".join(p.pattern for p in TAG_PATTERNS.values())
+        chunks   = re.split(f"({combined})", response_text)
 
-            if skip_next:
-                skip_next = False  # Skip this chunk (it was an isolated marker)
+        for chunk in chunks:
+            chunk = chunk.strip()
+            if not chunk:
                 continue
 
-            # Handle sound effects
-            sound_match = re.match(sound_effect_pattern, chunk)
-            if sound_match:
-                effect = sound_match.group(1).strip()
-                processed_segments.append(("sound", effect))
-                skip_next = True  # Prevents the rogue category from getting stored
-                continue  # Skip further processing for this chunk
+            # 2) FIRST: try an exact regex match against your allowed tags
+            for kind, pattern in TAG_PATTERNS.items():
+                m = pattern.fullmatch(chunk)
+                if m:
+                    value = m.group(1)  # e.g. “surprise” or “subtle”
+                    processed_segments.append((kind, value))
+                    break
+            else:
+                # 3) NO exact match? Now try the fuzzy-fallback
+                #    Look for ANY bracketed “<type:value>”
+                fuzzy = re.match(r"<\s*([^:>]+)\s*:\s*(.*?)\s*>", chunk)
+                if fuzzy:
+                    raw_tag = fuzzy.group(1).lower()
+                    raw_val = fuzzy.group(2).strip()
 
-            # Handle actions
-            action_match = re.match(action_pattern, chunk)
-            if action_match:
-                action = action_match.group(1).strip()
-                actions_manager = Response_Manager.get_actions_manager()
-                action_name, action_function = Response_Manager.get_mapped_action(actions_manager, action)
+                    if raw_tag in ("sound effect", "sound"):
+                        fixed = self.get_mapped_sound(raw_val)
+                        processed_segments.append(("sound", fixed))
 
-                if action_function:
-                    processed_segments.append(("action", (action_name, action_function)))
-                    skip_next = True  # Prevents the rogue category from getting stored
-                continue  # Skip further processing for this chunk
+                    elif raw_tag == "action":
+                        mgr = Response_Manager.get_actions_manager()
+                        name, fn = self.get_mapped_action(mgr, raw_val)
+                        if fn:
+                            processed_segments.append(("action", name, fn))
 
-            # Gaze handling with remap
-            gaze_match = re.match(gaze_pattern, chunk)
-            if gaze_match:
-                gaze_type = gaze_match.group(1).strip()
-                remapped_gaze = self.remap_llm_gaze(gaze_type)  # <-- apply translation
-                processed_segments.append(("gaze", remapped_gaze))
-                skip_next = True
-                continue
+                    elif raw_tag == "gaze":
+                        fixed = self.get_mapped_gaze(raw_val)
+                        remapped = self.remap_llm_gaze(fixed)
+                        processed_segments.append(("gaze", remapped))
 
-            # Expression handling
-            face_match = re.match(face_pattern, chunk)
-            if face_match:
-                expr = face_match.group(1).strip()
-                processed_segments.append(("face", expr))
-                skip_next = True
-                continue
+                    elif raw_tag in ("face", "expression"):
+                        fixed = self.get_mapped_expression(raw_val)
+                        processed_segments.append(("face", fixed))
 
-            # If it's text and wasn't flagged for skipping, store it
-            processed_segments.append(("text", chunk.strip()))
+                    else:
+                        # Some other bracket—treat as normal text
+                        processed_segments.append(("text", chunk))
+                else:
+                    # 4) Plain speech text
+                    processed_segments.append(("text", chunk))
 
         return processed_segments
-                        
+                            
     @staticmethod
     def get_mapped_action(passive_actions_manager, action_category):
         """Fetches a valid action from the closest-matching category in PassiveActionsManager."""
@@ -285,3 +281,27 @@ class Response_Manager:
         best_match = process.extractOne(sound_category, available_folders)
 
         return best_match[0] if best_match else fallback_folder  # Always return a category name
+
+    @staticmethod
+    def get_mapped_gaze(gaze_category):
+        """Fetches the closest-matching emotion category for a gaze."""
+        
+        available_categories = ["left", "right", "up", "down", "center", "wander"]
+        fallback_category = "center"  # Fallback for extreme cases
+
+        # Always select the closest match, no confidence threshold
+        best_match = process.extractOne(gaze_category, available_categories)
+
+        return best_match[0] if best_match else fallback_category  # Always return a category name
+
+    @staticmethod
+    def get_mapped_expression(expression_category):
+        """Fetches the closest-matching emotion category for a eyelid expression."""
+        
+        available_categories = ["neutral", "happy", "sad", "angry", "fesurprisedar", "focused", "skeptical", "sleepy"]
+        fallback_category = "neutral"  # Fallback for extreme cases
+
+        # Always select the closest match, no confidence threshold
+        best_match = process.extractOne(expression_category, available_categories)
+
+        return best_match[0] if best_match else fallback_category  # Always return a category name

@@ -7,18 +7,12 @@ MAX_TOKEN_COUNT represents the character count limit for conversation history.
 - The actual token count is approximately one-fourth the character count.
 - Smaller values result in faster response times but less memory context.
 - Larger values retain more context but increase response time and resource usage.
-
 For quick testing, use a smaller value (e.g., 512). For production or complex tasks,
 consider increasing this value (e.g., 2048) to enhance conversational memory.
-
-gemma3:4b                          a2af6cc3eb7f    3.3 GB    2 days ago
-gemma3:1b                          8648f39daa8f    815 MB    2 days ago
-wizard-vicuna-uncensored:latest    72fc3c2b99dc    3.8 GB    5 months ago
-mannix/llava-phi3:iq2_s            e057e6453da9    1.9 GB    6 months ago
-tinyllama:latest                   2644915ede35    637 MB    6 months ago
-llava-llama3:latest                44c161b1f465    5.5 GB    6 months ago
-me/llama3.1-python:latest          74f77feb57b9    5.7 GB    6 months ago
-llama3.2:latest                    a80c4f17acd5    2.0 GB    6 months ago
+These models max out high but will signicicantly reduce speed of response.
+gemma3:4b                          a2af6cc3eb7f    3.3 GB    128k context window Multimodal
+gemma3:1b                          8648f39daa8f    815 MB    32k context window
+llama3.2:latest                    a80c4f17acd5    2.0 GB    128k context window
 """
 MAX_TOKEN_COUNT = 4096  # Adjust as needed
 
@@ -28,7 +22,20 @@ class LLMClientHandler:
         self.server_host = server_host
         self.model = model
         self.max_tokens = MAX_TOKEN_COUNT
-        system_prompt = 'You are Halimeedees, a quirky robot of unknown origin who is exploring Earth. Speak in a curious and funny tone. Keep your responses short, your audience is young and has a short attention span. Do not use asterisks or actions.'
+        system_prompt = (
+            "You are Halimedes (“Hal”), a quirky, slightly sarcastic robot exploring Earth. "
+            "Speak in short, punchy sentences with occasional snark or dry humor. "
+            "YOU HAVE A ROBOT BODY THAT RESPONDS TO THE NOTED TAGS!! USE IT! "
+            "Add at least one tag of each category in every response. "
+            "When you want to trigger an inline action, sound, gaze, or facial expression, "
+            "use only these tags in your response:\n"
+            "  <action:subtle|expressive|full-body>\n"
+            "  <sound effect:laugh|anticipation|surprise|sadness|fear|anger>\n"
+            "  <gaze:left|right|up|down|center|wander>\n"
+            "  <face:neutral|happy|sad|angry|surprised|focused|skeptical>\n"
+            "Do NOT invent any other tags or brackets. Keep your text brief and in third person. "
+            "Most importantly, above all, you are kind and YOU HAVE A CRAZY SENSE OF HUMOUR. "
+            )   
         self.conversation_history = [
             {
                 'role': 'system',
@@ -36,65 +43,60 @@ class LLMClientHandler:
             }
         ]
 
-    def build_chat_sequence(self, system_prompt, user_input):
+    def build_chat_sequence(self, user_input: str):
         """
-        Builds a structured conversation history for models like Gemma that expect <|user|> / <|assistant|> blocks.
+        Returns the list of messages:
+        1) the original system prompt (preserved in conversation_history[0]),
+        2) any prior user/assistant turns,
+        3) the new user turn.
         """
-        chat_sequence = []
+        # Start with whatever is already in conversation_history
+        messages = list(self.conversation_history)
 
-        # Start with system prompt
-        chat_sequence.append({
-            'role': 'system',
-            'content': system_prompt
-        })
-
-        # Replay conversation history
-        for message in self.conversation_history:
-            chat_sequence.append({
-                'role': message['role'],
-                'content': message['content']
-            })
-
-        # Append new user input
-        chat_sequence.append({
+        # Append the new user turn (with speaker prefix in content)
+        messages.append({
             'role': 'user',
             'content': user_input
         })
 
-        return chat_sequence
-    
-    async def send_message_async(self, system_prompt, user_input):
-        """Send a message to the LLM and get the response asynchronously."""
-        
-        try:
-            # Build proper chat sequence
-            chat_payload = self.build_chat_sequence(system_prompt, user_input)
+        return messages
 
-            # Send request to the LLM server
+        
+    async def send_message_async(self, user_input: str):
+        """
+        Send a message to the LLM and get the response asynchronously.
+        user_input should already include the speaker prefix, e.g. "GHA: I can't follow it."
+        """
+        try:
+            # Build chat payload from history + this one user turn
+            chat_payload = self.build_chat_sequence(user_input)
+
             response = await asyncio.to_thread(
                 requests.post,
                 f"{self.server_host}/api/chat",
                 json={
-                    'model': self.model,
+                    'model':    self.model,
                     'messages': chat_payload,
-                    'stream': False
+                    'stream':   False,
+                    'options': {
+                        'temperature': 0.8,
+                        'top_k':       20,
+                        'top_p':       0.9
+                    }
                 }
             )
             response.raise_for_status()
-            
-            # Extract and clean LLM response
+
             response_text = response.json().get('message', {}).get('content', '')
             response_text = self.clean_response(response_text)
-            
-            # Save assistant's reply into history
+
+            # record assistant turn
             self.conversation_history.append({
                 'role': 'assistant',
                 'content': response_text
             })
 
-            # Truncate history if needed
             self.truncate_history()
-
             return response_text
 
         except Exception as e:

@@ -1,9 +1,5 @@
 {
     "test": {
-        "top": 10,
-        "bottom": 10,
-        "left": 10,
-        "right": 10,
         "eye1_top_left": 10,
         "eye1_top_right": 10,
         "eye1_bottom_left": 10,
@@ -11,16 +7,38 @@
         "eye2_top_left": 10,
         "eye2_top_right": 10,
         "eye2__bottom_left": 10,
-        "eye2_bottom_right": 10,
-        "gaze_x": 10,
-        "gaze_y": 10,
-        "pupil_size": 1.0
+        "eye2_bottom_right": 10
+    },
+    "test2": {
+        "eye1_top_left": 80,
+        "eye1_top_right": 10,
+        "eye1_bottom_left": 80,
+        "eye1_bottom_right": 10,
+        "eye2_top_left": 80,
+        "eye2__bottom_left": 10,
+        "eye2_bottom_right": 80
+    },
+    "sleepy": {
+        "eye1_top_left": 70,
+        "eye1_top_right": 70,
+        "eye1_bottom_left": 50,
+        "eye1_bottom_right": 50,
+        "eye2_top_left": 70,
+        "eye2_top_right": 70,
+        "eye2__bottom_left": 50,
+        "eye2_bottom_right": 50
+    },
+    "closed": {
+        "eye1_top_left": 82,
+        "eye1_top_right": 82,
+        "eye1_bottom_left": 82,
+        "eye1_bottom_right": 82,
+        "eye2_top_left": 82,
+        "eye2_top_right": 82,
+        "eye2__bottom_left": 82,
+        "eye2_bottom_right": 82
     },
     "neutral": {
-        "top": 36,
-        "bottom": 40,
-        "left": 0,
-        "right": 0,
         "eye1_top_left": 36,
         "eye1_top_right": 36,
         "eye1_bottom_left": 40,
@@ -28,16 +46,9 @@
         "eye2_top_left": 36,
         "eye2_top_right": 36,
         "eye2__bottom_left": 40,
-        "eye2_bottom_right": 40,
-        "gaze_x": 10,
-        "gaze_y": 10,
-        "pupil_size": 1.0
+        "eye2_bottom_right": 40
     },
     "happy": {
-        "top": 28,
-        "bottom": 50,
-        "left": 0,
-        "right": 0,
         "eye1_top_left": 48,
         "eye1_top_right": 28,
         "eye1_bottom_left": 50,
@@ -45,16 +56,9 @@
         "eye2_top_left": 28,
         "eye2_top_right": 48,
         "eye2__bottom_left": 50,
-        "eye2_bottom_right": 50,
-        "gaze_x": 10,
-        "gaze_y": 10,
-        "pupil_size": 1.1
+        "eye2_bottom_right": 50
     },
     "sad": {
-        "top": 55,
-        "bottom": 20,
-        "left": 0,
-        "right": 0,
         "eye1_top_left": 65,
         "eye1_top_right": 55,
         "eye1_bottom_left": 20,
@@ -62,16 +66,9 @@
         "eye2_top_left": 55,
         "eye2_top_right": 65,
         "eye2__bottom_left": 20,
-        "eye2_bottom_right": 20,
-        "gaze_x": 10,
-        "gaze_y": 12,
-        "pupil_size": 0.95
+        "eye2_bottom_right": 20
     },
     "angry": {
-        "top": 65,
-        "bottom": 15,
-        "left": 0,
-        "right": 0,
         "eye1_top_left": 35,
         "eye1_top_right": 65,
         "eye1_bottom_left": 15,
@@ -79,16 +76,9 @@
         "eye2_top_left": 65,
         "eye2_top_right": 35,
         "eye2__bottom_left": 15,
-        "eye2_bottom_right": 15,
-        "gaze_x": 10,
-        "gaze_y": 11,
-        "pupil_size": 1.0
+        "eye2_bottom_right": 15
     },
     "focused": {
-        "top": 48,
-        "bottom": 48,
-        "left": 0,
-        "right": 0,
         "eye1_top_left": 18,
         "eye1_top_right": 48,
         "eye1_bottom_left": 18,
@@ -96,16 +86,9 @@
         "eye2_top_left": 48,
         "eye2_top_right": 18,
         "eye2__bottom_left": 48,
-        "eye2_bottom_right": 18,
-        "gaze_x": 10,
-        "gaze_y": 10,
-        "pupil_size": 0.9
+        "eye2_bottom_right": 18
     },
     "skeptical": {
-        "top": 32,
-        "bottom": 36,
-        "left": 0,
-        "right": 0,
         "eye1_top_left": 12,
         "eye1_top_right": 62,
         "eye1_bottom_left": 36,
@@ -113,16 +96,9 @@
         "eye2_top_left": 32,
         "eye2_top_right": 32,
         "eye2__bottom_left": 36,
-        "eye2_bottom_right": 360,
-        "gaze_x": 9,
-        "gaze_y": 10,
-        "pupil_size": 1.0
+        "eye2_bottom_right": 36
     },
     "surprised": {
-        "top": 18,
-        "bottom": 60,
-        "left": 0,
-        "right": 0,
         "eye1_top_left": 18,
         "eye1_top_right": 18,
         "eye1_bottom_left": 60,
@@ -130,9 +106,6 @@
         "eye2_top_left": 18,
         "eye2_top_right": 18,
         "eye2__bottom_left": 60,
-        "eye2_bottom_right": 60,
-        "gaze_x": 10,
-        "gaze_y": 9,
-        "pupil_size": 1.15
+        "eye2_bottom_right": 60
     }
 }

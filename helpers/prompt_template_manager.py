@@ -5,10 +5,6 @@ from typing import Optional
 
 # Model Behavior Profiles
 MODEL_BEHAVIOR_PROFILES = {
-    "tinyllama": {
-        "prompt_type": "friendly",
-        "template_style": "tinyllama"
-    },
     "gemma3:1b": {
         "prompt_type": "strict",
         "template_style": "gemma3"
@@ -70,10 +66,7 @@ class PromptTemplateManager:
         """Wraps the prompt according to the model's expected format."""
         system_prompt = self.get_system_prompt()
 
-        if self.template_style == "tinyllama":
-            return f"<|system|>\n{system_prompt}\n</s>\n<|user|>\n{user_input}\n</s>\n<|assistant|>"
-
-        elif self.template_style == "llama3":
+        if self.template_style == "llama3":
             return f"<|start_header_id|>system<|end_header_id|>\n{system_prompt}\n<|user|>\n{user_input}\n<|assistant|>"
 
         elif self.template_style == "gemma3":

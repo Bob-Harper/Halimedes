@@ -36,8 +36,9 @@ class DrawEngine:
                 feather_width=self.profile.feather_width,
                 perspective_shift=self.profile.perspective_shift
             )
-            masked = apply_eyelids(warped, self.lid_control.get_mask_config())
-            self.gaze_cache[key] = self._get_buffer(masked)
+        config = self.lid_control.get_mask_config()
+        masked = apply_eyelids(warped, config)
+        self.gaze_cache[key] = self._get_buffer(masked)
         return self.gaze_cache[key]
 
     def _get_buffer(self, img):
