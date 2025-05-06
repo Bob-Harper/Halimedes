@@ -48,7 +48,7 @@ class ExpressionChannel(BaseChannel):
     def set_mood(self, mood: str):
         self.mood = mood
         # kick off the async lid morph
-        asyncio.create_task(self.animator.smooth_transition_expression(mood))
+        asyncio.create_task(self.animator.set_expression(mood))
 
     def clear_mood(self):
         self.mood = None

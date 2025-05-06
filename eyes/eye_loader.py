@@ -15,7 +15,6 @@ class EyeConfig:
         self.pupil_min = config.get("pupil_min", 0.5)
         self.pupil_max = config.get("pupil_max", 1.5)
         self.pupil_warp_strength = config.get("pupil_warp_strength", 1.0)
-        self.feather_width = config.get("feather_width", 8)
         self.eyelid_top = config.get("eyelid_top", 0)
         self.eyelid_bottom = config.get("eyelid_bottom", 0)
         self.eyelid_left = config.get("eyelid_left", 0)

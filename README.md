@@ -24,6 +24,12 @@ Halimedes is a four-legged Raspberry Pi–powered crawler bot that can:
 ## Setup
 
 > *Documentation incoming. For now, assume there's blood, zip ties, and more Python modules than you'd expect.*
+note to self:
+[✓] Pupil ranges must begin and end on clean 0.05 increments (e.g., 0.95 → 1.20)
+[✓] No floating point weirdness in configs — round to 2 decimals
+[✓] One source of truth: configs define the precompute boundaries
+[✓] Manual test scripts must match quantization rules (use round(..., 3))
+
 
 ## Philosophy
 

@@ -18,7 +18,7 @@ MAX_TOKEN_COUNT = 4096  # Adjust as needed
 
 
 class LLMClientHandler:
-    def __init__(self, server_host, model='tinyllama'):
+    def __init__(self, server_host, model='Llama3.2'):
         self.server_host = server_host
         self.model = model
         self.max_tokens = MAX_TOKEN_COUNT
@@ -65,7 +65,7 @@ class LLMClientHandler:
     async def send_message_async(self, user_input: str):
         """
         Send a message to the LLM and get the response asynchronously.
-        user_input should already include the speaker prefix, e.g. "GHA: I can't follow it."
+        user_input should already include the speaker prefix
         """
         try:
             # Build chat payload from history + this one user turn

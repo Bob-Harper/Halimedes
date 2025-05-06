@@ -112,7 +112,7 @@ class Response_Manager:
 
     async def speak_with_dynamic_flite(self, full_text):
         """
-        ** USED FOR LLM RESPONSES, PASSIVE ACTIONS, AND EMOTIONAL SOUND EFFECTS **
+        ** USED FOR LLM RESPONSES, PASSIVE ACTIONS, AND EMOTIONAL EFFECTS **
         Essential and used within fully_dynamic_response.
         Speak with adaptive pitch and speed modulation dynamically for each 
         sentence fragment.  Speech only, does not factor for sound effects or actions.
@@ -149,6 +149,7 @@ class Response_Manager:
         - Emotion-based speech modulation
         - Inline sound effects
         - Inline robot actions
+        - Gaze direction and facial expressions
         """
 
         # Parse the response into structured parts
@@ -298,7 +299,7 @@ class Response_Manager:
     def get_mapped_expression(expression_category):
         """Fetches the closest-matching emotion category for a eyelid expression."""
         
-        available_categories = ["neutral", "happy", "sad", "angry", "fesurprisedar", "focused", "skeptical", "sleepy"]
+        available_categories = ["neutral", "happy", "sad", "angry", "surprised", "focused", "skeptical", "sleepy"]
         fallback_category = "neutral"  # Fallback for extreme cases
 
         # Always select the closest match, no confidence threshold

@@ -18,7 +18,7 @@ from audio_input.verbal_commands import CommandManager
 from audio_input.voice_recognition_manager import VoiceRecognitionManager
 from helpers.emotional_sounds_manager import EmotionHandler, EmotionalSoundsManager
 from helpers.weather_command_manager import WeatherCommandManager
-from helpers.prompt_template_manager import PromptTemplateManager
+#from helpers.prompt_template_manager import PromptTemplateManager
 from helpers.llm_client_handler import LLMClientHandler
 from helpers.passive_actions_manager import PassiveActionsManager
 from helpers.system_prompt_fetch import system_prompt_fetch
@@ -32,7 +32,7 @@ from eyes.core.blink_engine import BlinkEngine
 eye_profile = load_eye_profile("vector03")
 eye_animator = EyeAnimator(eye_profile)
 blinker = BlinkEngine(eye_animator)
-template_manager = PromptTemplateManager(model_name="gemma3:1b")
+# template_manager = PromptTemplateManager(model_name="gemma3:1b")
 llm_client = LLMClientHandler(server_host=OLLAMALAPTOP)
 voiceprint_manager = VoiceRecognitionManager()
 command_manager = CommandManager(llm_client, picrawler_instance, eye_animator)
@@ -115,7 +115,7 @@ async def main():
         recognized_speaker = voiceprint_manager.recognize_speaker(raw_audio)
         # print(f"Recognized speaker: {recognized_speaker}")
 
-        system_prompt = await system_prompt_fetch(recognized_speaker, user_emotion)
+        # system_prompt = await system_prompt_fetch(recognized_speaker, user_emotion)
 
         # Label the user input for the model
         user_input_for_llm = f"{recognized_speaker}: {spoken_text}"

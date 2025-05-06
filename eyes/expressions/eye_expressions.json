@@ -1,21 +1,22 @@
 {
     "test": {
-        "eye1_top_left": 10,
-        "eye1_top_right": 10,
-        "eye1_bottom_left": 10,
-        "eye1_bottom_right": 10,
-        "eye2_top_left": 10,
-        "eye2_top_right": 10,
-        "eye2__bottom_left": 10,
-        "eye2_bottom_right": 10
+        "eye1_top_left": 1,
+        "eye1_top_right": 1,
+        "eye1_bottom_left": 1,
+        "eye1_bottom_right": 1,
+        "eye2_top_left": 1,
+        "eye2_top_right": 1,
+        "eye2__bottom_left": 1,
+        "eye2_bottom_right": 1
     },
     "test2": {
         "eye1_top_left": 80,
-        "eye1_top_right": 10,
+        "eye1_top_right": 1,
         "eye1_bottom_left": 80,
-        "eye1_bottom_right": 10,
-        "eye2_top_left": 80,
-        "eye2__bottom_left": 10,
+        "eye1_bottom_right": 1,
+        "eye2_top_left": 1,
+        "eye2_top_right": 80,
+        "eye2__bottom_left": 1,
         "eye2_bottom_right": 80
     },
     "sleepy": {
