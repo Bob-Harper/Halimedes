@@ -25,10 +25,9 @@ class EyeAnimator:
         
     def draw_gaze(self, x, y, pupil=1.0):
         self.state.update({"x": x, "y": y, "pupil": pupil})
-        buf = self.drawer.generate_frame(x, y, pupil)
-        self.drawer.display(buf)
-        self.last_buf = buf  # Store for blink refresh
-
+        left_buf, right_buf = self.drawer.generate_frame(x, y, pupil)
+        self.drawer.display((left_buf, right_buf))
+        self.last_buf = (left_buf, right_buf)
     def apply_gaze_mode(self, mode):
         self.interpolator.apply_gaze_mode(mode)
 
@@ -68,11 +67,19 @@ class EyeAnimator:
         """
         self.drawer.lid_control.set_expression(mood)
         self.drawer.gaze_cache.clear()
-        buf = self.drawer.generate_frame(
-            self.state["x"], self.state["y"], pupil_size=self.state["pupil"]
+
+        # <-- this used to be buf = generate_frame(...)
+        left_buf, right_buf = self.drawer.generate_frame(
+            self.state["x"],
+            self.state["y"],
+            pupil_size=self.state["pupil"]
         )
-        self.drawer.display(buf)
-        self.last_buf = buf
+        # now display both eyes at once
+        self.drawer.display((left_buf, right_buf))
+
+        # stash for blink
+        self.last_buf = (left_buf, right_buf)
+        self.current_expression = mood
         self.current_expression = mood
 
     async def _smooth_expression(self, mood: str, steps=20, delay=0.02):
@@ -80,7 +87,7 @@ class EyeAnimator:
         Tween from the current expression corners to the new `mood`.
         """
         expr_map = self.drawer.lid_control.expression_map
-        target = expr_map.get(mood)
+        target   = expr_map.get(mood)
         if not target:
             print(f"[EyeAnimator] Unknown expression '{mood}'")
             return
@@ -89,18 +96,29 @@ class EyeAnimator:
         for step in range(1, steps + 1):
             frac = step / steps
             interp_cfg = {}
-            for corner in ("top_left","top_right","bottom_left","bottom_right"):
+            for corner in (
+                "eye1_top_left","eye1_top_right",
+                "eye1_bottom_left","eye1_bottom_right",
+                "eye2_top_left","eye2_top_right",
+                "eye2_bottom_left","eye2_bottom_right"
+                ):
                 s = start_cfg.get(corner, 0)
                 e = target.get(corner, s)
                 interp_cfg[corner] = int(s + (e - s) * frac)
 
             self.drawer.lid_control.lids.update(interp_cfg)
             self.drawer.gaze_cache.clear()
-            buf = self.drawer.generate_frame(
-                self.state["x"], self.state["y"], pupil_size=self.state["pupil"]
+
+            # <-- same unpacking here
+            left_buf, right_buf = self.drawer.generate_frame(
+                self.state["x"],
+                self.state["y"],
+                pupil_size=self.state["pupil"]
             )
-            self.drawer.display(buf)
-            self.last_buf = buf
+            self.drawer.display((left_buf, right_buf))
+            self.last_buf = (left_buf, right_buf)
+
             await asyncio.sleep(delay)
 
         self.current_expression = mood
+        

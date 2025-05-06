@@ -1,5 +1,5 @@
 from typing import Protocol, Callable, Any
-
+import asyncio
 
 class Subsystem(Protocol):
     def update(self, dt: float) -> None: ...
@@ -27,12 +27,19 @@ class BehaviorSequencer:
         self._clock = 0.0
         self._pending = list(self.timeline)
 
-    def update(self, dt: float) -> None:
+    async def update(self, dt: float) -> None:
         self._clock += dt
+
         # dispatch everything whose time has come
         while self._pending and self._pending[0][0] <= self._clock:
             _, key, action = self._pending.pop(0)
-            action(self.subsystems[key])
-        # then update all subsystems each tick
+            result = action(self.subsystems[key])
+            # if the action returned a coroutine, await it here
+            if asyncio.iscoroutine(result):
+                await result
+
+        # then tick all subsystems (they’re still sync for gaze/blink/expr)
         for mgr in self.subsystems.values():
-            mgr.update(dt)       # VSCode now knows mgr has .update(dt)
+            maybe = mgr.update(dt)
+            if asyncio.iscoroutine(maybe):
+                await maybe

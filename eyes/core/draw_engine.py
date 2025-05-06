@@ -33,12 +33,17 @@ class DrawEngine:
                 x_off=x_off,
                 y_off=y_off,
                 iris_radius=self.profile.iris_radius,
-                feather_width=self.profile.feather_width,
                 perspective_shift=self.profile.perspective_shift
             )
-        config = self.lid_control.get_mask_config()
-        masked = apply_eyelids(warped, config)
-        self.gaze_cache[key] = self._get_buffer(masked)
+            cfg = self.lid_control.get_mask_config()
+            left_img, right_img = apply_eyelids(warped, cfg)
+
+            left_buf  = self._get_buffer(left_img)
+            right_buf = self._get_buffer(right_img)
+
+            # Cache a pair of buffers
+            self.gaze_cache[key] = (left_buf, right_buf)
+
         return self.gaze_cache[key]
 
     def _get_buffer(self, img):
@@ -51,12 +56,16 @@ class DrawEngine:
                 buf.append(rgb & 0xFF)
         return buf
 
-    def display(self, buf):
-        for eye in (eye_left, eye_right):
-            eye.set_window(0, 0, self.width - 1, self.height - 1)
-            for i in range(0, len(buf), 1024):
-                eye.write_data(buf[i:i + 1024])
+    def display(self, bufs):
+        left_buf, right_buf = bufs
+        # write left eye
+        eye_left .set_window(0, 0, self.width - 1, self.height - 1)
+        for i in range(0, len(left_buf), 1024):
+            eye_left.write_data(left_buf[i:i+1024])
+        # write right eye
+        eye_right.set_window(0, 0, self.width - 1, self.height - 1)
+        for i in range(0, len(right_buf), 1024):
+            eye_right.write_data(right_buf[i:i+1024])
 
     def _cache_key(self, x, y, pupil):
-        lids = self.lid_control.get_mask_config()
-        return (x, y, pupil, lids["top"], lids["bottom"], lids["left"], lids["right"])
+        return (x, y, pupil)

@@ -33,22 +33,28 @@ class EyeCacheManager:
 
     def load_map(self, key_dict, kind="pupil"):
         key = self._generate_key(**key_dict)
-
-        if hasattr(self, '_preloaded_maps') and key in self._preloaded_maps:
-            # print(f"[CacheManager] Used preloaded map for key {key}")
-            return self._preloaded_maps[key]
-            # Fallback to disk load
         ext = ".npz" if kind == "spherical" else ".npy"
         file_path = (self.pupil_dir if kind == "pupil" else self.spherical_dir) / (key + ext)
 
-        if file_path.exists():
+        if not file_path.exists():
+            return None
+
+        try:
             if kind == "spherical":
-                with np.load(file_path) as data:
+                # load both map_x and map_y
+                with np.load(file_path, allow_pickle=True) as data:
                     return data["map_x"], data["map_y"]
             else:
-                return np.load(file_path)
+                # load a simple array
+                return np.load(file_path, allow_pickle=True)
+        except Exception as e:
+            # something’s corrupted: delete it and fall back
+            try:
+                file_path.unlink()
+            except Exception:
+                pass
+            return None
 
-        return None
 
     def exists(self, key_dict, kind="pupil"):
         return self._get_path(key_dict, kind).exists()
