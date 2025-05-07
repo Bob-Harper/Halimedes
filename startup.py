@@ -52,7 +52,7 @@ async def main():
     await response_manager.speak_with_flite("Servos powered. Camera online. Interactive Visual Display initiating.")
 
     # 1) Generate your first eye image in memory
-    initial_buf = eye_animator.drawer.generate_frame(
+    initial_buf = eye_animator.drawer.render_gaze_frame(
         x_off=10,
         y_off=10,
         pupil_size=1.0

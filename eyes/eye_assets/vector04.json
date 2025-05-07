@@ -1,18 +1,9 @@
 {
   "sclera_size": 60,
   "iris_radius": 64,
-  "pupil_radius": 20,
-  "pupil_warp_strength": 3,
-  "feather_width": 8,
   "directional": true,
   "pupil_min": 0.95,
   "pupil_max": 1.1,
-  "eyelid_top": 32,
-  "eyelid_bottom": 32,
-  "eyelid_left": 0,
-  "eyelid_right": 0,
-  "perspective_skew": 0.01,
-  "perspective_scale": 0.15,
   "perspective_shift": 0.11,
   "x_off": 10,
   "y_off": 10,
@@ -23,5 +14,8 @@
   "expression_profile": "default",
   "use_case": "passive",
   "image_path": "vector04.png",
+  "pupil_warp_strength": 3,
+  "eyelid_right": 0,
+  "perspective_skew": 0.01,
   "sclera_radius": 85
 }
