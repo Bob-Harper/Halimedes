@@ -14,17 +14,11 @@ class DrawEngine:
         self.deformer.cache.warm_up_cache(kind="spherical", verbose=True)
         self.deformer.cache.warm_up_cache(kind="pupil", verbose=True)
         self.image = profile.image
-        self.eyelids = {
-            'top': profile.eyelid_top,
-            'bottom': profile.eyelid_bottom,
-            'left': profile.eyelid_left,
-            'right': profile.eyelid_right,
-        }
         self.width = self.height = 160
         self.gaze_cache = {}
         self.lid_control = EyelidController()
 
-    def generate_frame(self, x_off, y_off, pupil_size=1.0):
+    def render_gaze_frame(self, x_off, y_off, pupil_size=1.0):
         key = self._cache_key(x_off, y_off, pupil_size)
         if key not in self.gaze_cache:
             warped = self.deformer.generate_eye_frame(

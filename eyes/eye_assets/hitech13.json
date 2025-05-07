@@ -1,18 +1,9 @@
 {
   "sclera_size": 80,
   "iris_radius": 80,
-  "pupil_radius": 80,
-  "pupil_warp_strength": 3,
-  "feather_width": 16,
   "directional": true,
   "pupil_min": 0.92,
   "pupil_max": 1.4,
-  "eyelid_top": 48,
-  "eyelid_bottom": 48,
-  "eyelid_left": 0,
-  "eyelid_right": 0,
-  "perspective_skew": 0.01,
-  "perspective_scale": 0.15,
   "perspective_shift": 0.4,
   "x_off": 10,
   "y_off": 10,
@@ -23,5 +14,8 @@
   "expression_profile": "default",
   "use_case": "passive",
   "image_path": "hitech13.png",
+  "pupil_warp_strength": 3,
+  "eyelid_right": 0,
+  "perspective_skew": 0.01,
   "sclera_radius": 85
 }

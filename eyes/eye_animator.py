@@ -25,7 +25,7 @@ class EyeAnimator:
         
     def draw_gaze(self, x, y, pupil=1.0):
         self.state.update({"x": x, "y": y, "pupil": pupil})
-        left_buf, right_buf = self.drawer.generate_frame(x, y, pupil)
+        left_buf, right_buf = self.drawer.render_gaze_frame(x, y, pupil)
         self.drawer.display((left_buf, right_buf))
         self.last_buf = (left_buf, right_buf)
     def apply_gaze_mode(self, mode):
@@ -69,7 +69,7 @@ class EyeAnimator:
         self.drawer.gaze_cache.clear()
 
         # <-- this used to be buf = generate_frame(...)
-        left_buf, right_buf = self.drawer.generate_frame(
+        left_buf, right_buf = self.drawer.render_gaze_frame(
             self.state["x"],
             self.state["y"],
             pupil_size=self.state["pupil"]
@@ -110,7 +110,7 @@ class EyeAnimator:
             self.drawer.gaze_cache.clear()
 
             # <-- same unpacking here
-            left_buf, right_buf = self.drawer.generate_frame(
+            left_buf, right_buf = self.drawer.render_gaze_frame(
                 self.state["x"],
                 self.state["y"],
                 pupil_size=self.state["pupil"]

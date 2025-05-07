@@ -1,18 +1,9 @@
 {
   "sclera_size": 80,
   "iris_radius": 60,
-  "pupil_radius": 30,
-  "pupil_warp_strength": 1.3,
-  "feather_width": 1,
   "directional": true,
   "pupil_min": 0.95,
   "pupil_max": 1.15,
-  "eyelid_top": 36,
-  "eyelid_bottom": 36,
-  "eyelid_left": 0,
-  "eyelid_right": 0,
-  "perspective_skew": 0.01,
-  "perspective_scale": 0.15,
   "perspective_shift": 0.06,
   "x_off": 10,
   "y_off": 10,
@@ -22,5 +13,8 @@
   "animation_style": "default",
   "expression_profile": "default",
   "use_case": "passive",
-  "image_path": "owl01.png"
+  "image_path": "owl01.png",
+  "pupil_warp_strength": 1.3,
+  "eyelid_right": 0,
+  "perspective_skew": 0.01
 }

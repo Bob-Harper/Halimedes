@@ -1,17 +1,9 @@
 {
   "sclera_size": 80,
   "iris_radius": 44,
-  "pupil_radius": 37,
-  "feather_width": 1,
   "directional": true,
   "pupil_min": 1,
   "pupil_max": 1,
-  "eyelid_top": 0,
-  "eyelid_bottom": 0,
-  "eyelid_left": 0,
-  "eyelid_right": 0,
-  "perspective_skew": 0.01,
-  "perspective_scale": 0.15,
   "perspective_shift": 0.03,
   "x_off": 10,
   "y_off": 10,
@@ -21,5 +13,7 @@
   "animation_style": "default",
   "expression_profile": "default",
   "use_case": "passive",
-  "image_path": "googly01.png"
+  "image_path": "googly01.png",
+  "eyelid_right": 0,
+  "perspective_skew": 0.01
 }
