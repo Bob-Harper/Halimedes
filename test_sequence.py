@@ -19,9 +19,11 @@ def rand_05(min_v: float, max_v: float) -> float:
 async def main():
     # ——— SETUP ———
     profile  = load_eye_profile("owl04")
+    pmin = profile.pupil_min
+    pmax = profile.pupil_max
     animator = EyeAnimator(profile)
-    blinker  = BlinkEngine(animator)
-    asyncio.create_task(blinker.idle_blink_loop())
+    # blinker  = BlinkEngine(animator)
+    # asyncio.create_task(blinker.idle_blink_loop())
     # tracker  = FaceTracker(animator)
     # gaze_chan  = GazeChannel(animator, tracker)
     tracker  = None
@@ -48,32 +50,28 @@ async def main():
     t = 0.0
     seq.schedule(t, "expression", lambda c: c.set_mood("skeptical"))
     t += 1.0
-    # pupil dilations - keep to .05 value increments, 5 is key or the cache wil blow up.rand_05(0.5, 2.0) to clamp the calculated randoms.
-    for size in [3, 0.05, 1]:  # rand_05(0.5, 2.0), rand_05(0.5, 2.0), rand_05(0.5, 2.0)
-        seq.schedule(t, "gaze", lambda c, s=size: c.set_gaze(10, 10, s))
+    for size in [3, 0.05, 1, 1, 1, 1]:
+        seq.schedule(t, "gaze", lambda c, s=size: c.set_gaze(10, 10, rand_05(pmin, pmax)))  # Randomize on each call
         t += 0.1
     t += 1.0
 
-    # then the big expression<->gaze dance
-    # for mood in ["happy","sad","angry","focused","skeptical","surprised","asleep","neutral"]:
-
-    for mood in ["happy","sad","angry","focused","skeptical","surprised","sleepy","neutral"]:
+    for mood in ["happy", "sad", "angry", "focused", "skeptical", "surprised", "sleepy", "neutral"]:
         seq.schedule(t, "expression", lambda c, m=mood: c.set_mood(m))
         t += 2.0
-        # a little five-step gaze dance
-        for look in ["center","left","center","right","center", "up","center","down", "center", "wander"]:
+
+        for look in ["center", "left", "center", "right", "center", "up", "center", "down", "center", "wander"]:
             if look == "wander":
                 seq.schedule(t, "gaze", lambda ch: 
                     ch.set_gaze(
-                        random.randint(0,20), 
-                        random.randint(0,20), 
-                        1.0
+                        random.randint(0, 20), 
+                        random.randint(0, 20), 
+                        rand_05(pmin, pmax)  # This will now be re-evaluated on each lambda execution
                     )
                 )
             else:
                 x,y = DIRECTIONS[look]
                 seq.schedule(t, "gaze", 
-                            lambda ch, x=x, y=y: ch.set_gaze(x, y, 1.0))            
+                            lambda ch, x=x, y=y: ch.set_gaze(x, y, rand_05(pmin, pmax)))            
                 t += 1.0
 
     seq.schedule(t, "expression", lambda c: c.set_mood("sleepy"))
