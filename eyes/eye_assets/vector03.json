@@ -3,7 +3,7 @@
   "iris_radius": 72,
   "directional": true,
   "pupil_min": 0.8,
-  "pupil_max": 1.025,
+  "pupil_max": 1.05,
   "perspective_shift": 0.18,
   "x_off": 0,
   "y_off": 0,

@@ -2,7 +2,7 @@
   "sclera_size": 80,
   "iris_radius": 80,
   "directional": true,
-  "pupil_min": 0.92,
+  "pupil_min": 0.90,
   "pupil_max": 1.4,
   "perspective_shift": 0.4,
   "x_off": 10,
