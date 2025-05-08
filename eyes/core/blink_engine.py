@@ -12,6 +12,13 @@ class BlinkEngine:
         self.width    = 160
         self.height   = 160
 
+    async def idle_blink_loop(self):
+        while True:
+            await asyncio.sleep(random.uniform(4, 10))
+            buf = self.animator.last_buf
+            if buf:
+                self.blink(buf)
+
     def dual_blink_close(self, speed=0.02):
         for i in range(0, self.height//2 + 1, 4):
             for eye in (eye_left, eye_right):
@@ -61,10 +68,3 @@ class BlinkEngine:
         self.dual_blink_close(speed=close_speed)
         time.sleep(hold)
         self.dual_blink_open(buf, speed=open_speed)
-
-    async def idle_blink_loop(self):
-        while True:
-            await asyncio.sleep(random.uniform(4, 10))
-            buf = self.animator.last_buf
-            if buf:
-                self.blink(buf)

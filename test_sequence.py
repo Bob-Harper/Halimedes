@@ -20,10 +20,12 @@ async def main():
     # ——— SETUP ———
     profile  = load_eye_profile("owl04")
     animator = EyeAnimator(profile)
-    # blinker  = BlinkEngine(animator)
-    # asyncio.create_task(blinker.idle_blink_loop())
-    tracker  = FaceTracker(animator)
-    gaze_chan  = GazeChannel(animator, tracker)
+    blinker  = BlinkEngine(animator)
+    asyncio.create_task(blinker.idle_blink_loop())
+    # tracker  = FaceTracker(animator)
+    # gaze_chan  = GazeChannel(animator, tracker)
+    tracker  = None
+    gaze_chan  = GazeChannel(animator)
     expr_chan  = ExpressionChannel(animator)
     DIRECTIONS = {
         "center": (10,10),
@@ -53,11 +55,13 @@ async def main():
     t += 1.0
 
     # then the big expression<->gaze dance
-    for mood in ["happy","sad","angry","focused","skeptical","surprised","asleep","neutral"]:
+    # for mood in ["happy","sad","angry","focused","skeptical","surprised","asleep","neutral"]:
+
+    for mood in ["happy","sad","angry","focused","skeptical","surprised","sleepy","neutral"]:
         seq.schedule(t, "expression", lambda c, m=mood: c.set_mood(m))
         t += 2.0
         # a little five-step gaze dance
-        for look in ["center","left","center","right","center","up","center","down","wander"]:
+        for look in ["center","left","center","right","center", "up","center","down", "center", "wander"]:
             if look == "wander":
                 seq.schedule(t, "gaze", lambda ch: 
                     ch.set_gaze(
@@ -71,6 +75,10 @@ async def main():
                 seq.schedule(t, "gaze", 
                             lambda ch, x=x, y=y: ch.set_gaze(x, y, 1.0))            
                 t += 1.0
+
+    seq.schedule(t, "expression", lambda c: c.set_mood("sleepy"))
+    t += 3.0
+    seq.schedule(t, "expression", lambda c: c.set_mood("closed"))
 
     seq.start()
 
