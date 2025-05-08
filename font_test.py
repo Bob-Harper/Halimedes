@@ -1,5 +1,9 @@
-# helpers/text_draw.py
+#!/usr/bin/env python3
+import time
+from eyes.dualeye_driver import eye_left, eye_right
+from eyes.tools.text_draw import draw_text, draw_pixel
 import json
+
 from pathlib import Path
 
 def load_font(path="eyes/tools/font_5x7_upright.json"):
@@ -7,6 +11,31 @@ def load_font(path="eyes/tools/font_5x7_upright.json"):
         return json.load(f)
 
 FONT_5X7 = load_font()
+
+WIDTH, HEIGHT = 160, 160
+
+def draw_checkerboard(eye, block=20):
+    for y in range(HEIGHT):
+        for x in range(WIDTH):
+            color = 0xFFFF if ((x // block) + (y // block)) % 2 == 0 else 0x0000
+            draw_pixel(eye, x, y, color)
+
+def draw_test_text(eye):
+    draw_text(eye, 30, 50, "HELLO", 0xF800, scale=2)
+    draw_text(eye, 30, 80, "WORLD", 0x07E0, scale=2)
+
+if __name__ == "__main__":
+    for eye in (eye_right, eye_left, eye_right):
+        eye.fill_screen(0x0000)
+        draw_test_text(eye)
+        time.sleep(5)
+        eye.fill_screen(0x0000)
+        draw_checkerboard(eye)
+        time.sleep(5)
+        eye.fill_screen(0x0000)
+        time.sleep(5)
+
+    print("Checkerboard + Text drawn to both eyes")
 
 def draw_pixel(eye, x, y, color):
     if not (0 <= x < 160 and 0 <= y < 160):

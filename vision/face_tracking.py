@@ -76,3 +76,10 @@ class FaceTracker:
         finally:
             Vilib.camera_close()
 
+    def face_detected(self) -> bool:
+        return Vilib.face_obj_parameter.get("n", 0) > 0
+
+    def get_gaze_coords(self):
+        fx = Vilib.detect_obj_parameter["human_x"]
+        fy = Vilib.detect_obj_parameter["human_y"]
+        return self.map_face_to_gaze(fx, fy)

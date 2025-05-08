@@ -1,12 +1,14 @@
 import asyncio
 from abc import ABC, abstractmethod
-from eyes.eye_animator    import EyeAnimator
+from typing import Optional, List, Protocol
+from asyncio import Lock
+
+from eyes.eye_animator import EyeAnimator
 from vision.face_tracking import FaceTracker
 from .gaze_override import GazeOverride
-from typing import Protocol, List
+
 
 class ChannelSequence(Protocol):
-    """Anything with an .update(dt: float) and a .finished: bool."""
     finished: bool
     def update(self, dt: float) -> None: ...
 
@@ -20,13 +22,20 @@ class BaseChannel(ABC):
 class GazeChannel(BaseChannel):
     def __init__(self,
                  animator: EyeAnimator,
-                 tracker:   FaceTracker,
-    ) -> None:
-        self.animator   = animator
-        self.tracker    = tracker
+                 tracker: Optional[FaceTracker] = None) -> None:
+        self.animator = animator
+        self.tracker = tracker
         self._overrides: List[ChannelSequence] = []
-        # start face-tracker; it calls animator.smooth_gaze() itself
-        self._task      = asyncio.create_task(self.tracker.track())
+        self._lock = Lock()
+        self._task = None
+
+        if self.tracker:
+            self._task = asyncio.create_task(self.tracker.track())
+
+    async def set_gaze(self, x: float, y: float, pupil: float = 1.0) -> None:
+        pupil = round(round(pupil / 0.05) * 0.05, 3)
+        async with self._lock:
+            await asyncio.to_thread(self.animator.smooth_gaze, x, y, pupil)
 
     def trigger_override(self, x: float, y: float, duration: float = 1.0) -> None:
         self._overrides.append(GazeOverride(self.animator, x, y, duration))
@@ -37,7 +46,9 @@ class GazeChannel(BaseChannel):
             seq.update(dt)
             if seq.finished:
                 self._overrides.pop(0)
-        # else: tracker is still running in background
+
+    def clear_cache(self) -> None:
+        self.animator.drawer.gaze_cache.clear()
 
 
 class ExpressionChannel(BaseChannel):
@@ -45,34 +56,26 @@ class ExpressionChannel(BaseChannel):
         self.animator = animator
         self.mood = None
 
-    def set_mood(self, mood: str):
+    def set_mood(self, mood: str) -> None:
         self.mood = mood
-        # kick off the async lid morph
         asyncio.create_task(self.animator.set_expression(mood))
 
-    def clear_mood(self):
+    def clear_mood(self) -> None:
         self.mood = None
 
-    def update(self, dt: float):
-        # transition_expression handles all the work; nothing per-tick here
+    def update(self, dt: float) -> None:
         pass
 
 
 class BlinkChannel(BaseChannel):
     def __init__(self, engine) -> None:
-        """
-        engine is your real BlinkEngine(animator) instance.
-        We schedule its idle_blink_loop() directly.
-        """
         self.engine = engine
-        self._task  = asyncio.create_task(self.engine.idle_blink_loop())
+        self._task = asyncio.create_task(self.engine.idle_blink_loop())
 
     def update(self, dt: float) -> None:
-        # BlinkEngine is fully autonomous now
         pass
 
     def blink_now(self) -> None:
-        """If you want to force-blink manually."""
         buf = self.engine.animator.last_buf
         if buf is not None:
             self.engine.blink(buf)
@@ -80,7 +83,6 @@ class BlinkChannel(BaseChannel):
 
 class ActionChannel(BaseChannel):
     def __init__(self) -> None:
-        # now VS Code knows queue holds ChannelSequence objects
         self.queue: List[ChannelSequence] = []
 
     def trigger(self, seq: ChannelSequence) -> None:
@@ -90,6 +92,6 @@ class ActionChannel(BaseChannel):
         if not self.queue:
             return
         current = self.queue[0]
-        current.update(dt)           # no more “wtf—.update() doesn’t exist”
+        current.update(dt)
         if current.finished:
-            self.queue.pop(0)        # and .finished is known too
+            self.queue.pop(0)
