@@ -30,16 +30,6 @@ Each expression dict may contain:
     },
 EYE1 = LEFT EYE FROM VIEWER'S PERSPECTIVE
 EYE2 = RIGHT EYE FROM VIEWER'S PERSPECTIVE
-Example “test” entry:
-  “test”: {
-      “lid_top_left”: 0,     # fully open
-      “lid_top_right”: 0,    # fully open
-      “lid_bottom_left”: 0,  # fully up
-      “lid_bottom_right”: 0, # fully up
-      “gaze_x”: 10,          # centre
-      “gaze_y”: 10,          # centre
-      “pupil_size”: 1.0      # normal
-  }
 """
 
 

@@ -24,13 +24,13 @@ class GazeChannel(BaseChannel):
                  animator: EyeAnimator,
                  tracker: Optional[FaceTracker] = None) -> None:
         self.animator = animator
-        self.tracker = tracker
+        # self.tracker = tracker
         self._overrides: List[ChannelSequence] = []
         self._lock = Lock()
         self._task = None
 
-        if self.tracker:
-            self._task = asyncio.create_task(self.tracker.track())
+        # if self.tracker:
+        #     self._task = asyncio.create_task(self.tracker.track())
 
     async def set_gaze(self, x: float, y: float, pupil: float = 1.0) -> None:
         pupil = round(round(pupil / 0.05) * 0.05, 3)
@@ -55,15 +55,18 @@ class ExpressionChannel(BaseChannel):
     def __init__(self, animator: EyeAnimator) -> None:
         self.animator = animator
         self.mood = None
+        self._lock = Lock()
+        self._task = None
 
-    def set_mood(self, mood: str) -> None:
+    async def set_mood(self, mood: str) -> None:
         self.mood = mood
-        asyncio.create_task(self.animator.set_expression(mood))
+        # async with self._lock:
+        await self.animator.set_expression(mood)
 
-    def clear_mood(self) -> None:
+    async def clear_mood(self) -> None:
         self.mood = None
 
-    def update(self, dt: float) -> None:
+    async def update(self, dt: float) -> None:
         pass
 
 

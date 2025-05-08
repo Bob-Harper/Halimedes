@@ -41,9 +41,10 @@ class EyeExpressionManager:
         try:
             # Apply eyelid positions
             for lid_key in [
-                'lid_top_left', 'lid_top_right',
-                'lid_bottom_left', 'lid_bottom_right'
-            ]:
+                'eye1_top_left', 'eye1_top_right', 
+                'eye1_bottom_left', 'eye1_bottom_right', 
+                'eye2_top_left', 'eye2_top_right', 
+                'eye2_bottom_left', 'eye2_bottom_right']:
                 if lid_key in config:
                     self.animator.set_lid_position(lid_key, config[lid_key])
 

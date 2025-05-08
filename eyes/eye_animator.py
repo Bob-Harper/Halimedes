@@ -28,6 +28,7 @@ class EyeAnimator:
         left_buf, right_buf = self.drawer.render_gaze_frame(x, y, pupil)
         self.drawer.display((left_buf, right_buf))
         self.last_buf = (left_buf, right_buf)
+
     def apply_gaze_mode(self, mode):
         self.interpolator.apply_gaze_mode(mode)
 
@@ -63,27 +64,6 @@ class EyeAnimator:
             await self._smooth_expression(mood)
         else:
             self._instant_expression(mood)
-
-    def _instant_expression(self, mood: str):
-        """
-        Immediately snap to `mood`—no tween.
-        """
-        self.drawer.lid_control.set_expression(mood)
-        self.drawer.gaze_cache.clear()
-
-        # <-- this used to be buf = generate_frame(...)
-        left_buf, right_buf = self.drawer.render_gaze_frame(
-            self.state["x"],
-            self.state["y"],
-            pupil_size=self.state["pupil"]
-        )
-        # now display both eyes at once
-        self.drawer.display((left_buf, right_buf))
-
-        # stash for blink
-        self.last_buf = (left_buf, right_buf)
-        self.current_expression = mood
-        self.current_expression = mood
 
     async def _smooth_expression(self, mood: str, steps=20, delay=0.02):
         """
@@ -123,5 +103,26 @@ class EyeAnimator:
 
             await asyncio.sleep(delay)
 
+        self.current_expression = mood
+
+    def _instant_expression(self, mood: str):
+        """
+        Immediately snap to `mood`—no tween.
+        """
+        self.drawer.lid_control.set_expression(mood)
+        self.drawer.gaze_cache.clear()
+
+        # <-- this used to be buf = generate_frame(...)
+        left_buf, right_buf = self.drawer.render_gaze_frame(
+            self.state["x"],
+            self.state["y"],
+            pupil_size=self.state["pupil"]
+        )
+        # now display both eyes at once
+        self.drawer.display((left_buf, right_buf))
+
+        # stash for blink
+        self.last_buf = (left_buf, right_buf)
+        self.current_expression = mood
         self.current_expression = mood
         
