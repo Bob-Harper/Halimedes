@@ -34,6 +34,9 @@ class EyeAnimator:
     def smooth_gaze(self, x, y, pupil=1.0):
         self.interpolator.smooth_gaze(x, y, pupil)
 
+    async def set_gaze_safely(self, x, y, pupil):
+        await asyncio.to_thread(self.smooth_gaze, x, y, pupil)        
+
     async def set_expression(self, mood: str, smooth: bool = None):
         """
         Public API: switch to `mood`.  

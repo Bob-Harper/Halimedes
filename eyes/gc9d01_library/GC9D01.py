@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 try:
-    from eyes.font5x7 import FONT_5X7
+    from eyes.tools.font5x7 import FONT_5X7
 except ImportError:
     FONT_5X7 = {}
 
