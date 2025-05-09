@@ -48,18 +48,18 @@ async def main():
 
     # schedule everything in advance (times in seconds)
     t = 0.0
-    seq.schedule(t, "expression", lambda c: c.set_mood("skeptical"))
+    seq.schedule(t, "expression", lambda c: c.set_mood("test2"))
     t += 1.0
     for size in [3, 0.05, 1, 1, 1, 1]:
         seq.schedule(t, "gaze", lambda c, s=size: c.set_gaze(10, 10, rand_05(pmin, pmax)))  # Randomize on each call
         t += 0.1
     t += 1.0
 
-    for mood in ["happy", "sad", "angry", "focused", "skeptical", "surprised", "sleepy", "neutral"]:
+    for mood in ["surprised", "sleepy", "neutral"]:
         seq.schedule(t, "expression", lambda c, m=mood: c.set_mood(m))
         t += 2.0
 
-        for look in ["center", "left", "center", "right", "center", "up", "center", "down", "center", "wander"]:
+        for look in ["center", "left", "center", "right", "center", "wander"]:
             if look == "wander":
                 seq.schedule(t, "gaze", lambda ch: 
                     ch.set_gaze(
@@ -71,7 +71,7 @@ async def main():
             else:
                 x,y = DIRECTIONS[look]
                 seq.schedule(t, "gaze", 
-                            lambda ch, x=x, y=y: ch.set_gaze(x, y, rand_05(pmin, pmax)))            
+                            lambda ch, x=x, y=y: ch.set_gaze(x, y, 2))            
                 t += 1.0
 
     seq.schedule(t, "expression", lambda c: c.set_mood("sleepy"))

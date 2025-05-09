@@ -20,24 +20,24 @@
         "eye2_bottom_right": 80
     },
     "sleepy": {
-        "eye1_top_left": 70,
-        "eye1_top_right": 70,
-        "eye1_bottom_left": 50,
-        "eye1_bottom_right": 50,
-        "eye2_top_left": 70,
-        "eye2_top_right": 70,
-        "eye2_bottom_left": 50,
-        "eye2_bottom_right": 50
+        "eye1_top_left": 85,
+        "eye1_top_right": 85,
+        "eye1_bottom_left": 60,
+        "eye1_bottom_right": 60,
+        "eye2_top_left": 85,
+        "eye2_top_right": 85,
+        "eye2_bottom_left": 60,
+        "eye2_bottom_right": 60
     },
     "closed": {
-        "eye1_top_left": 82,
-        "eye1_top_right": 82,
-        "eye1_bottom_left": 82,
-        "eye1_bottom_right": 82,
-        "eye2_top_left": 82,
-        "eye2_top_right": 82,
-        "eye2_bottom_left": 82,
-        "eye2_bottom_right": 82
+        "eye1_top_left": 92,
+        "eye1_top_right": 92,
+        "eye1_bottom_left": 92,
+        "eye1_bottom_right": 92,
+        "eye2_top_left": 92,
+        "eye2_top_right": 92,
+        "eye2_bottom_left": 92,
+        "eye2_bottom_right": 92
     },
     "neutral": {
         "eye1_top_left": 36,

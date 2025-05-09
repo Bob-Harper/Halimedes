@@ -4,6 +4,9 @@ import numpy as np
 import cv2
 from eyes.eye_cache_manager import EyeCacheManager
 
+RED = "\033[91m"
+GREEN = "\033[92m"
+RESET = "\033[0m"
 
 class EyeDeformer:
     def __init__(
@@ -58,11 +61,9 @@ class EyeDeformer:
 
         cached = self.cache.load_map(key_dict, kind="spherical")
         if cached is not None:
-            if self.verbose:
-                print(f"[Cache HIT] spherical key: {key_dict}")
+            # print(f"{GREEN}[Cache HIT]{RESET} Spherical key: {key_dict}")
             return cached
-        if self.verbose:
-            print(f"[Cache MISS] spherical key: {key_dict}")
+        # print(f"{RED}[Cache MISS]{RESET} Spherical key: {key_dict}")
 
         h = w = 180
         center_x = w // 2
@@ -99,11 +100,9 @@ class EyeDeformer:
         }
         cached = self.cache.load_map(key_dict, kind="pupil")
         if cached is not None:
-            if self.verbose:
-                print(f"[Cache HIT] pupil key: {key_dict}")
+            # print(f"{GREEN}[Cache HIT]{RESET} pupil key: {key_dict}")
             return cached
-        if self.verbose:
-            print(f"[Cache MISS] pupil key: {key_dict}")
+        # print(f"{RED}[Cache MISS]{RESET} pupil key: {key_dict}")
 
         h = w = 180
         center_x = w // 2
