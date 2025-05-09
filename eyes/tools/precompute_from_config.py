@@ -1,6 +1,5 @@
-
 import json
-import argparse
+import os
 from pathlib import Path
 import numpy as np
 from eyes.core.eye_deform import EyeDeformer
@@ -17,7 +16,7 @@ def precompute_all_maps_from_config(config_path):
 
     pupil_min = profile.get("pupil_min", 0.95)
     pupil_max = profile.get("pupil_max", 1.15)
-    pupil_step = 0.05
+    pupil_step = 0.01
     iris_radius = profile.get("iris_radius", 44)
     perspective_shift = profile.get("perspective_shift", 0.03)
 
@@ -46,7 +45,12 @@ def precompute_all_maps_from_config(config_path):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("config", help="Path to eye profile config JSON")
-    args = parser.parse_args()
-    precompute_all_maps_from_config(args.config)
+    eye_assets_directory = '/home/msutt/hal/eyes/eye_assets'
+    
+    # Get all .json files in the directory
+    json_files = [f for f in os.listdir(eye_assets_directory) if f.endswith('.json')]
+    
+    for json_file in json_files:
+        json_path = os.path.join(eye_assets_directory, json_file)
+        print(f"Processing {json_file}...")
+        precompute_all_maps_from_config(json_path)

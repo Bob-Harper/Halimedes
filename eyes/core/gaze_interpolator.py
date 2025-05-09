@@ -9,7 +9,8 @@ class GazeInterpolator:
         for i in range(1, steps + 1):
             interp_x = int(from_x + (to_x - from_x) * (i / steps))
             interp_y = int(from_y + (to_y - from_y) * (i / steps))
-            interp_pupil = from_pupil + (to_pupil - from_pupil) * (i / steps)
+            raw_interp = from_pupil + (to_pupil - from_pupil) * (i / steps)
+            interp_pupil = round(round(raw_interp / 0.01) * 0.01, 3)
             self.animator.draw_gaze(interp_x, interp_y, pupil=interp_pupil)
             time.sleep(delay)
 
