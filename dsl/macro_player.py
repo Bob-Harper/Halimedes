@@ -71,8 +71,8 @@ class MacroPlayer:
                 pupil = float(parts[2]) if len(parts) > 2 else 1.0
                 print(f"[Macro] Gaze -> move to ({x}, {y}) pupil={pupil}")
                 await self.gaze.move_to(x, y, pupil)
-        elif arg == "wandering":
-            print("[Macro] Gaze -> wandering")
+        elif arg == "wander":
+            print("[Macro] Gaze -> wander")
             await self.gaze.wander()
 
     async def _speak(self, text: str):

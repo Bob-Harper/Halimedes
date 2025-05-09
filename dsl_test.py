@@ -1,7 +1,7 @@
 import asyncio
 from eyes.eye_loader import load_eye_profile
 from eyes.eye_animator import EyeAnimator
-from dsl.behaviour_macro_dsl import MacroPlayer
+from dsl.macro_player import MacroPlayer
 
 # --- Channels ---
 async def expression_command(animator: EyeAnimator, verb: str, *args):
