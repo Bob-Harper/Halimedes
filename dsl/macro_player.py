@@ -1,4 +1,5 @@
 import asyncio
+import re
 from typing import Callable, Dict, Awaitable, Optional
 
 # Channel interface assumptions
@@ -21,18 +22,21 @@ class MacroPlayer:
                  gaze: Optional[GazeChannel] = None,
                  expression: Optional[ExpressionChannel] = None,
                  speech: Optional[SpeechChannel] = None,
-                 action: Optional[ActionChannel] = None):
+                 action: Optional[ActionChannel] = None,
+                 sound: Optional[Callable[[str], Awaitable[None]]] = None):
 
         self.gaze = gaze
         self.expression = expression
         self.speech = speech
         self.action = action
+        self.sound = sound
 
         self.command_map: Dict[str, Callable[[str], Awaitable[None]]] = {
             'expression': self._expression,
             'gaze':       self._gaze,
             'speak':      self._speak,
             'action':     self._action,
+            'sound':      self._sound,
             'wait':       self._wait,
         }
 
@@ -48,8 +52,6 @@ class MacroPlayer:
                 await handler(arg_str)
             else:
                 print(f"[Macro] Unknown command: {cmd}")
-
-    # --- DSL Handlers ---
 
     async def _expression(self, arg: str):
         if not self.expression:
@@ -77,6 +79,7 @@ class MacroPlayer:
 
     async def _speak(self, text: str):
         if self.speech:
+            text = text.strip('"')
             print(f"[Macro] Speaking: {text}")
             await self.speech.speak(text)
 
@@ -85,6 +88,11 @@ class MacroPlayer:
             print(f"[Macro] Performing: {arg}")
             await self.action.perform(arg)
 
+    async def _sound(self, arg: str):
+        if self.sound:
+            print(f"[Macro] Playing sound: {arg}")
+            await self.sound(arg)
+
     async def _wait(self, arg: str):
         try:
             seconds = float(arg)
@@ -92,3 +100,45 @@ class MacroPlayer:
             await asyncio.sleep(seconds)
         except ValueError:
             print(f"[Macro] Invalid wait duration: {arg}")
+
+
+class TagToDSL:
+    TAG_PATTERNS = {
+        "sound": re.compile(r"<sound effect:\s*(\w+)>", re.IGNORECASE),
+        "action": re.compile(r"<action:\s*(\w+)>", re.IGNORECASE),
+        "gaze": re.compile(r"<gaze:\s*(\w+)>", re.IGNORECASE),
+        "face": re.compile(r"<face:\s*(\w+)>", re.IGNORECASE),
+        "speak": re.compile(r"<speak:\s*(.*?)>", re.IGNORECASE),
+    }
+
+    @staticmethod
+    def parse(text: str) -> str:
+        lines = text.strip().split("\n")
+        dsl_lines = []
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            match_found = False
+            for kind, pattern in TagToDSL.TAG_PATTERNS.items():
+                m = pattern.fullmatch(line)
+                if m:
+                    arg = m.group(1).strip()
+                    if kind == "sound":
+                        dsl_lines.append(f"sound {arg}")
+                    elif kind == "action":
+                        dsl_lines.append(f"action {arg}")
+                    elif kind == "gaze":
+                        if arg == "wander":
+                            dsl_lines.append("gaze wander")
+                        else:
+                            dsl_lines.append(f"gaze move to {arg}")
+                    elif kind == "face":
+                        dsl_lines.append(f"expression set mood {arg}")
+                    elif kind == "speak":
+                        dsl_lines.append(f'speak "{arg}"')
+                    match_found = True
+                    break
+            if not match_found:
+                dsl_lines.append(f'speak "{line}"')
+        return "\n".join(dsl_lines)
