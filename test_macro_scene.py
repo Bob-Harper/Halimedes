@@ -58,9 +58,9 @@ async def main():
         wait 1.0
         speak "System powering up."
         expression set mood happy
-        wait 1.0
+        wait 1.5
         gaze move to 16 2 2
-        wait 1.0
+        wait 1.5
         action subtle
         wait 1.0
         speak "Servos operational."
@@ -76,9 +76,9 @@ async def main():
         speak "That's enough for now."
         wait 1.0
         gaze move to 1 15 1.4
-        wait 1.2
+        wait 1.5
         expression set mood surprised
-        wait 1.2
+        wait 1.5
         gaze move to 10 10 1
         speak "Good night."
         wait 1.0

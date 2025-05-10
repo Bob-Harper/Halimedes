@@ -9,15 +9,6 @@ class GeneralUtilitiesManager:
         self.picrawler_instance = picrawler_instance
         self.response_manager = Response_Manager(self.picrawler_instance)
 
-    @staticmethod
-    async def log_response_to_file(response_text, log_file="hal_responses.log"):
-        """Logs the response text asynchronously to a file."""
-        try:
-            async with aiofiles.open(log_file, 'a') as file:
-                await file.write(response_text + "\n\n")
-        except Exception as e:
-            print(f"Error writing to log file: {e}")
-
     # --- Battery Management ---
     async def get_battery_status(self, max_retries=3, retry_delay=2):
         """Get the battery voltage with retries and classify the status."""
@@ -54,6 +45,7 @@ class GeneralUtilitiesManager:
         elif status == "Unknown":  
             await self.response_manager.speak_with_flite("Battery not detected. Proceed with caution, recheck battery status regularly.")
 
+    # Deprecated methods
     @staticmethod
     def check_eyeanimator_health(eye_animator):
         """Quick diagnostic to check EyeAnimator internal state."""
@@ -63,3 +55,12 @@ class GeneralUtilitiesManager:
         print(f"Blink Engine Connected: {hasattr(eye_animator, 'blinker')}")
         print(f"Interpolator Connected: {hasattr(eye_animator, 'interpolator')}")
         print("=== End of EyeAnimator Health Check ===")
+
+    @staticmethod
+    async def log_response_to_file(response_text, log_file="hal_responses.log"):
+        """Logs the response text asynchronously to a file."""
+        try:
+            async with aiofiles.open(log_file, 'a') as file:
+                await file.write(response_text + "\n\n")
+        except Exception as e:
+            print(f"Error writing to log file: {e}")
