@@ -1,0 +1,48 @@
+    # NOTE THE ENTIRE FOLLOWING PORTION RELIES ON EXTERNAL FILES AND CLASSES NOT YET SEQUENCED
+    # await general_utils.announce_battery_status()  # need to update class to hande Macro Player
+    # await weather_fetch.startup_fetch_forecast()  # need to update class to hande Macro Player
+    # startup_news_item = await news_api.startup_fetch_news(llm_client)
+    # current_time = news_api.current_datetime()
+    # await response_manager.speak_with_flite(f"Today's date is {current_time}.", emotion="announcement") 
+    # await eye_animator.set_expression("surprised") 
+    # startup_words = "This is so exciting! What shall we talk about today?"
+    # await actions_manager.startup_speech_actions(startup_words)
+    # if startup_news_item:
+    #     await eye_animator.set_expression("happy")
+    #     conversation_starter = f"Oh, I know! Did you hear about this? {startup_news_item}"
+    #     await response_manager.speak_with_flite(conversation_starter, emotion="announcement")
+    # NOTE DO NOT RE_ENABLE UNTIL THE ABOVE IS FIXED
+
+        # Handle commands and check for any program-ending signals
+        command_detected, should_exit = await command_manager.handle_command(spoken_text)
+        if should_exit:
+            await macro_player.run(
+                """
+                expression set mood closed
+                """)
+            break  # End the main loop if the command tells us to exit
+        if command_detected:
+            continue  # Command was detected and handled, go back to waiting for input
+
+        # Otherwise, proceed with normal conversation
+
+
+
+ThinkinTask loop:
+                stop_event = asyncio.Event()
+        # Detect and play a sound based on user's emotion
+        user_emotion = emotion_handler.analyze_text_emotion(spoken_text)
+        await macro_player.run(f"sound {user_emotion}")
+
+        recognized_speaker = voiceprint_manager.recognize_speaker(raw_audio)
+
+        # Label the user input for the model
+        user_input_for_llm = f"{recognized_speaker}: {spoken_text}"
+        print(f"{recognized_speaker}: emotion: {user_emotion}\n{spoken_text}")
+
+        # Handle passive actions while LLM processes
+        thinking_task = asyncio.create_task(actions_manager.handle_passive_actions(stop_event))
+        response_text = await llm_client.send_message_async(user_input_for_llm)
+        stop_event.set()
+        await thinking_task
+

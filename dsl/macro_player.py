@@ -1,4 +1,5 @@
 import asyncio
+import random
 import re
 from typing import Callable, Dict, Awaitable, Optional
 
@@ -65,17 +66,42 @@ class MacroPlayer:
     async def _gaze(self, arg: str):
         if not self.gaze:
             return
+
+        modes = {
+            "left": (10, 20),
+            "right": (10, 0),
+            "up": (20, 10),
+            "down": (0, 10),
+            "center": (10, 10),
+            "wander": (
+                random.randint(0, 20),
+                random.randint(0, 20)
+            )
+        }
+
         if arg.startswith("move to"):
             _, _, rest = arg.partition("move to")
             parts = rest.strip().split()
-            if len(parts) >= 2:
+
+            # If symbolic direction like "left"
+            if len(parts) == 1 and parts[0] in modes:
+                x, y = modes[parts[0]]
+                pupil = 1.0
+            # If full manual coordinates
+            elif len(parts) >= 2:
                 x, y = map(float, parts[:2])
                 pupil = float(parts[2]) if len(parts) > 2 else 1.0
-                print(f"[Macro] Gaze -> move to ({x}, {y}) pupil={pupil}")
-                await self.gaze.move_to(x, y, pupil)
+            else:
+                print(f"[Macro] Invalid gaze args: {parts}")
+                return
+
+            print(f"[Macro] Gaze -> move to ({x}, {y}) pupil={pupil}")
+            await self.gaze.move_to(x, y, pupil)
+
         elif arg == "wander":
-            print("[Macro] Gaze -> wander")
-            await self.gaze.wander()
+            x, y = modes["wander"]
+            print(f"[Macro] Gaze -> wander ({x}, {y}) pupil=1.0")
+            await self.gaze.move_to(x, y, 1.0)
 
     async def _speak(self, text: str):
         if self.speech:
@@ -91,7 +117,8 @@ class MacroPlayer:
     async def _sound(self, arg: str):
         if self.sound:
             print(f"[Macro] Playing sound: {arg}")
-            await self.sound(arg)
+            await self.sound.play(arg)
+
 
     async def _wait(self, arg: str):
         try:

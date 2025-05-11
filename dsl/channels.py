@@ -13,7 +13,7 @@ class BlinkEngine:
         self._running = True
         try:
             while self._running:
-                await asyncio.sleep(6.0)  # average blink every 6s
+                await asyncio.sleep(8.0)  # average blink every 6s
                 await self.blink()
         except asyncio.CancelledError:
             pass

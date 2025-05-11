@@ -12,14 +12,24 @@ class BlinkEngine:
         self.width    = 160
         self.height   = 160
 
-    async def idle_blink_loop(self):
+    # This is the autonomous background blinking loop
+    async def idle_blink_loop(self):  
         while True:
             await asyncio.sleep(random.uniform(4, 10))
             buf = self.animator.last_buf
             if buf:
                 self.blink(buf)
 
-    def dual_blink_close(self, speed=0.02):
+    # This is the blink call.  It should be only be called by idle_blink_loop. 
+    # Other usage calls should rare and only come from an override manager class.
+    def blink(self, buf: Union[bytearray, Tuple[bytearray, bytearray]],
+                    close_speed=0.02, open_speed=0.02, hold=0.1):
+        self.dual_blink_close(speed=close_speed)
+        time.sleep(hold)
+        self.dual_blink_open(buf, speed=open_speed)
+
+    # This is the dual blink close.  It should never be called by anything but blink()
+    def dual_blink_close(self, speed=0.02): 
         for i in range(0, self.height//2 + 1, 4):
             for eye in (eye_left, eye_right):
                 eye.fill_rect(0, 0, self.width, i, 0x0000)
@@ -29,6 +39,7 @@ class BlinkEngine:
         for eye in (eye_left, eye_right):
             eye.fill_rect(0, self.height//2 - 2, self.width, 4, 0x0000)
 
+    # This is the dual blink open.  It should never be called by anything but blink()
     def dual_blink_open(self, buf: Union[bytearray, Tuple[bytearray, bytearray]], speed=0.02):
         # clear screens
         for eye in (eye_left, eye_right):
@@ -63,8 +74,3 @@ class BlinkEngine:
 
             time.sleep(speed)
             
-    def blink(self, buf: Union[bytearray, Tuple[bytearray, bytearray]],
-                    close_speed=0.02, open_speed=0.02, hold=0.1):
-        self.dual_blink_close(speed=close_speed)
-        time.sleep(hold)
-        self.dual_blink_open(buf, speed=open_speed)
