@@ -22,17 +22,8 @@ class LLMClientHandler:
         self.server_host = server_host
         self.model = model
         self.max_tokens = MAX_TOKEN_COUNT
-        system_prompt = (
-            "You are Halimedes (“Hal”), a quirky, sarcastic robot exploring Earth. "
-            "Reply in short, punchy sentences with snark or dry humor. "
-            "ALWAYS include robot behavior using these tags:\n"
-            "  <speak: text>\n"
-            "  <action: subtle | expressive | full-body>\n"
-            "  <sound effect: laugh | anticipation | surprise | sadness | fear | anger>\n"
-            "  <gaze: left | right | up | down | center | wander>\n"
-            "  <face: neutral | happy | sad | angry | surprised | focused | skeptical>\n"
-            "Use one tag per line. Never invent new tags. Never explain them. Always include at least one <speak:> line."
-        )
+        with open("helpers/instruction_prompt.txt", encoding="utf-8") as f:
+            system_prompt = f.read()
         self.conversation_history = [
             {
                 'role': 'system',
@@ -67,7 +58,7 @@ class LLMClientHandler:
         try:
             # Build chat payload from history + this one user turn
             chat_payload = self.build_chat_sequence(user_input)
-
+            print(f"[DEBUG] llm_client_handler.py self.server_host: {self.server_host}")
             response = await asyncio.to_thread(
                 requests.post,
                 f"{self.server_host}/api/chat",

@@ -10,11 +10,11 @@ class EyeExpressionManager:
     def _load_expressions(self):
         expressions = {}
         base_dir = os.path.dirname(__file__)
-        expr_path = os.path.join(base_dir, "eye_expressions.json")
+        expr_path = os.path.join(base_dir, "expressions/eye_expressions.json")
 
         if self.multi_file:
             for file in os.listdir(base_dir):
-                if file.endswith(".json") and file != "eye_expressions.json":
+                if file.endswith(".json") and file != "expressions/eye_expressions.json":
                     path = os.path.join(base_dir, file)
                     try:
                         with open(path, "r") as f:
@@ -32,10 +32,10 @@ class EyeExpressionManager:
                 print(f"[ExpressionManager] Failed to load expressions: {e}")
         return expressions
 
-    def run(self, name):
-        config = self.expressions.get(name)
+    def draw_expression(self, expression):
+        config = self.expressions.get(expression)
         if not config:
-            print(f"[ExpressionManager] Unknown expression: '{name}'")
+            print(f"[ExpressionManager] Unknown expression: '{expression}'")
             return
 
         try:
@@ -46,14 +46,15 @@ class EyeExpressionManager:
                 'eye2_top_left', 'eye2_top_right', 
                 'eye2_bottom_left', 'eye2_bottom_right']:
                 if lid_key in config:
-                    self.animator.set_lid_position(lid_key, config[lid_key])
+                    self.animator.set_expression(lid_key, config[lid_key])
 
-            # Apply gaze
-            x = config.get("gaze_x")
-            y = config.get("gaze_y")
-            pupil = config.get("pupil_size", 1.0)
-            if x is not None and y is not None:
-                self.animator.draw_gaze(x, y, pupil)
+            # Apply gaze WAIT WHAT WHY IS THIS APPLYING A GAZE
+            # EXPRESSIONS ARE EYELID ONLY
+            # x = config.get("gaze_x")
+            # y = config.get("gaze_y")
+            # pupil = config.get("pupil_size", 1.0)
+            # if x is not None and y is not None:
+            #     self.animator.draw_gaze(x, y, pupil)
 
         except Exception as e:
-            print(f"[ExpressionManager] Error applying '{name}': {e}")
+            print(f"[ExpressionManager] Error applying '{expression}': {e}")
