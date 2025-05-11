@@ -13,10 +13,10 @@ from body.picrawler import Picrawler
 # Create a single instance of Picrawler to pass through
 picrawler_instance = Picrawler()
 from helpers.response_manager import Response_Manager
-from helpers.audio_input_manager import AudioInputManager
+from audio_input.audio_input_manager import AudioInputManager
 from audio_input.verbal_commands import CommandManager
 from audio_input.voice_recognition_manager import VoiceRecognitionManager
-from helpers.emotional_sounds_manager import EmotionHandler, EmotionalSoundsManager
+from mind.emotional_sounds_manager import EmotionHandler, EmotionalSoundsManager
 from helpers.weather_command_manager import WeatherCommandManager
 #from helpers.prompt_template_manager import PromptTemplateManager
 from helpers.llm_client_handler import LLMClientHandler
