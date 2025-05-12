@@ -11,6 +11,7 @@ class EyeState:
     y: int = 10             # integer only
     pupil: float = 1.0      # float, step of 0.01
     expression: str = "neutral"  # string name only
+    blink: float = 0.0      # 0.0 = open, 1.0 = fully closed
 
 class EyeFrameComposer:
     def __init__(self, animator, expression_manager, blink_engine):
@@ -34,13 +35,18 @@ class EyeFrameComposer:
             self.state.expression = mood
             self._dirty = True
 
-    def set_blink(self):
-            self._dirty = True
+    def set_blink(self, left: float, right: float):
+        # For now, average the lid values; in future could separate
+        self.state.blink = (left + right) / 2.0
+        self._dirty = True
 
     async def play_blink(self):
-        buf = self.animator.last_buf
+        buf = self.animator.get_last_buf_safe()
+        if not buf:
+            print("[Blink] Warning: No last_buf available for blink.")
+            return
         async for frame in self.blink_engine.blink_sequence(buf):
-            self.animator.draw_engine.display(frame)
+            self.animator.drawer.display(frame) 
 
     async def start_idle_blink_loop(self):
         try:
@@ -51,29 +57,41 @@ class EyeFrameComposer:
             pass
 
     async def start_loop(self):
-        print("Eye frame loop started.")
         self.running = True
-        print("Eye frame self.running = " + str(self.running))
         while self.running:
             async with self._lock:
                 if self._dirty or self.state != self._previous:
-                    print("Drawing new eye frame...")
-
-                    await asyncio.to_thread(self.animator.smooth_gaze,
-                        x=self.state.x,
-                        y=self.state.y,
-                        pupil=self.state.pupil
+                    # --- RENDER PHASE ---
+                    left_buf, right_buf = await asyncio.to_thread(
+                        self.animator.drawer.render_gaze_frame,
+                        self.state.x,
+                        self.state.y,
+                        self.state.pupil
                     )
 
-                    await asyncio.to_thread(self.expression_manager.draw_expression,
-                        expression=self.state.expression
+                    # Apply eyelids based on expression and blink state
+                    lid_cfg = self.animator.drawer.lid_control.get_mask_config()
+
+                    # Re-mask with new eyelid config
+                    masked = await asyncio.to_thread(
+                        self.animator.drawer.apply_lids,
+                        (left_buf, right_buf),
+                        lid_cfg
                     )
 
+                    # --- DISPLAY PHASE ---
+                    await asyncio.to_thread(
+                        self.animator.drawer.display,
+                        masked
+                    )
+
+                    # --- Save previous ---
                     self._previous = EyeState(
                         x=self.state.x,
                         y=self.state.y,
                         pupil=self.state.pupil,
-                        expression=self.state.expression
+                        expression=self.state.expression,
+                        blink=self.state.blink
                     )
                     self._dirty = False
             await asyncio.sleep(FRAME_DURATION)

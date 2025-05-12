@@ -58,7 +58,7 @@ class LLMClientHandler:
         try:
             # Build chat payload from history + this one user turn
             chat_payload = self.build_chat_sequence(user_input)
-            print(f"[DEBUG] llm_client_handler.py self.server_host: {self.server_host}")
+            # print(f"[DEBUG] llm_client_handler.py self.server_host: {self.server_host}")
             response = await asyncio.to_thread(
                 requests.post,
                 f"{self.server_host}/api/chat",

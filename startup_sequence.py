@@ -38,7 +38,6 @@ blink_engine = BlinkEngine(eye_animator)
 expression_manager = EyeExpressionManager(eye_animator)
 composer = EyeFrameComposer(eye_animator, expression_manager, blink_engine)
 server_host = OLLAMALAPTOP
-print(f"OLLAMALAPTOP URL server_host: {server_host}")
 llm_client = LLMClientHandler(server_host)
 voiceprint_manager = VoiceRecognitionManager()
 command_manager = CommandManager(llm_client, picrawler_instance, eye_animator)
@@ -87,11 +86,11 @@ async def main():
         wait 1.3
         expression set mood test
         wait 1.3
-        gaze move to 0 10 2.0
+        gaze move to 10 20 2.0
         wait 1.3
         expression set mood test2
         wait 1.3
-        gaze move to 10 0 0.3
+        gaze move to 20 10 0.3
         wait 1.3
         expression set mood neutral
         wait 1.3
@@ -107,6 +106,7 @@ async def main():
 
     while True:
         print("Entering the main loop, waiting for input...")
+        await macro_player.run(f"gaze move to 10 10 1.0")
         spoken_text, raw_audio = await audio_input.recognize_speech_vosk(return_audio=True)  # Get input and raw audio
 
         # If no text was recognized, loop back and wait again
@@ -128,11 +128,8 @@ async def main():
         print(f"{recognized_speaker}: emotion: {user_emotion}\n{spoken_text}")
 
         response_text = await llm_client.send_message_async(user_input_for_llm)
-
         # Detect Hal's emotion from the response and play the corresponding sound
         hal_emotion = emotion_handler.analyze_text_emotion(response_text)
-        print(f"Hal: {response_text}")
-        print(f"Hal's emotion: {hal_emotion}")
         await macro_player.run(f"""
             expression set mood {hal_emotion}
             sound {hal_emotion}
@@ -140,7 +137,6 @@ async def main():
         """)
         # Speak the response
         macro_script = TagToDSL.parse(response_text)
-        print("Generated DSL:\n", macro_script)  # Debug view
         await macro_player.run(macro_script)
 
 if __name__ == "__main__":

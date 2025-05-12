@@ -69,8 +69,8 @@ class EyeCacheManager:
         deleted = 0
         errors = []
 
-        if verbose:
-            print(f"[Cache Warm-Up] Preloading '{kind}' maps from {cache_dir}...")
+        # if verbose:
+        #     print(f"[Cache Warm-Up] Preloading '{kind}' maps from {cache_dir}...")
 
         for file in cache_dir.glob(f"*{ext}"):
             try:

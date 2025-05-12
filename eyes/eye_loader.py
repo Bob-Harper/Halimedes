@@ -9,7 +9,6 @@ class EyeConfig:
         self.config_path = config_path
         self.texture_path = config["image_path"]
         self.directional = config.get("directional", False)
-        self.sclera_size = config.get("sclera_size", 80)
         self.iris_radius = config.get("iris_radius", 42)
         self.pupil_min = config.get("pupil_min", 0.5)
         self.pupil_max = config.get("pupil_max", 1.5)
