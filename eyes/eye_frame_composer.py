@@ -1,4 +1,5 @@
 import asyncio
+import random
 from dataclasses import dataclass
 
 FRAME_RATE = 60
@@ -12,10 +13,10 @@ class EyeState:
     expression: str = "neutral"  # string name only
 
 class EyeFrameComposer:
-    def __init__(self, animator, expression_manager, blinker):
+    def __init__(self, animator, expression_manager, blink_engine):
         self.expression_manager = expression_manager
         self.animator = animator
-        self.blinker = blinker
+        self.blink_engine = blink_engine
         self.state = EyeState()
         self._previous = EyeState()
         self.running = False
@@ -35,6 +36,19 @@ class EyeFrameComposer:
 
     def set_blink(self):
             self._dirty = True
+
+    async def play_blink(self):
+        buf = self.animator.last_buf
+        async for frame in self.blink_engine.blink_sequence(buf):
+            self.animator.draw_engine.display(frame)
+
+    async def start_idle_blink_loop(self):
+        try:
+            while True:
+                await asyncio.sleep(random.uniform(4, 10))
+                await self.play_blink()
+        except asyncio.CancelledError:
+            pass
 
     async def start_loop(self):
         print("Eye frame loop started.")
