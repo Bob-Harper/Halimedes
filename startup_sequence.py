@@ -2,6 +2,9 @@
 import asyncio
 import warnings
 warnings.simplefilter('ignore')
+import os
+# Explicitly clear any previously cached env variables
+os.environ.clear()
 from helpers.global_config import OLLAMALAPTOP
 """ 
 NOTE Import the Picrawler class first to pass through.
@@ -22,18 +25,18 @@ from helpers.llm_client_handler import LLMClientHandler
 from helpers.passive_actions_manager import PassiveActionsManager
 from helpers.general_utilities_manager import GeneralUtilitiesManager
 from helpers.news_handler import NewsHandler
+from eyes.eye_loader import load_eye_profile
 from eyes.eye_animator import EyeAnimator
 from eyes.eye_expression_manager import EyeExpressionManager
-from eyes.eye_loader import load_eye_profile
 from eyes.core.blink_engine import BlinkEngine
 from eyes.eye_frame_composer import EyeFrameComposer
 
 # Initialize everything at module level
 eye_profile = load_eye_profile("vector03")
 eye_animator = EyeAnimator(eye_profile)
-blinker = BlinkEngine(eye_animator)
+blink_engine = BlinkEngine(eye_animator)
 expression_manager = EyeExpressionManager(eye_animator)
-composer = EyeFrameComposer(eye_animator, expression_manager, blinker)
+composer = EyeFrameComposer(eye_animator, expression_manager, blink_engine)
 server_host = OLLAMALAPTOP
 print(f"OLLAMALAPTOP URL server_host: {server_host}")
 llm_client = LLMClientHandler(server_host)
@@ -58,6 +61,8 @@ macro_player = MacroPlayer(
 
 async def main():
     print("Entered main()")
+    print("Starting BlinkEngine loop.")
+    asyncio.create_task(composer.start_idle_blink_loop())
     print("Starting EyeFrameComposer loop.")
     asyncio.create_task(composer.start_loop())  # <-- critical!
     # NOTE these are broken into multiple sequences for a reason.  

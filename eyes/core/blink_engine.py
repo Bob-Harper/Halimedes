@@ -12,6 +12,24 @@ class BlinkEngine:
         self.width    = 160
         self.height   = 160
 
+    async def blink_sequence(self, base_buf: Union[bytearray, Tuple[bytearray, bytearray]], 
+                             close_speed=0.02, open_speed=0.02, hold=0.1):
+        """Yields progressive blink frames from current base buffer, coroutine style."""
+
+        # Close phase
+        for i in range(0, self.height // 2 + 1, 4):
+            yield self._apply_blink_mask(base_buf, i)
+            await asyncio.sleep(close_speed)
+
+        # Hold closed
+        yield self._apply_blink_mask(base_buf, self.height // 2)
+        await asyncio.sleep(hold)
+
+        # Open phase
+        for i in range(self.height // 2, -1, -4):
+            yield self._apply_blink_mask(base_buf, i)
+            await asyncio.sleep(open_speed)
+
     # This is the autonomous background blinking loop
     async def idle_blink_loop(self):  
         while True:
@@ -20,6 +38,30 @@ class BlinkEngine:
             if buf:
                 self.blink(buf)
 
+    def _apply_blink_mask(self, buf: Union[bytearray, Tuple[bytearray, bytearray]], i: int):
+        """Returns a copy of the buffer with top/bottom black bars simulating eyelid closure."""
+        if isinstance(buf, tuple):
+            left_buf, right_buf = buf
+        else:
+            left_buf = right_buf = buf
+
+        def mask_eye(original: bytearray) -> bytearray:
+            new_buf = bytearray(original)
+            for y in range(i):
+                row_start = y * self.width * 2
+                row_end = row_start + self.width * 2
+                new_buf[row_start:row_end] = b'\x00' * (self.width * 2)
+
+                yb = self.height - 1 - y
+                row_start_b = yb * self.width * 2
+                row_end_b = row_start_b + self.width * 2
+                new_buf[row_start_b:row_end_b] = b'\x00' * (self.width * 2)
+
+            return new_buf
+
+        return (mask_eye(left_buf), mask_eye(right_buf))
+
+    # The following may be deprecated/obsolete with the new sequencing system.
     # This is the blink call.  It should be only be called by idle_blink_loop. 
     # Other usage calls should rare and only come from an override manager class.
     def blink(self, buf: Union[bytearray, Tuple[bytearray, bytearray]],

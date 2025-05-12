@@ -1,7 +1,5 @@
 import asyncio
 import random
-import subprocess
-import re
 
 class BlinkEngine:
     def __init__(self, composer):
