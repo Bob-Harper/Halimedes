@@ -2,12 +2,14 @@ from eyes.dualeye_driver import eye_left, eye_right
 from .eyelid_masker import apply_eyelids
 from .eyelid_controller import EyelidController
 from .eye_deform import EyeDeformer
+from PIL import Image
+import numpy as np
+
 
 class DrawEngine:
     def __init__(self, profile):
         self.profile = profile
         self.deformer = EyeDeformer(
-            sclera_size=profile.sclera_size,
             texture_name=profile.name,
             pupil_warp_strength=profile.pupil_warp_strength,
         )
@@ -30,7 +32,7 @@ class DrawEngine:
                 perspective_shift=self.profile.perspective_shift
             )
             cfg = self.lid_control.get_mask_config()
-            left_img, right_img = apply_eyelids(warped, cfg)
+            left_img, right_img = apply_eyelids((warped, warped.copy()), cfg)
 
             left_buf  = self._get_buffer(left_img)
             right_buf = self._get_buffer(right_img)
@@ -63,3 +65,22 @@ class DrawEngine:
 
     def _cache_key(self, x, y, pupil):
         return (x, y, pupil)
+
+    def apply_lids(self, bufs: tuple[bytearray, bytearray], lid_cfg: dict) -> tuple[bytearray, bytearray]:
+ 
+        left_raw, right_raw = bufs
+
+        def buf_to_img(buf):
+            arr = np.frombuffer(buf, dtype=np.uint8).reshape((160, 160, 2))
+            rgb565 = (arr[:, :, 0].astype(np.uint16) << 8) | arr[:, :, 1].astype(np.uint16)
+            r = ((rgb565 >> 11) & 0x1F) << 3
+            g = ((rgb565 >> 5) & 0x3F) << 2
+            b = (rgb565 & 0x1F) << 3
+            img = np.stack([r, g, b], axis=-1).astype(np.uint8)
+            return Image.fromarray(img)
+
+        img1 = buf_to_img(left_raw)
+        img2 = buf_to_img(right_raw)
+        masked_imgs = apply_eyelids((img1, img2), lid_cfg)
+
+        return tuple(self._get_buffer(img) for img in masked_imgs)

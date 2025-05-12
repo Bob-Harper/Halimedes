@@ -102,4 +102,3 @@ class EmotionHandler:
         # Return the emotion if significant, otherwise "neutral"
         return predominant_emotion if nrc_emotions[predominant_emotion] > 0 else "neutral"
 
-

@@ -3,7 +3,6 @@ import json
 from pathlib import Path
 
 DEFAULT_CONFIG = {
-    "sclera_size": 80,
     "iris_radius": 42,
     "directional": True,
     "pupil_min": 0.6,

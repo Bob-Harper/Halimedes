@@ -22,7 +22,16 @@ class EyeAnimator:
         self.drawer.gaze_cache.clear()  # clear the gaze cache
         self.last_buf = None  # clear the last buffer for blinking
         self.current_expression = None  # track what’s live now
+        # create a blank gaze buffer to seed last_buf
+        left, right = self.drawer.render_gaze_frame(10, 10, 1.0)
+        self.last_buf = (left, right)
         
+    def get_last_buf_safe(self):
+        if self.last_buf is None:
+            print("[Animator] last_buf was None, generating fallback gaze frame.")
+            self.last_buf = self.drawer.render_gaze_frame(10, 10, 1.0)
+        return self.last_buf
+    
     def draw_gaze(self, x, y, pupil=1.0):
         self.state.update({"x": x, "y": y, "pupil": pupil})
         left_buf, right_buf = self.drawer.render_gaze_frame(x, y, pupil)

@@ -1,6 +1,6 @@
 
 import numpy as np
-from eyes.eye_deform import EyeDeformer
+from eyes.core.eye_deform import EyeDeformer
 
 def precompute_all_maps(
     texture_name="default",

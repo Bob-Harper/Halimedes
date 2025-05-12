@@ -49,7 +49,7 @@
         "eye2_bottom_left": 40,
         "eye2_bottom_right": 40
     },
-    "happy": {
+    "positive": {
         "eye1_top_left": 48,
         "eye1_top_right": 28,
         "eye1_bottom_left": 50,
@@ -59,7 +59,7 @@
         "eye2_bottom_left": 50,
         "eye2_bottom_right": 50
     },
-    "sad": {
+    "negative": {
         "eye1_top_left": 65,
         "eye1_top_right": 55,
         "eye1_bottom_left": 20,
@@ -69,7 +69,57 @@
         "eye2_bottom_left": 20,
         "eye2_bottom_right": 20
     },
-    "angry": {
+    "joy": {
+        "eye1_top_left": 48,
+        "eye1_top_right": 28,
+        "eye1_bottom_left": 50,
+        "eye1_bottom_right": 50,
+        "eye2_top_left": 28,
+        "eye2_top_right": 48,
+        "eye2_bottom_left": 50,
+        "eye2_bottom_right": 50
+    },
+    "trust": {
+        "eye1_top_left": 48,
+        "eye1_top_right": 28,
+        "eye1_bottom_left": 50,
+        "eye1_bottom_right": 50,
+        "eye2_top_left": 28,
+        "eye2_top_right": 48,
+        "eye2_bottom_left": 50,
+        "eye2_bottom_right": 50
+    },
+    "surprise": {
+        "eye1_top_left": 18,
+        "eye1_top_right": 18,
+        "eye1_bottom_left": 60,
+        "eye1_bottom_right": 60,
+        "eye2_top_left": 18,
+        "eye2_top_right": 18,
+        "eye2_bottom_left": 60,
+        "eye2_bottom_right": 60
+    },
+    "anticipation": {
+        "eye1_top_left": 18,
+        "eye1_top_right": 18,
+        "eye1_bottom_left": 60,
+        "eye1_bottom_right": 60,
+        "eye2_top_left": 18,
+        "eye2_top_right": 18,
+        "eye2_bottom_left": 60,
+        "eye2_bottom_right": 60
+    },
+    "sadness": {
+        "eye1_top_left": 65,
+        "eye1_top_right": 55,
+        "eye1_bottom_left": 20,
+        "eye1_bottom_right": 20,
+        "eye2_top_left": 55,
+        "eye2_top_right": 65,
+        "eye2_bottom_left": 20,
+        "eye2_bottom_right": 20
+    },
+    "anger": {
         "eye1_top_left": 35,
         "eye1_top_right": 65,
         "eye1_bottom_left": 15,
@@ -78,6 +128,16 @@
         "eye2_top_right": 35,
         "eye2_bottom_left": 15,
         "eye2_bottom_right": 15
+    },
+    "disgust": {
+        "eye1_top_left": 18,
+        "eye1_top_right": 48,
+        "eye1_bottom_left": 18,
+        "eye1_bottom_right": 48,
+        "eye2_top_left": 48,
+        "eye2_top_right": 18,
+        "eye2_bottom_left": 48,
+        "eye2_bottom_right": 18
     },
     "focused": {
         "eye1_top_left": 18,
@@ -98,15 +158,5 @@
         "eye2_top_right": 62,
         "eye2_bottom_left": 48,
         "eye2_bottom_right": 48
-    },
-    "surprised": {
-        "eye1_top_left": 18,
-        "eye1_top_right": 18,
-        "eye1_bottom_left": 60,
-        "eye1_bottom_right": 60,
-        "eye2_top_left": 18,
-        "eye2_top_right": 18,
-        "eye2_bottom_left": 60,
-        "eye2_bottom_right": 60
     }
 }

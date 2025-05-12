@@ -11,18 +11,16 @@ RESET = "\033[0m"
 class EyeDeformer:
     def __init__(
             self, 
-            sclera_size=85, 
             output_size=160, 
             pupil_warp_strength=1.0,
             texture_name="default",
             verbose=False
             ):
         self.cache = EyeCacheManager(texture_name=texture_name)
-        self.sclera_size = sclera_size
         self.output_size = output_size
         self.warp_strength = pupil_warp_strength
         self.verbose = verbose
-        print(f"[Deformer INIT] warp_strength = {self.warp_strength}")
+        # print(f"[Deformer INIT] warp_strength = {self.warp_strength}")
 
     
     def generate_eye_frame(
@@ -167,4 +165,7 @@ class EyeDeformer:
         crop_y = center_y - output_size // 2 + (y_off - 10)
         crop_x = np.clip(crop_x, 0, w - output_size)
         crop_y = np.clip(crop_y, 0, h - output_size)
+        crop_x = int(crop_x)
+        crop_y = int(crop_y)
+        output_size = int(output_size)
         return image[crop_y:crop_y + output_size, crop_x:crop_x + output_size]
