@@ -40,6 +40,7 @@ class DrawEngine:
             # Cache a pair of buffers
             self.gaze_cache[key] = (left_buf, right_buf)
 
+        print(f"[DrawEngine] Returning gaze frame: x={x_off} y={y_off} pupil={pupil_size} key={key}")
         return self.gaze_cache[key]
 
     def _get_buffer(self, img):
@@ -53,6 +54,15 @@ class DrawEngine:
         return buf
 
     def display(self, bufs):
+        # --- DIAGNOSTIC START ---
+        def is_all_black(buf):
+            return all(b == 0x00 for b in buf)
+
+        if is_all_black(left_buf):
+            print("[Display] Warning: LEFT buffer is fully black.")
+        if is_all_black(right_buf):
+            print("[Display] Warning: RIGHT buffer is fully black.")
+        # --- DIAGNOSTIC END ---
         left_buf, right_buf = bufs
         # write left eye
         eye_left .set_window(0, 0, self.width - 1, self.height - 1)
@@ -82,5 +92,6 @@ class DrawEngine:
         img1 = buf_to_img(left_raw)
         img2 = buf_to_img(right_raw)
         masked_imgs = apply_eyelids((img1, img2), lid_cfg)
+        print("[Lids] Applying eyelid mask to frames...")
 
         return tuple(self._get_buffer(img) for img in masked_imgs)

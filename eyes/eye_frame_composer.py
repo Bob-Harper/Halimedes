@@ -57,17 +57,22 @@ class EyeFrameComposer:
             pass
 
     async def start_loop(self):
+        
         self.running = True
         while self.running:
             async with self._lock:
                 if self._dirty or self.state != self._previous:
                     # --- RENDER PHASE ---
-                    left_buf, right_buf = await asyncio.to_thread(
-                        self.animator.drawer.render_gaze_frame,
-                        self.state.x,
-                        self.state.y,
-                        self.state.pupil
+                    await asyncio.to_thread(
+                        self.animator.smooth_gaze,
+                        x=self.state.x,
+                        y=self.state.y,
+                        pupil=self.state.pupil
                     )
+
+                    left_buf, right_buf = self.animator.last_buf  # <- pull from state
+                    print("[Composer] RENDERING new frame:", self.state)
+                    self.animator.last_buf = (left_buf, right_buf)
 
                     # Apply eyelids based on expression and blink state
                     lid_cfg = self.animator.drawer.lid_control.get_mask_config()
@@ -78,12 +83,15 @@ class EyeFrameComposer:
                         (left_buf, right_buf),
                         lid_cfg
                     )
-
+                    print("[Composer] Applying eyelids...")
+                    if not masked or not all(masked):
+                        print("[Composer] ERROR: Masked frame is empty or invalid.")
                     # --- DISPLAY PHASE ---
                     await asyncio.to_thread(
                         self.animator.drawer.display,
                         masked
                     )
+                    print("[Composer] Displaying composed frame.")
 
                     # --- Save previous ---
                     self._previous = EyeState(

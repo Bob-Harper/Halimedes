@@ -82,31 +82,35 @@ async def main():
         """)
     await macro_player.run(
         """
-        expression set mood closed
-        wait 1.3
-        expression set mood test
-        wait 1.3
-        gaze move to 10 20 2.0
-        wait 1.3
-        expression set mood test2
-        wait 1.3
-        gaze move to 20 10 0.3
-        wait 1.3
         expression set mood neutral
-        wait 1.3
+        wait 2
+        gaze move to 10 20 2.0
+        wait 2
         gaze move to 10 10 1.0
-        """)    
+        wait 2
+        expression set mood happy
+        wait 2
+        """
+    )
     await macro_player.run(
         """
         speak "Eye animation system online. Camera online. Gaze tracking initiated."
-        wait 1.0
+        wait 2
         speak "Listening initiated. Voiceprint recognition initiated."
+        wait 2
         """)
     # remaining startup sequence with Battery and News/Weather fetch removed until rewritten
 
     while True:
         print("Entering the main loop, waiting for input...")
-        await macro_player.run(f"gaze move to 10 10 1.0")
+        await macro_player.run(f"""
+                               wait 2
+                               gaze move to 15 10 1.0
+                               wait 2
+                               gaze move to 10 15 1.0
+                               wait 2
+                               gaze move to 10 10 1.0
+                               """)
         spoken_text, raw_audio = await audio_input.recognize_speech_vosk(return_audio=True)  # Get input and raw audio
 
         # If no text was recognized, loop back and wait again
