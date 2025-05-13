@@ -5,11 +5,25 @@ from typing import Callable, Dict, Awaitable, Optional
 
 # Channel interface assumptions
 class GazeChannel:
-    async def move_to(self, x: float, y: float, pupil: float = 1.0): ...
-    async def wander(self): ...
+    def __init__(self, composer):
+        self.composer = composer
+
+    async def move_to(self, x: float, y: float, pupil: float = 1.0):
+        await self.composer.animator.interpolator.smooth_gaze(x, y, pupil)
+
+    async def wander(self):
+        x = random.randint(0, 20)
+        y = random.randint(0, 20)
+        await self.composer.animator.interpolator.smooth_gaze(x, y, 1.0)
+
 
 class ExpressionChannel:
-    async def set_mood(self, mood: str): ...
+    def __init__(self, composer):
+        self.composer = composer
+
+    async def set_mood(self, mood: str):
+        self.composer.set_expression(mood)
+
 
 class SpeechChannel:
     async def speak(self, text: str): ...
