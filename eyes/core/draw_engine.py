@@ -4,7 +4,8 @@ from .eyelid_controller import EyelidController
 from .eye_deform import EyeDeformer
 from PIL import Image
 import numpy as np
-
+import os
+from datetime import datetime
 
 class DrawEngine:
     def __init__(self, profile):
@@ -53,21 +54,27 @@ class DrawEngine:
                 buf.append(rgb & 0xFF)
         return buf
 
-    def display(self, bufs):
-        # --- DIAGNOSTIC START ---
-        def is_all_black(buf):
-            return all(b == 0x00 for b in buf)
+    @staticmethod
+    def _is_all_black(buf: bytearray) -> bool:
+        return all(b == 0x00 for b in buf)
 
-        if is_all_black(left_buf):
-            print("[Display] Warning: LEFT buffer is fully black.")
-        if is_all_black(right_buf):
-            print("[Display] Warning: RIGHT buffer is fully black.")
-        # --- DIAGNOSTIC END ---
+    def display(self, bufs):
+        if not bufs or not isinstance(bufs, tuple) or len(bufs) != 2:
+            print("[DrawEngine] Invalid buffer passed to display. Skipping.")
+            return
+
         left_buf, right_buf = bufs
+
+        # if self._is_all_black(left_buf):
+        #     print("[Display] Warning: LEFT buffer is fully black.")
+        # if self._is_all_black(right_buf):
+        #     print("[Display] Warning: RIGHT buffer is fully black.")
+        
         # write left eye
-        eye_left .set_window(0, 0, self.width - 1, self.height - 1)
+        eye_left.set_window(0, 0, self.width - 1, self.height - 1)
         for i in range(0, len(left_buf), 1024):
             eye_left.write_data(left_buf[i:i+1024])
+
         # write right eye
         eye_right.set_window(0, 0, self.width - 1, self.height - 1)
         for i in range(0, len(right_buf), 1024):
@@ -76,8 +83,8 @@ class DrawEngine:
     def _cache_key(self, x, y, pupil):
         return (x, y, pupil)
 
+
     def apply_lids(self, bufs: tuple[bytearray, bytearray], lid_cfg: dict) -> tuple[bytearray, bytearray]:
- 
         left_raw, right_raw = bufs
 
         def buf_to_img(buf):
@@ -89,9 +96,22 @@ class DrawEngine:
             img = np.stack([r, g, b], axis=-1).astype(np.uint8)
             return Image.fromarray(img)
 
+        # Generate unique suffix based on timestamp
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        os.makedirs("/tmp/hal_debug", exist_ok=True)
+
         img1 = buf_to_img(left_raw)
         img2 = buf_to_img(right_raw)
+
+        img1.save(f"/tmp/hal_debug/left_raw_{stamp}.png")
+        img2.save(f"/tmp/hal_debug/right_raw_{stamp}.png")
+        print(f"[Lids] Saved pre-mask frames to /tmp/hal_debug/*_{stamp}.png")
+
         masked_imgs = apply_eyelids((img1, img2), lid_cfg)
         print("[Lids] Applying eyelid mask to frames...")
+
+        masked_imgs[0].save(f"/tmp/hal_debug/left_masked_{stamp}.png")
+        masked_imgs[1].save(f"/tmp/hal_debug/right_masked_{stamp}.png")
+        print(f"[Lids] Saved masked frames to /tmp/hal_debug/*_{stamp}.png")
 
         return tuple(self._get_buffer(img) for img in masked_imgs)

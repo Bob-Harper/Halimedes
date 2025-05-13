@@ -80,22 +80,41 @@ async def main():
         wait 0.5
         speak "Servos active. Interactive Visual Display initiating."
         """)
+    # saved buffer images do NOT show correctly applied expressions.  they show straight across eyelids.
+    # is it mid blink or is it using legacy code? or is it averaging the eyelid positions?
+
+    # [Composer] RENDERING new frame: EyeState(x=10.0, y=20.0, pupil=1.5, expression='angry', blink=0.0)
+    # [Lids] Saved pre-mask frames to /tmp/hal_debug/*_20250513_010659_614131.png
+    # [Lids] Applying eyelid mask to frames...
+    # [Lids] Saved masked frames to /tmp/hal_debug/*_20250513_010659_614131.png <-- flat lids, angry has angled lids
+    # [Composer] Applying eyelids... <-- the problem is here
+    # [Composer] Displaying composed frame. <-- or here
+    #
+    # is possible blinking mask is entirely covering the eyelid masks during this frame write
+    
     await macro_player.run(
         """
+        gaze move to 10 20 1.5
+        wait 2
+        speak " expression is now angry. "
+        expression set mood angry
+        wait 2
+        speak " expression is now happy. "
+        expression set mood happy
+        wait 2
+        speak " expression is now sad. "
+        expression set mood sad
+        wait 2
         expression set mood neutral
         wait 2
-        gaze move to 10 20 2.0
-        wait 2
         gaze move to 10 10 1.0
-        wait 2
-        expression set mood happy
         wait 2
         """
     )
     await macro_player.run(
         """
         speak "Eye animation system online. Camera online. Gaze tracking initiated."
-        wait 2
+        wait 5
         speak "Listening initiated. Voiceprint recognition initiated."
         wait 2
         """)
