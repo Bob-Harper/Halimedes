@@ -3,7 +3,7 @@ import random
 import re
 from typing import Callable, Dict, Awaitable, Optional
 
-# Channel interface assumptions
+
 class GazeChannel:
     def __init__(self, composer):
         self.composer = composer
@@ -120,6 +120,13 @@ class MacroPlayer:
     async def _speak(self, text: str):
         if self.speech:
             text = text.strip('"')
+
+            # Strip <speak: ...> wrapper if present
+            match = re.match(r"<speak:\s*(.*?)\s*>", text.strip(), re.IGNORECASE | re.DOTALL)
+
+            if match:
+                text = match.group(1).strip()
+
             print(f"[Macro] Speaking: {text}")
             await self.speech.speak(text)
 
@@ -180,6 +187,12 @@ class TagToDSL:
                         dsl_lines.append(f'speak "{arg}"')
                     match_found = True
                     break
+
+            # Fallback for malformed or plain <speak: lines
             if not match_found:
-                dsl_lines.append(f'speak "{line}"')
+                if line.lower().startswith("<speak:"):
+                    fallback = line[len("<speak:"):].strip()
+                    dsl_lines.append(f'speak "{fallback}"')
+                else:
+                    dsl_lines.append(f'speak "{line}"')
         return "\n".join(dsl_lines)

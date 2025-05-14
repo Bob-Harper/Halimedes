@@ -1,5 +1,5 @@
 from typing import Protocol, Union, Tuple
-import time, random, asyncio
+import random, asyncio
 from eyes.dualeye_driver import eye_left, eye_right
 
 class AnimatorWithBuffer(Protocol):
@@ -15,28 +15,21 @@ class BlinkEngine:
     async def blink_sequence(self, base_buf: Union[bytearray, Tuple[bytearray, bytearray]], 
                              close_speed=0.02, open_speed=0.02, hold=0.1):
         """Yields progressive blink frames from current base buffer, coroutine style."""
+        async with self.shared_lock:
+            # Close phase
+            for i in range(0, self.height // 2 + 1, 4):
+                yield self._apply_blink_mask(base_buf, i)
+                await asyncio.sleep(close_speed)
 
-        # Close phase
-        for i in range(0, self.height // 2 + 1, 4):
-            yield self._apply_blink_mask(base_buf, i)
-            await asyncio.sleep(close_speed)
+            # Hold closed
+            yield self._apply_blink_mask(base_buf, self.height // 2)
+            await asyncio.sleep(hold)
 
-        # Hold closed
-        yield self._apply_blink_mask(base_buf, self.height // 2)
-        await asyncio.sleep(hold)
+            # Open phase
+            for i in range(self.height // 2, -1, -4):
+                yield self._apply_blink_mask(base_buf, i)
+                await asyncio.sleep(open_speed)
 
-        # Open phase
-        for i in range(self.height // 2, -1, -4):
-            yield self._apply_blink_mask(base_buf, i)
-            await asyncio.sleep(open_speed)
-
-    # This is the autonomous background blinking loop
-    async def idle_blink_loop(self):  
-        while True:
-            await asyncio.sleep(random.uniform(4, 10))
-            buf = self.animator.last_buf
-            if buf:
-                self.blink(buf)
 
     def _apply_blink_mask(self, buf: Union[bytearray, Tuple[bytearray, bytearray]], i: int):
         """Returns a copy of the buffer with top/bottom black bars simulating eyelid closure."""
@@ -64,7 +57,7 @@ class BlinkEngine:
     # The following may be deprecated/obsolete with the new sequencing system.
     # This is the blink call.  It should be only be called by idle_blink_loop. 
     # Other usage calls should rare and only come from an override manager class.
-    def blink(self, buf: Union[bytearray, Tuple[bytearray, bytearray]],
+"""     def blink(self, buf: Union[bytearray, Tuple[bytearray, bytearray]],
                     close_speed=0.02, open_speed=0.02, hold=0.1):
         self.dual_blink_close(speed=close_speed)
         time.sleep(hold)
@@ -116,3 +109,11 @@ class BlinkEngine:
 
             time.sleep(speed)
             
+    # This is the autonomous background blinking loop
+    async def idle_blink_loop(self):  
+        while True:
+            await asyncio.sleep(random.uniform(4, 10))
+            buf = self.animator.last_buf
+            if buf:
+                self.blink(buf)
+ """
