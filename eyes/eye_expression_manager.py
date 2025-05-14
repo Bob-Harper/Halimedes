@@ -1,10 +1,12 @@
 import json
 import os
+from eyes.core.eyelid_controller import EyelidController
 
 class EyeExpressionManager:
     def __init__(self, animator, multi_file=False):
         self.animator = animator
         self.multi_file = multi_file
+        self.lid_control = EyelidController() 
         self.expressions = self._load_expressions()
 
     def _load_expressions(self):
@@ -32,6 +34,9 @@ class EyeExpressionManager:
                 print(f"[ExpressionManager] Failed to load expressions: {e}")
         return expressions
 
+    def set_expression(self, name: str):
+        self.lid_control.set_expression(name) 
+
     def draw_expression(self, expression):
         config = self.expressions.get(expression)
         if not config:
@@ -47,14 +52,6 @@ class EyeExpressionManager:
                 'eye2_bottom_left', 'eye2_bottom_right']:
                 if lid_key in config:
                     self.animator.set_expression(lid_key, config[lid_key])
-
-            # Apply gaze WAIT WHAT WHY IS THIS APPLYING A GAZE
-            # EXPRESSIONS ARE EYELID ONLY
-            # x = config.get("gaze_x")
-            # y = config.get("gaze_y")
-            # pupil = config.get("pupil_size", 1.0)
-            # if x is not None and y is not None:
-            #     self.animator.draw_gaze(x, y, pupil)
 
         except Exception as e:
             print(f"[ExpressionManager] Error applying '{expression}': {e}")

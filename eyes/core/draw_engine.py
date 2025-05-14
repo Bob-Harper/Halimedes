@@ -41,7 +41,7 @@ class DrawEngine:
             # Cache a pair of buffers
             self.gaze_cache[key] = (left_buf, right_buf)
 
-        print(f"[DrawEngine] Returning gaze frame: x={x_off} y={y_off} pupil={pupil_size} key={key}")
+        # print(f"[DrawEngine] Returning gaze frame: x={x_off} y={y_off} pupil={pupil_size} key={key}")
         return self.gaze_cache[key]
 
     def _get_buffer(self, img):
@@ -64,11 +64,6 @@ class DrawEngine:
             return
 
         left_buf, right_buf = bufs
-
-        # if self._is_all_black(left_buf):
-        #     print("[Display] Warning: LEFT buffer is fully black.")
-        # if self._is_all_black(right_buf):
-        #     print("[Display] Warning: RIGHT buffer is fully black.")
         
         # write left eye
         eye_left.set_window(0, 0, self.width - 1, self.height - 1)
@@ -105,13 +100,13 @@ class DrawEngine:
 
         img1.save(f"/tmp/hal_debug/left_raw_{stamp}.png")
         img2.save(f"/tmp/hal_debug/right_raw_{stamp}.png")
-        print(f"[Lids] Saved pre-mask frames to /tmp/hal_debug/*_{stamp}.png")
+        # print(f"[Lids] Saved pre-mask frames to /tmp/hal_debug/*_{stamp}.png")
 
         masked_imgs = apply_eyelids((img1, img2), lid_cfg)
-        print("[Lids] Applying eyelid mask to frames...")
+        # print("[Lids] Applying eyelid mask to frames...")
 
         masked_imgs[0].save(f"/tmp/hal_debug/left_masked_{stamp}.png")
         masked_imgs[1].save(f"/tmp/hal_debug/right_masked_{stamp}.png")
-        print(f"[Lids] Saved masked frames to /tmp/hal_debug/*_{stamp}.png")
+        # print(f"[Lids] Saved masked frames to /tmp/hal_debug/*_{stamp}.png")
 
         return tuple(self._get_buffer(img) for img in masked_imgs)
