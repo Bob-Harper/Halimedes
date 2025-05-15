@@ -28,15 +28,13 @@ from helpers.news_handler import NewsHandler
 from eyes.eye_loader import load_eye_profile
 from eyes.eye_animator import EyeAnimator
 from eyes.eye_expression_manager import EyeExpressionManager
-from eyes.core.blink_engine import BlinkEngine
 from eyes.eye_frame_composer import EyeFrameComposer
 
 # Initialize everything at module level
 eye_profile = load_eye_profile("vector03")
 eye_animator = EyeAnimator(eye_profile)
-blink_engine = BlinkEngine(eye_animator)
 expression_manager = EyeExpressionManager(eye_animator)
-composer = EyeFrameComposer(eye_animator, expression_manager, blink_engine)
+composer = EyeFrameComposer(eye_animator, expression_manager)
 server_host = OLLAMALAPTOP
 llm_client = LLMClientHandler(server_host)
 voiceprint_manager = VoiceRecognitionManager()
@@ -61,7 +59,7 @@ macro_player = MacroPlayer(
 async def main():
     print("Entered main()")
     print("Starting BlinkEngine loop.")
-    asyncio.create_task(composer.start_idle_blink_loop())
+    asyncio.create_task(composer.start_idle_blink_loop()) #expression changes power the blinks now
     print("Starting EyeFrameComposer loop.")
     asyncio.create_task(composer.start_loop())  
     # NOTE these are broken into multiple sequences for a reason.  

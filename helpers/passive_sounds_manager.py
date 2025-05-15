@@ -10,7 +10,7 @@ class PassiveSoundsManager:
         self.sounds_dir = SOUND_ASSETS_PATH
 
     async def sounds_thinking_loop_single(self):
-        """Play a single passive sound dynamically from a directory, supporting multiple file types."""
+        """Play a single sound dynamically using declared supported file types."""
         thinking_emotion = "positive"
         sounds_positive = os.path.join(self.sounds_dir,thinking_emotion)
         supported_extensions = {".wav"}
@@ -63,7 +63,7 @@ class PassiveSoundsManager:
 
             # Randomly select a sound file
             sound_file = random.choice(emotion_sounds)
-            # Play the sound using the Music API
+            # Play the sound using the robot hat Music API
             await asyncio.to_thread(self.music.sound_play, sound_file, 75)
         
         except FileNotFoundError:

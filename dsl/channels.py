@@ -1,41 +1,6 @@
 import asyncio
 import random
 
-class BlinkEngine:
-    def __init__(self, composer):
-        self.composer = composer
-        self._task = None
-        self._running = False
-
-    async def idle_blink_loop(self):
-        self._running = True
-        try:
-            while self._running:
-                await asyncio.sleep(8.0)  # average blink every 6s
-                await self.blink()
-        except asyncio.CancelledError:
-            pass
-
-    async def blink(self):
-        await self._close_lids()
-        await asyncio.sleep(0.1)
-        await self._open_lids()
-
-    async def _close_lids(self):
-        self.composer.set_blink(1.0, 1.0)
-
-    async def _open_lids(self):
-        self.composer.set_blink(0.0, 0.0)
-
-    async def stop(self):
-        self._running = False
-        if self._task:
-            self._task.cancel()
-            try:
-                await self._task
-            except asyncio.CancelledError:
-                pass
-
 
 class GazeChannel:
     def __init__(self, composer, pmin=0.8, pmax=1.3):

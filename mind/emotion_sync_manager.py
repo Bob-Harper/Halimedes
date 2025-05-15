@@ -1,7 +1,8 @@
 # import stuff
+# NOT USED YET.  EXAMPLE PLACEHOLDER
+# emotional_sounds_manager.py for examples and ideas on how to implement.
 
-
-class EmotionSyncManager:
+class EmotionSyncManager:  
     def __init__(self, emotion_engine, eye_controller, voice_controller):
         self.emotion_engine = emotion_engine
         self.eye_controller = eye_controller

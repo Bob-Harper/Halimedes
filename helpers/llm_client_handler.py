@@ -66,7 +66,7 @@ class LLMClientHandler:
                     'messages': chat_payload,
                     'stream':   False,
                     'options': {
-                        'temperature': 0.8,
+                        'temperature': 0.88,
                         'top_k':       20,
                         'top_p':       0.9
                     }
@@ -75,6 +75,7 @@ class LLMClientHandler:
             response.raise_for_status()
 
             response_text = response.json().get('message', {}).get('content', '')
+            print(f"LLM RAW RESPONSE: {response_text}")
             response_text = self.clean_response(response_text)
 
             # record assistant turn
