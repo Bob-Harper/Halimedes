@@ -76,12 +76,10 @@ class SPIWrapper:
 def apply_display_patch(patched=True):
     try:
         if patched:
-            # print("Applying GC9D01 pixel + porch timing fix...")
             # Falling edge pixel clock
             eye_left.write_cmd(0xB0, bytes([0x00]))
             eye_right.write_cmd(0xB0, bytes([0x00]))
         else:
-            # print("Reverting to default GC9D01 timing...")
             eye_left.write_cmd(0xB0, bytes([0x08]))
             eye_right.write_cmd(0xB0, bytes([0x08]))
     except Exception as e:

@@ -51,6 +51,7 @@ class EyelidController:
         self.expression_map = expression_map
 
     def set_expression(self, name: str):
+        print(f"[LidController] Switching to expression: {name}")
         exp = self.expression_map.get(name)
         if not exp:
             print(f"[EyelidController] Unknown expression: {name}")

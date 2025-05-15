@@ -60,8 +60,8 @@ macro_player = MacroPlayer(
 
 async def main():
     print("Entered main()")
-    # print("Starting BlinkEngine loop.")
-    #asyncio.create_task(composer.start_idle_blink_loop())
+    print("Starting BlinkEngine loop.")
+    asyncio.create_task(composer.start_idle_blink_loop())
     print("Starting EyeFrameComposer loop.")
     asyncio.create_task(composer.start_loop())  
     # NOTE these are broken into multiple sequences for a reason.  
@@ -128,14 +128,11 @@ async def main():
                                gaze move to 10 10 1.0
                                """)
         spoken_text, raw_audio = await audio_input.recognize_speech_vosk(return_audio=True)  # Get input and raw audio
-
-        # If no text was recognized, loop back and wait again
-        if not spoken_text:
-            # print("No input detected, waiting...") 
+        
+        if not spoken_text:  # If no text was recognized, loop back and wait again
             continue
         # Verbal Command Handler removed until rewritten
         # ThinkingTask loop removed for testing and because new model is superfast
-        # consider re-adding if llm wait is long
 
         # Detect and play a sound based on user's emotion
         user_emotion = emotion_handler.analyze_text_emotion(spoken_text)
@@ -155,7 +152,7 @@ async def main():
             sound {hal_emotion}
             action expressive
         """)
-        # Speak the response
+        # Perform the response sequence
         macro_script = TagToDSL.parse(response_text)
         await macro_player.run(macro_script)
 

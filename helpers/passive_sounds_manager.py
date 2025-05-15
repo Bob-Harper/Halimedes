@@ -104,7 +104,6 @@ class PassiveSoundsManager:
         Uses the robot hat's music.sound_play for playback.
         """
         try:
-            # print(f"Playing sound: {sound_file} at volume {volume}")
             await asyncio.to_thread(self.music.sound_play, sound_file, volume)
         except Exception as e:
             print(f"Error playing sound: {e}")

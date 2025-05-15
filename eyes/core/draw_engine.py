@@ -41,7 +41,6 @@ class DrawEngine:
             # Cache a pair of buffers
             self.gaze_cache[key] = (left_buf, right_buf)
 
-        # print(f"[DrawEngine] Returning gaze frame: x={x_off} y={y_off} pupil={pupil_size} key={key}")
         return self.gaze_cache[key]
 
     def _get_buffer(self, img):
@@ -79,34 +78,21 @@ class DrawEngine:
         return (x, y, pupil)
 
 
-    def apply_lids(self, bufs: tuple[bytearray, bytearray], lid_cfg: dict) -> tuple[bytearray, bytearray]:
-        left_raw, right_raw = bufs
+def apply_lids(self, bufs: tuple[bytearray, bytearray], lid_cfg: dict) -> tuple[bytearray, bytearray]:
+    left_raw, right_raw = bufs
 
-        def buf_to_img(buf):
-            arr = np.frombuffer(buf, dtype=np.uint8).reshape((160, 160, 2))
-            rgb565 = (arr[:, :, 0].astype(np.uint16) << 8) | arr[:, :, 1].astype(np.uint16)
-            r = ((rgb565 >> 11) & 0x1F) << 3
-            g = ((rgb565 >> 5) & 0x3F) << 2
-            b = (rgb565 & 0x1F) << 3
-            img = np.stack([r, g, b], axis=-1).astype(np.uint8)
-            return Image.fromarray(img)
+    def buf_to_img(buf):
+        arr = np.frombuffer(buf, dtype=np.uint8).reshape((160, 160, 2))
+        rgb565 = (arr[:, :, 0].astype(np.uint16) << 8) | arr[:, :, 1].astype(np.uint16)
+        r = ((rgb565 >> 11) & 0x1F) << 3
+        g = ((rgb565 >> 5) & 0x3F) << 2
+        b = (rgb565 & 0x1F) << 3
+        img = np.stack([r, g, b], axis=-1).astype(np.uint8)
+        return Image.fromarray(img)
 
-        # Generate unique suffix based on timestamp
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        os.makedirs("/tmp/hal_debug", exist_ok=True)
+    img1 = buf_to_img(left_raw)
+    img2 = buf_to_img(right_raw)
 
-        img1 = buf_to_img(left_raw)
-        img2 = buf_to_img(right_raw)
+    masked_imgs = apply_eyelids((img1, img2), lid_cfg)
 
-        img1.save(f"/tmp/hal_debug/left_raw_{stamp}.png")
-        img2.save(f"/tmp/hal_debug/right_raw_{stamp}.png")
-        # print(f"[Lids] Saved pre-mask frames to /tmp/hal_debug/*_{stamp}.png")
-
-        masked_imgs = apply_eyelids((img1, img2), lid_cfg)
-        # print("[Lids] Applying eyelid mask to frames...")
-
-        masked_imgs[0].save(f"/tmp/hal_debug/left_masked_{stamp}.png")
-        masked_imgs[1].save(f"/tmp/hal_debug/right_masked_{stamp}.png")
-        # print(f"[Lids] Saved masked frames to /tmp/hal_debug/*_{stamp}.png")
-
-        return tuple(self._get_buffer(img) for img in masked_imgs)
+    return tuple(self._get_buffer(img) for img in masked_imgs)
