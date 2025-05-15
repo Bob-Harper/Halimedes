@@ -20,8 +20,6 @@ class EyeDeformer:
         self.output_size = output_size
         self.warp_strength = pupil_warp_strength
         self.verbose = verbose
-        # print(f"[Deformer INIT] warp_strength = {self.warp_strength}")
-
     
     def generate_eye_frame(
         self,
@@ -59,9 +57,7 @@ class EyeDeformer:
 
         cached = self.cache.load_map(key_dict, kind="spherical")
         if cached is not None:
-            # print(f"{GREEN}[Cache HIT]{RESET} Spherical key: {key_dict}")
             return cached
-        # print(f"{RED}[Cache MISS]{RESET} Spherical key: {key_dict}")
 
         h = w = 180
         center_x = w // 2
@@ -98,9 +94,7 @@ class EyeDeformer:
         }
         cached = self.cache.load_map(key_dict, kind="pupil")
         if cached is not None:
-            # print(f"{GREEN}[Cache HIT]{RESET} pupil key: {key_dict}")
             return cached
-        # print(f"{RED}[Cache MISS]{RESET} pupil key: {key_dict}")
 
         h = w = 180
         center_x = w // 2

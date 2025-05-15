@@ -47,7 +47,7 @@ class EyeAnimator:
     async def set_gaze_safely(self, x, y, pupil):
         await asyncio.to_thread(self.smooth_gaze, x, y, pupil)        
 
-    async def set_expression(self, mood: str, smooth: bool = None):
+    async def set_expression(self, mood: str, smooth: bool = None, steps=20, delay=0.02):
         """
         Public API: switch to `mood`.  
         If `smooth` is True, always tween; if False, always snap;  
@@ -70,7 +70,7 @@ class EyeAnimator:
                          and self.current_expression != mood)
 
         if do_smooth:
-            await self._smooth_expression(mood)
+            await self._smooth_expression(mood, steps=steps, delay=delay)
         else:
             self._instant_expression(mood)
 

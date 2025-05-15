@@ -38,10 +38,13 @@ class EyeFrameComposer:
             self._dirty = True
 
     async def play_blink(self):
-        current = self.state.expression or "neutral"
-        await self.set_expression("closed")
-        await asyncio.sleep(0.05)
-        await self.set_expression(self.last_expression)
+        # Acquire lock so expression updates won't interfere
+        async with self.blink_engine.shared_lock:
+            current = self.state.expression or "neutral"
+            current = self.state.expression or "neutral"
+            await self.animator.set_expression("closed", smooth=True, steps=6, delay=0.01)
+            await asyncio.sleep(0.1)
+            await self.animator.set_expression(current, smooth=True, steps=6, delay=0.01)
 
     async def start_idle_blink_loop(self):
         try:
@@ -68,12 +71,10 @@ class EyeFrameComposer:
                         pupil=self.state.pupil
                     )
 
-                    # print("[Composer] RENDERING new frame:", self.state)
                     async with self.shared_lock:
                         await self.animator.set_expression(self.state.expression)
 
                     lid_cfg = self.animator.drawer.lid_control.get_mask_config()
-                    # print("[Composer] BEFOR Lid config:", lid_cfg)
 
                     # Re-render the base gaze frame AFTER updating eyelids
                     left_buf, right_buf = await asyncio.to_thread(
@@ -87,18 +88,16 @@ class EyeFrameComposer:
                     # Apply eyelids
                     lid_cfg = self.animator.drawer.lid_control.get_mask_config()
                     try:
-                        # print("[Composer] Lid config:", lid_cfg)
                         masked = await asyncio.to_thread(
                             self.animator.drawer.apply_lids,
                             (left_buf, right_buf),
                             lid_cfg
                         )
-                        # print("[Composer] Eyelid masking successful.")
                     except Exception as e:
                         print(f"[Composer] ERROR applying eyelids: {e}")
                         import traceback
                         traceback.print_exc()
-                        masked = (left_buf, right_buf)  # Fallback: skip masking                    print("[Composer] Applying eyelids...")
+                        masked = (left_buf, right_buf)  # Fallback: skip masking                    
                     if not masked or not all(masked):
                         print("[Composer] ERROR: Masked frame is empty or invalid.")
 
@@ -107,7 +106,6 @@ class EyeFrameComposer:
                         self.animator.drawer.display,
                         masked
                     )
-                    # print("[Composer] Displaying composed frame.")
 
                     # Save state
                     self._previous = EyeState(

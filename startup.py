@@ -109,20 +109,15 @@ async def main():
         stop_event = asyncio.Event()
         # Detect and play a sound based on user's emotion
         user_emotion = emotion_handler.analyze_text_emotion(spoken_text)
-        # print(f"Detected user emotion: {user_emotion}")
         emotion_sound_manager.play_sound(user_emotion)
 
         recognized_speaker = voiceprint_manager.recognize_speaker(raw_audio)
-        # print(f"Recognized speaker: {recognized_speaker}")
 
         # system_prompt = await system_prompt_fetch(recognized_speaker, user_emotion)
 
         # Label the user input for the model
         user_input_for_llm = f"{recognized_speaker}: {spoken_text}"
         print(f"{recognized_speaker}: emotion: {user_emotion}\n{spoken_text}")
-
-        # Use PromptTemplateManager to wrap prompt properly for this model
-        # final_prompt = template_manager.build_prompt(user_input_for_llm)
 
         # Handle passive actions while LLM processes
         await eye_animator.set_expression("focused")
@@ -138,8 +133,6 @@ async def main():
         # Detect Hal's emotion from the response and play the corresponding sound
         hal_emotion = emotion_handler.analyze_text_emotion(response_text)
         print(f"Hal: {response_text}")
-        # print(f"Hal's emotion: {hal_emotion}")
-        # await eye_animator.set_expression("hal_emotion")
         emotion_sound_manager.play_sound(hal_emotion)
         # Speak the response
         await response_manager.fully_dynamic_response(response_text)

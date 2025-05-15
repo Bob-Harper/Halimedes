@@ -22,7 +22,6 @@ class EyeExpressionManager:
                         with open(path, "r") as f:
                             name = os.path.splitext(file)[0]
                             expressions[name] = json.load(f)
-                            # print(f"[ExpressionManager] Loaded '{name}' from file.")
                     except Exception as e:
                         print(f"[ExpressionManager] Failed to load {file}: {e}")
         else:
