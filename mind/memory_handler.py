@@ -1,5 +1,7 @@
 import time
-
+# import stuff
+# NOT USED YET.  EXAMPLE PLACEHOLDER
+# See Stygia database/prompt handling for examples and ideas on how to implement.
 
 class MemoryHandler:
     def __init__(self, db_interface):

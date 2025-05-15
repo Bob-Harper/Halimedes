@@ -1,7 +1,10 @@
+# import stuff
+# NOT USED YET.  EXAMPLE PLACEHOLDER
+# emotional_sounds_manager.py for examples and ideas on how to implement.
 import random
 
 
-class DecisionManager:
+class DecisionManager:  # NOT USED YET.  EXAMPLE PLACEHOLDER
     def __init__(self, emotion_engine):
         self.emotion_engine = emotion_engine
 

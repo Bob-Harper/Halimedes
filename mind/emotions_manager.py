@@ -1,4 +1,7 @@
 import random
+# import stuff
+# NOT USED YET.  EXAMPLE PLACEHOLDER
+# emotional_sounds_manager.py for examples and ideas on how to implement.
 import time
 
 
