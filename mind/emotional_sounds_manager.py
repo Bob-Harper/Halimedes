@@ -83,7 +83,7 @@ class EmotionHandler:
 
         # Use NRCLex for emotion detection
         nrc_analysis = NRCLex(text)
-        nrc_emotions = nrc_analysis.raw_emotion_scores
+        nrc_emotions = nrc_analysis.raw_emotion_scores # type: ignore
 
         # Normalize to include all emotion categories with a score of 0 if missing
         nrc_emotions = {emotion: nrc_emotions.get(emotion, 0) for emotion in self.emotion_categories}
@@ -96,8 +96,11 @@ class EmotionHandler:
             nrc_emotions['negative'] += abs(sia_scores['compound'])
 
         # Identify the predominant emotion
-        predominant_emotion = max(nrc_emotions, key=nrc_emotions.get)
-
+        # nrc_emotions: Dict[str, float]
+        predominant_emotion = max(
+            nrc_emotions.items(),
+            key=lambda kv: kv[1]
+        )[0]
         # Return the emotion if significant, otherwise "neutral"
         return predominant_emotion if nrc_emotions[predominant_emotion] > 0 else "neutral"
 

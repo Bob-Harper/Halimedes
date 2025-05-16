@@ -41,7 +41,7 @@ def fill_screen_safely(self, color, chunk_size=1024):
 class VirtualIO:
     def __init__(self, gpio_num):
         self.gpio = gpio_num
-        GPIO.setup(self.gpio, GPIO.OUT)
+        GPIO.setup(self.gpio, GPIO.OUT) # type: ignore
 
     @property
     def direction(self): return None
@@ -49,9 +49,9 @@ class VirtualIO:
     def direction(self, value): pass
 
     @property
-    def value(self): return GPIO.input(self.gpio)
+    def value(self): return GPIO.input(self.gpio) # type: ignore
     @value.setter
-    def value(self, val): GPIO.output(self.gpio, GPIO.HIGH if val else GPIO.LOW)
+    def value(self, val): GPIO.output(self.gpio, GPIO.HIGH if val else GPIO.LOW) # type: ignore
 
 class SPIWrapper:
     def __init__(self, bus=0, device=0, max_hz=40000000):
@@ -87,8 +87,8 @@ def apply_display_patch(patched=True):
 
 # ---- INIT DISPLAY ----
 
-GPIO.setmode(GPIO.BCM)
-GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BCM) # type: ignore
+GPIO.setwarnings(False) # type: ignore
 
 LEFT_EYE = {
     'cs': 6,
@@ -126,11 +126,11 @@ apply_display_patch(True)
 # ---- METHOD PATCHES (BOUND TO `eye`) ----
 
 eye_right.draw_pixel = types.MethodType(draw_pixel, eye_right)
-eye_right.fill_rect = types.MethodType(fill_rect, eye_right)
+eye_right.fill_rect = types.MethodType(fill_rect, eye_right) # type: ignore
 eye_right.fill_screen = types.MethodType(fill_screen_safely, eye_right)
 
 eye_left.draw_pixel = types.MethodType(draw_pixel, eye_left)
-eye_left.fill_rect = types.MethodType(fill_rect, eye_left)
+eye_left.fill_rect = types.MethodType(fill_rect, eye_left) # type: ignore
 eye_left.fill_screen = types.MethodType(fill_screen_safely, eye_left)
 
 # ---- TEST MODE (Optional) ----

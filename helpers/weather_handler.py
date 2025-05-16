@@ -60,9 +60,13 @@ class WeatherHandler:
 
     async def fetch_weather(self):
         """Fetch and format current weather data."""
+        if OPEN_WEATHER_1DAY is None :
+            raise ValueError("OPEN_WEATHER_1DAY must be set in environment")
+
         try:
 
             response = requests.get(OPEN_WEATHER_1DAY, params=params, timeout=10)
+
             response.raise_for_status()
             data = response.json()
 
@@ -88,6 +92,8 @@ class WeatherHandler:
 
     async def fetch_forecast(self):
         """Fetch and format a detailed 5-day forecast."""
+        if OPEN_WEATHER_5DAY is None :
+            raise ValueError("OPEN_WEATHER_5DAY must be set in environment")
         try:
 
             response = requests.get(OPEN_WEATHER_5DAY, params=params, timeout=10)

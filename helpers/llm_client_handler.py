@@ -94,7 +94,7 @@ class LLMClientHandler:
     @staticmethod
     def clean_response(text):
         # Remove all *text* patterns (including things like *stunned silence*)
-        text = re.sub(r"\*.*?\*", "", text)
+        text = text.replace('*', '')
         # Define replacements (all in lowercase for matching)
         replacements = {
             "brrr": "burr",

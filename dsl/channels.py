@@ -1,5 +1,6 @@
 import asyncio
 import random
+from typing import Callable
 
 
 class GazeChannel:
@@ -31,11 +32,11 @@ class ExpressionChannel:
         self.composer = composer
 
     async def set_mood(self, mood: str):
-        self.composer.set_expression(mood)
+        await self.composer.set_expression(mood)
 
 
 class SoundChannel:
-    def __init__(self, play_sound_func):
+    def __init__(self, play_sound_func: Callable[[str], None]):
         self.play_sound = play_sound_func
 
     async def play(self, sound: str):

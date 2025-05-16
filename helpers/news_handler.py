@@ -38,10 +38,10 @@ class NewsHandler():
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
         }
-        
+        client_timeout = aiohttp.ClientTimeout(total=timeout)
         try:
             async with aiohttp.ClientSession(headers=headers) as session:
-                async with session.get(url, timeout=timeout) as response:
+                async with session.get(url, timeout=client_timeout) as response:
                     if response.status == 200:
                         data = await response.text()
                         feed = feedparser.parse(data)

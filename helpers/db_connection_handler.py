@@ -34,7 +34,9 @@ class DbConnectionHandler:
         """Fetch the appropriate prompt for a recognized speaker."""
         if not self.pool:
             await self.init_db()
-
+            if not self.pool:
+                raise RuntimeError("Database pool failed to initialize.")
+    
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute("SELECT prompt_template FROM custom_prompts WHERE name = %s", (speaker_name,))

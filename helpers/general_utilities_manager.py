@@ -12,6 +12,7 @@ class GeneralUtilitiesManager:
     # --- Battery Management ---
     async def get_battery_status(self, max_retries=3, retry_delay=2):
         """Get the battery voltage with retries and classify the status."""
+        voltage = 0 
         for attempt in range(max_retries):
             await self.response_manager.speak_with_flite(f"Battery Check {attempt + 1}.")
             voltage = get_battery_voltage()

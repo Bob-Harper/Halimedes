@@ -2,34 +2,7 @@ import asyncio
 import random
 import re
 from typing import Callable, Dict, Awaitable, Optional
-
-
-class GazeChannel:
-    def __init__(self, composer):
-        self.composer = composer
-
-    async def move_to(self, x: float, y: float, pupil: float = 1.0):
-        await self.composer.animator.interpolator.smooth_gaze(x, y, pupil)
-
-    async def wander(self):
-        x = random.randint(0, 20)
-        y = random.randint(0, 20)
-        await self.composer.animator.interpolator.smooth_gaze(x, y, 1.0)
-
-
-class ExpressionChannel:
-    def __init__(self, composer):
-        self.composer = composer
-
-    async def set_mood(self, mood: str):
-        self.composer.set_expression(mood)
-
-
-class SpeechChannel:
-    async def speak(self, text: str): ...
-
-class ActionChannel:
-    async def perform(self, action: str): ...
+from dsl.channels import GazeChannel, ExpressionChannel, SpeechChannel, ActionChannel, SoundChannel
 
 
 class MacroPlayer:
@@ -38,7 +11,7 @@ class MacroPlayer:
                  expression: Optional[ExpressionChannel] = None,
                  speech: Optional[SpeechChannel] = None,
                  action: Optional[ActionChannel] = None,
-                 sound: Optional[Callable[[str], Awaitable[None]]] = None):
+                 sound: Optional[SoundChannel] = None):
 
         self.gaze = gaze
         self.expression = expression

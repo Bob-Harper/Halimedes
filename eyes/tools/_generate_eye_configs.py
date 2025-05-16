@@ -1,4 +1,4 @@
-
+from typing import Optional
 import json
 from pathlib import Path
 
@@ -22,7 +22,7 @@ DEFAULT_CONFIG = {
 FIELDS_TO_REMOVE = ["pupil_radius", "feather_width", "eyelid_top", "eyelid_bottom", "eyelid_left", "eyelid_right"
                     "perspective_skew", "perspective_scale"]
 
-def upgrade_or_create_profiles(images_dir: str, json_dir: str = None):
+def upgrade_or_create_profiles(images_dir: str, json_dir: Optional[str] = None):
     img_path = Path(images_dir).resolve()
     json_path = Path(json_dir or images_dir).resolve()
 
