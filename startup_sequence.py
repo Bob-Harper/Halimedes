@@ -19,7 +19,8 @@ from helpers.response_manager import Response_Manager
 from audio_input.audio_input_manager import AudioInputManager
 from audio_input.verbal_commands import CommandManager
 from audio_input.voice_recognition_manager import VoiceRecognitionManager
-from mind.emotional_sounds_manager import EmotionHandler, EmotionalSoundsManager
+from mind.emotional_sounds_manager import EmotionalSoundsManager
+from mind.emotions_manager import EmotionCategorizer
 from helpers.weather_command_manager import WeatherCommandManager
 from helpers.llm_client_handler import LLMClientHandler
 from helpers.passive_actions_manager import PassiveActionsManager
@@ -40,7 +41,7 @@ llm_client = LLMClientHandler(server_host)
 voiceprint_manager = VoiceRecognitionManager()
 command_manager = CommandManager(llm_client, picrawler_instance, eye_animator)
 audio_input = AudioInputManager(picrawler_instance)
-emotion_handler = EmotionHandler()
+emotion_categorizer = EmotionCategorizer()
 emotion_sound_manager = EmotionalSoundsManager()
 actions_manager = PassiveActionsManager(picrawler_instance)
 response_manager = Response_Manager(picrawler_instance, actions_manager, eye_animator)
@@ -133,7 +134,7 @@ async def main():
         # ThinkingTask loop removed for testing and because new model is superfast
 
         # Detect and play a sound based on user's emotion
-        user_emotion = emotion_handler.analyze_text_emotion(spoken_text)
+        user_emotion = emotion_categorizer.analyze_text_emotion(spoken_text)
         await macro_player.run(f"sound {user_emotion}")
 
         recognized_speaker = voiceprint_manager.recognize_speaker(raw_audio)
@@ -144,7 +145,7 @@ async def main():
 
         response_text = await llm_client.send_message_async(user_input_for_llm)
         # Detect Hal's emotion from the response and play the corresponding sound
-        hal_emotion = emotion_handler.analyze_text_emotion(response_text)
+        hal_emotion = emotion_categorizer.analyze_text_emotion(response_text)
         await macro_player.run(f"""
             expression set mood {hal_emotion}
             sound {hal_emotion}

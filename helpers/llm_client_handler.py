@@ -1,7 +1,8 @@
 import requests
 import asyncio
 import re
-
+import json 
+from mind.emotions_manager import EmotionCategorizer
 """
 MAX_TOKEN_COUNT represents the character count limit for conversation history.
 - The actual token count is approximately one-fourth the character count.
@@ -22,6 +23,7 @@ class LLMClientHandler:
         self.server_host = server_host
         self.model = model
         self.max_tokens = MAX_TOKEN_COUNT
+        self.categorizer = EmotionCategorizer()
         with open("helpers/instruction_prompt.txt", encoding="utf-8") as f:
             system_prompt = f.read()
         self.conversation_history = [
@@ -66,16 +68,25 @@ class LLMClientHandler:
                     'messages': chat_payload,
                     'stream':   False,
                     'options': {
-                        'temperature': 0.88,
+                        'temperature': 0.8,
                         'top_k':       20,
                         'top_p':       0.9
                     }
                 }
             )
+
             response.raise_for_status()
 
+            # Debug block to see EVERYTHING sent to and from the LLM
+            response_json = response.json()
+            print("\n\n================================\n\n")
+            print(f"PAYLOAD SENT TO LLM: {chat_payload}")
+            print("\n\n================================\n\n")
+            print("RAW JSON RESPONSE FROM LLM:")
+            print(json.dumps(response_json, indent=2))
+            print("\n\n================================\n\n")
+
             response_text = response.json().get('message', {}).get('content', '')
-            print(f"LLM RAW RESPONSE: {response_text}")
             response_text = self.clean_response(response_text)
 
             # record assistant turn
@@ -94,7 +105,7 @@ class LLMClientHandler:
     @staticmethod
     def clean_response(text):
         # Remove all *text* patterns (including things like *stunned silence*)
-        text = text.replace('*', '')
+        text = re.sub(r"\*.*?\*", "", text)
         # Define replacements (all in lowercase for matching)
         replacements = {
             "brrr": "burr",
