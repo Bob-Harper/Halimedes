@@ -3,7 +3,10 @@ import random
 import re
 from typing import Callable, Dict, Awaitable, Optional
 from dsl.channels import GazeChannel, ExpressionChannel, SpeechChannel, ActionChannel, SoundChannel
+from mind.emotions_manager import EmotionCategorizer
+from dsl.macro_tag_validator import MacroTagValidator
 
+emotion_categorizer = EmotionCategorizer()
 
 class MacroPlayer:
     def __init__(self,
@@ -12,7 +15,6 @@ class MacroPlayer:
                  speech: Optional[SpeechChannel] = None,
                  action: Optional[ActionChannel] = None,
                  sound: Optional[SoundChannel] = None):
-
         self.gaze = gaze
         self.expression = expression
         self.speech = speech
@@ -124,48 +126,42 @@ class MacroPlayer:
 
 
 class TagToDSL:
-    TAG_PATTERNS = {
-        "sound": re.compile(r"<sound effect:\s*(\w+)>", re.IGNORECASE),
-        "action": re.compile(r"<action:\s*(\w+)>", re.IGNORECASE),
-        "gaze": re.compile(r"<gaze:\s*(\w+)>", re.IGNORECASE),
-        "face": re.compile(r"<face:\s*(\w+)>", re.IGNORECASE),
-        "speak": re.compile(r"<speak:\s*(.*?)>", re.IGNORECASE),
-    }
-
     @staticmethod
     def parse(text: str) -> str:
         lines = text.strip().split("\n")
         dsl_lines = []
+
         for line in lines:
             line = line.strip()
             if not line:
                 continue
-            match_found = False
-            for kind, pattern in TagToDSL.TAG_PATTERNS.items():
-                m = pattern.fullmatch(line)
-                if m:
-                    arg = m.group(1).strip()
-                    if kind == "sound":
-                        dsl_lines.append(f"sound {arg}")
-                    elif kind == "action":
-                        dsl_lines.append(f"action {arg}")
-                    elif kind == "gaze":
-                        if arg == "wander":
-                            dsl_lines.append("gaze wander")
-                        else:
-                            dsl_lines.append(f"gaze move to {arg}")
-                    elif kind == "face":
-                        dsl_lines.append(f"expression set mood {arg}")
-                    elif kind == "speak":
-                        dsl_lines.append(f'speak "{arg}"')
-                    match_found = True
-                    break
 
-            # Fallback for malformed or plain <speak: lines
-            if not match_found:
-                if line.lower().startswith("<speak:"):
-                    fallback = line[len("<speak:"):].strip()
-                    dsl_lines.append(f'speak "{fallback}"')
+            if line.startswith("<") and ":" in line and line.endswith(">"):
+                tag_type, value = line[1:-1].split(":", 1)
+                tag_type = tag_type.strip().lower()
+                value = value.strip()
+
+                validated_tag = MacroTagValidator.validate_tag_type(tag_type)
+
+                if validated_tag == "sound":
+                    mapped = emotion_categorizer.analyze_text_emotion(value)
+                    dsl_lines.append(f"sound {mapped}")
+                elif validated_tag == "face":
+                    mapped = emotion_categorizer.analyze_text_emotion(value)
+                    dsl_lines.append(f"expression set mood {mapped}")
+                elif validated_tag == "gaze":
+                    mapped = MacroTagValidator.validate_gaze(value)
+                    dsl_lines.append(f"gaze move to {mapped}")
+                elif validated_tag == "action":
+                    mapped = MacroTagValidator.validate_action(value)
+                    dsl_lines.append(f"action {mapped}")
+                elif validated_tag == "speak":
+                    dsl_lines.append(f'speak "{value}"')
                 else:
-                    dsl_lines.append(f'speak "{line}"')
+                    print(f"[Validator] Unknown tag '{tag_type}', skipping.")
+                    continue
+            else:
+                # Not a tag, treat as natural speech
+                dsl_lines.append(f'speak "{line}"')
+
         return "\n".join(dsl_lines)
