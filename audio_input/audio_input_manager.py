@@ -13,7 +13,8 @@ class AudioInputManager:
     def __init__(self, picrawler_instance, silence_threshold=700, silence_duration=2.0, sample_rate=44100):
         self.picrawler_instance = picrawler_instance
         # Force sounddevice to use the correct microphone!
-        sd.default.device = (1, None)  # (input device index, output device index)
+        # (input device index, output device index)
+        sd.default.device = (1, None)    # type: ignore 
         self.sound_manager = PassiveSoundsManager()
         self.general_utils = GeneralUtilitiesManager(picrawler_instance)
         self.silence_threshold = silence_threshold
@@ -44,7 +45,7 @@ class AudioInputManager:
             pass
         await self.sound_manager.play_sound_indicator(SOUND_ASSETS_PATH/"excited/n-talk1.wav", 10)
         self.listening_led.off()
-
+        transcript = "Fallback message: transcription failure"
         try:
             # Try processing via the Vosk server
             transcript = await self.process_audio_with_transcriber(

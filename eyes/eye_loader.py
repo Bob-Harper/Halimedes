@@ -43,7 +43,7 @@ def load_eye_profile(profile_name):
     if img.width != img.height:
         print(f"[WARNING] Eye texture is not square ({img.width}x{img.height})")
     if img.width != 180:
-        img = img.resize((180, 180), resample=Image.LANCZOS)
+        img = img.resize((180, 180), resample=Image.Resampling.LANCZOS)
     if config.get("directional", False):
         img = img.rotate(90, expand=True)
 

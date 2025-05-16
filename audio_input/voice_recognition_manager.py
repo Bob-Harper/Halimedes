@@ -16,6 +16,8 @@ VOICEPRINT_USER2_MODEL
 
 class VoiceRecognitionManager:
     def __init__(self):
+        if VOICE_RECOGNITION_MODEL_PATH is None or VOICE_RECOGNITION_MODEL_NAME is None:
+            raise ValueError("Model path or name cannot be None")
         self.model_path = os.path.join(VOICE_RECOGNITION_MODEL_PATH, VOICE_RECOGNITION_MODEL_NAME)
         self.voiceprint_dir = VOICEPRINT_MODEL_DIR
         self.model = self._load_model()

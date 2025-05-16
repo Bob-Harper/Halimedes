@@ -77,8 +77,11 @@ class PassiveActionsManager:
     async def actions_thinking_loop_single(self):
         """Perform a single thinking action with categorized weighting."""
         # Pick a category based on weights
-        category = random.choices(list(self.actions_by_category.keys()), weights=self.category_weights.values(), k=1)[0]
-
+        category = random.choices(
+            list(self.actions_by_category.keys()),
+            weights=list(self.category_weights.values()),
+            k=1
+        )[0]
         # Pick a random action from the chosen category
         action_function = random.choice(self.actions_by_category[category])  #  Unpack the tuple
 
