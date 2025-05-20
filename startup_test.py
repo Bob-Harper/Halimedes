@@ -59,11 +59,11 @@ macro_player = MacroPlayer(
 
 async def main():
     print("Entered main()")
-    print("Starting BlinkEngine loop.")
-    #asyncio.create_task(composer.start_idle_blink_loop()) #expression changes power the blinks now
-   
     print("Starting EyeFrameComposer loop.")
     asyncio.create_task(composer.start_loop())  
+    print("Starting BlinkEngine loop.")
+    # asyncio.create_task(composer.start_idle_blink_loop()) #expression changes power the blinks now
+   
     # NOTE these are broken into multiple sequences for a reason.  
     # leave them this way. do not consolidate at this time.
     
@@ -87,6 +87,17 @@ async def main():
         wait 4
         gaze move to 10 10 1.0
         wait 2
+        expression set mood closed
+        expression set mood neutral
+        wait 5
+        expression set mood closed
+        expression set mood negative
+        wait 5
+        expression set mood closed
+        expression set mood neutral
+        wait 5
+        expression set mood closed
+
         """
     )
 

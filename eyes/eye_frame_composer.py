@@ -66,7 +66,6 @@ class EyeFrameComposer:
         self._previous = EyeState()
         self.running = False
         self._dirty = True
-        self._expressionlock = asyncio.Lock()
 
     def set_gaze(self, x: int, y: int, pupil: float):
         self.state.x = round(x, 3)
@@ -75,7 +74,6 @@ class EyeFrameComposer:
         self._dirty = True
 
     async def set_expression(self, mood: str):
-
         print("----")
         print("EyeFrameComposer class:  async def set_expression(self, mood: str):")
         self.state.expression = mood
@@ -87,11 +85,14 @@ class EyeFrameComposer:
     async def play_blink(self):
         # Signal “blink in progress”
         start_expression = self.state.expression
-        async with self.animator.display_lock:
-            await self.animator.animate_expression("closed", smooth=True, steps=6, delay=0.01)
-            await asyncio.sleep(0.1)
-            await self.animator.animate_expression(start_expression, smooth=True, steps=6, delay=0.01)
-
+        print(f"[Blink] Starting blink with expression '{start_expression}'")
+        await self.animator.animate_expression("closed", smooth=True, steps=6, delay=0.01)
+        print("[Blink] Blink in progress...")
+        await asyncio.sleep(0.1)
+        await self.animator.animate_expression(start_expression, smooth=True, steps=6, delay=0.01)
+        print("[Blink] Blink completed")
+        self._dirty = True  # <-- THIS IS THE FIX
+        print("[Blink] Re-flagged _dirty = True for next loop pass")
     
     async def start_idle_blink_loop(self):
         try:
@@ -106,25 +107,27 @@ class EyeFrameComposer:
         self.running = True
         while self.running:
             if self._dirty or self.state != self._previous:
-                # --- GAZE PHASE (no lock needed) ---
+                # --- GAZE PHASE  ---
                 await asyncio.to_thread(
                     self.animator.smooth_gaze,
                     x=self.state.x, y=self.state.y, pupil=self.state.pupil
                 )
 
                 # --- EXPRESSION PHASE (lock only around expression) ---
-                async with self.animator.display_lock:
-                   await self.animator.animate_expression(self.state.expression)
+                print("[Composer] Triggering animate_expression")
+                # async with self.animator.display_lock:
+                await self.animator.animate_expression(self.state.expression)
+                print("[Composer] animate_expression completed")
 
-                # --- RENDER PHASE (no lock) ---
-                async with self.animator.display_lock:
+                # --- RENDER PHASE ---
+                async with self.animator.expression_lock:
                     left_buf, right_buf = await asyncio.to_thread(
                         self.animator.drawer.render_gaze_frame,
                         self.state.x, self.state.y, self.state.pupil
                     )
-                    self.animator.last_buf = (left_buf, right_buf)
+                self.animator.last_buf = (left_buf, right_buf)
 
-                # --- EYE‑LID MASK PHASE (no lock) ---
+                # --- EYE‑LID MASK PHASE  ---
                 try:
                     masked = await asyncio.to_thread(
                         self.animator.drawer.apply_lids,
@@ -134,7 +137,7 @@ class EyeFrameComposer:
                 except Exception:
                     masked = (left_buf, right_buf)
 
-                # --- DISPLAY PHASE (no lock) ---
+                # --- DISPLAY PHASE  ---
                 await asyncio.to_thread(
                     self.animator.drawer.display, masked
                 )
@@ -154,7 +157,7 @@ class GazeInterpolator:
     def __init__(self, animator):
         self.animator = animator  # this is EyeAnimator, to call draw_gaze()
 
-    def smooth_transition(self, from_x, from_y, to_x, to_y, from_pupil, to_pupil, steps=8, delay=0.015):
+    def interp_pupil_transition(self, from_x, from_y, to_x, to_y, from_pupil, to_pupil, steps=8, delay=0.015):
         for i in range(1, steps + 1):
             interp_x = int(from_x + (to_x - from_x) * (i / steps))
             interp_y = int(from_y + (to_y - from_y) * (i / steps))
@@ -163,9 +166,9 @@ class GazeInterpolator:
             self.animator.draw_gaze(interp_x, interp_y, pupil=interp_pupil)
             time.sleep(delay)
 
-    def smooth_gaze(self, to_x, to_y, to_pupil=1.0, steps=8, delay=0.015):
+    def interp_gaze_movement(self, to_x, to_y, to_pupil=1.0, steps=8, delay=0.015):
         state = self.animator.state
-        self.smooth_transition(
+        self.interp_pupil_transition(
             from_x=state["x"],
             from_y=state["y"],
             to_x=to_x,
@@ -176,7 +179,7 @@ class GazeInterpolator:
             delay=delay
         )
 
-    def apply_gaze_mode(self, mode):
+    def translate_gaze_mode(self, mode):
         modes = {
             "left": (10, 20),
             "right": (10, 0),
@@ -194,7 +197,7 @@ class GazeInterpolator:
 
         to_x, to_y = modes[mode]
         to_pupil = random.uniform(0.95, 1.15) if mode == "wander" else 1.0
-        self.smooth_gaze(to_x, to_y, to_pupil)
+        self.interp_gaze_movement(to_x, to_y, to_pupil)
 
 
 class DrawEngine:
@@ -244,10 +247,6 @@ class DrawEngine:
                 buf.append(rgb & 0xFF)
         return buf
 
-    @staticmethod
-    def _is_all_black(buf: bytearray) -> bool:
-        return all(b == 0x00 for b in buf)
-
     def display(self, bufs):
         if not bufs or not isinstance(bufs, tuple) or len(bufs) != 2:
             print("[DrawEngine] Invalid buffer passed to display. Skipping.")
@@ -264,6 +263,9 @@ class DrawEngine:
         eye_right.set_window(0, 0, self.width - 1, self.height - 1)
         for i in range(0, len(right_buf), 1024):
             eye_right.write_data(right_buf[i:i+1024])
+        print("[DrawEngine] Buffers sent to both eyes.")
+        # time.sleep(0.15)
+    
 
     def _cache_key(self, x, y, pupil):
         lids = tuple(self.lid_control.get_mask_config().values())
@@ -307,17 +309,18 @@ class EyeAnimator:
         self.drawer = DrawEngine(profile)
         self.blinker = None  # <-- initially empty
         self.interpolator = GazeInterpolator(self)
-        from eyes.dualeye_driver import eye_left, eye_right
-        for eye in (eye_left, eye_right):
-            eye.fill_screen(0x0000)  # clear both displays black
-        time.sleep(0.1)  # short SPI bus stabilization
         self.drawer.gaze_cache.clear()  # clear the gaze cache
         self.last_buf = None  # clear the last buffer for blinking
         self.current_expression = None  # track what’s live now
         # create a blank gaze buffer to seed last_buf
         left, right = self.drawer.render_gaze_frame(10, 10, 1.0)
         self.last_buf = (left, right)
+        from eyes.dualeye_driver import eye_left, eye_right
+        for eye in (eye_left, eye_right):
+            eye.fill_screen(0x0000)  # clear both displays black
+        time.sleep(0.1)  # short SPI bus stabilization
         self.display_lock = asyncio.Lock()
+        self.expression_lock = asyncio.Lock()
 
     # TEMP ALIAS for compatibility
     async def set_expression(self, *args, **kwargs):
@@ -337,45 +340,31 @@ class EyeAnimator:
         self.last_buf = (left_buf, right_buf)
 
     def apply_gaze_mode(self, mode):
-        self.interpolator.apply_gaze_mode(mode)
+        self.interpolator.translate_gaze_mode(mode)
 
     def smooth_gaze(self, x, y, pupil=1.0):
-        self.interpolator.smooth_gaze(x, y, pupil)
-
-    async def set_gaze_safely(self, x, y, pupil):
-        await asyncio.to_thread(self.smooth_gaze, x, y, pupil)
+        self.interpolator.interp_gaze_movement(x, y, pupil)
 
     async def animate_expression(self, mood: str, smooth: bool = False, steps=20, delay=0.02):
-        """
-        Public API: switch to `mood`.  
-        If `smooth` is True, always tween; if False, always snap;  
-        if None (default), auto-decide: snap on first call, tween thereafter.
+        async with self.expression_lock:
+            print(f"[Animator] Starting expression transition: {mood}")
+            do_smooth = smooth
+            if do_smooth is None:
+                # first time or resetting?
+                do_smooth = (self.current_expression is not None
+                            and self.current_expression != mood)
 
-        examples:
-        # “Perform for the audience” instantly:
-        await hal.set_expression("neutral")
-
-        # Later, do a polished cross-fade:
-        await hal.set_expression("surprised")    # smooth auto
-
-        # If you have to reset quickly (no tween):
-        await hal.set_expression("neutral", smooth=False)
-        """
-        do_smooth = smooth
-        if do_smooth is None:
-            # first time or resetting?
-            do_smooth = (self.current_expression is not None
-                         and self.current_expression != mood)
-
-        if do_smooth:
-            await self._smooth_expression(mood, steps=steps, delay=delay)
-        else:
-            await self._instant_expression(mood)
+            if do_smooth:
+                await self._smooth_expression(mood, steps=steps, delay=delay)
+            else:
+                await self._smooth_expression(mood, steps=1, delay=delay)
 
     async def _smooth_expression(self, mood: str, steps=20, delay=0.02):
         """
         Tween from the current expression corners to the new `mood`.
         """
+        print(f"[Animator] Tweening to expression '{mood}'")
+
         expr_map = self.drawer.lid_control.expression_map
         target   = expr_map.get(mood)
         if not target:
@@ -396,6 +385,8 @@ class EyeAnimator:
         async with self.display_lock:
             start_cfg = self.drawer.lid_control.lids.copy()
             for step in range(1, steps + 1):
+                print(f"[Animator] Step {step}/{steps} — updating eyelid config")
+
                 frac = step / steps
                 interp_cfg = {}
                 for corner in (
@@ -422,28 +413,8 @@ class EyeAnimator:
                 self.drawer.gaze_cache.clear()
                 await asyncio.sleep(delay)
 
+            print(f"[Animator] Expression '{mood}' complete")
             self.current_expression = mood
-
-    async def _instant_expression(self, mood: str):
-        """
-        Immediately snap to `mood`—no tween.
-        """
-        async with self.display_lock:
-            self.drawer.lid_control.set_eyelid_expression(mood)
-
-            # <-- this used to be buf = generate_frame(...)
-            left_buf, right_buf = self.drawer.render_gaze_frame(
-                self.state["x"],
-                self.state["y"],
-                pupil_size=self.state["pupil"]
-            )
-            # now display both eyes at once
-            self.drawer.display((left_buf, right_buf))
-
-            # stash for blink
-            self.last_buf = (left_buf, right_buf)
-            self.current_expression = mood
-            self.drawer.gaze_cache.clear()
 
 
 class EyelidController:
@@ -514,28 +485,6 @@ class EyeExpressionManager:
             except Exception as e:
                 print(f"[ExpressionManager] Failed to load expressions: {e}")
         return expressions
-
-    def manage_expression(self, name: str):
-        self.lid_control.set_eyelid_expression(name)
-
-    def draw_expression(self, expression):
-        config = self.expressions.get(expression)
-        if not config:
-            print(f"[ExpressionManager] Unknown expression: '{expression}'")
-            return
-
-        try:
-            # Apply eyelid positions
-            for lid_key in [
-                'eye1_top_left', 'eye1_top_right',
-                'eye1_bottom_left', 'eye1_bottom_right',
-                'eye2_top_left', 'eye2_top_right',
-                'eye2_bottom_left', 'eye2_bottom_right']:
-                if lid_key in config:
-                    self.animator.set_expression(lid_key, config[lid_key])
-
-        except Exception as e:
-            print(f"[ExpressionManager] Error applying '{expression}': {e}")
 
 
 class EyeCacheManager:
@@ -647,9 +596,6 @@ class EyeCacheManager:
         def __getattr__(self, name):
             if name == "texture_cache_dir":
                 raise AttributeError("Use pupil_dir or spherical_dir instead of texture_cache_dir.")
-
-    def debug_key(self, **kwargs):
-        print(f"[DEBUG] Key: {self._generate_key(**kwargs)}")
 
 
 class EyeDeformer:
