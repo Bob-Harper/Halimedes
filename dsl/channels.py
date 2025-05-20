@@ -32,6 +32,8 @@ class ExpressionChannel:
         self.composer = composer
 
     async def set_mood(self, mood: str):
+        print(f"[ExpressionChannel -> set mood to '{mood}'")
+        print("calling eye_frame_composer.py EyeFrameComposer - self.composer.set_expression(mood) ")
         await self.composer.set_expression(mood)
 
 

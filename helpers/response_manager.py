@@ -1,7 +1,7 @@
 import subprocess
 import asyncio
 from mind.emotional_sounds_manager import get_voice_modifiers
-from mind.emotional_sounds_manager import EmotionHandler
+from mind.emotional_sounds_manager import EmotionalSoundsManager
 from helpers.passive_sounds_manager import PassiveSoundsManager
 from helpers.global_config import SPEECH_MODEL_PATH, SPEECH_MODEL_NAME
 
@@ -50,7 +50,7 @@ class Response_Manager:
         speed: flite default 1.0 - higher values stretch (longer), lower compresses (shorter)
         """
 
-        self.emotion_handler = EmotionHandler()
+        self.emotion_handler = EmotionalSoundsManager()
         self.sound_manager = PassiveSoundsManager()
         self.eye_animator = eye_animator
         # Store actions_manager once (global for this class)

@@ -2,7 +2,7 @@ import json
 import os
 from pathlib import Path
 import numpy as np
-from eyes.core.eye_deform import EyeDeformer
+from eyes.eye_frame_composer import EyeDeformer
 
 
 def load_profile_config(config_path):
