@@ -60,33 +60,12 @@ macro_player = MacroPlayer(
 async def main():
     print("Entered main()")
     print("Starting BlinkEngine loop.")
-    asyncio.create_task(composer.start_idle_blink_loop()) #expression changes power the blinks now
+    #asyncio.create_task(composer.start_idle_blink_loop()) #expression changes power the blinks now
+   
     print("Starting EyeFrameComposer loop.")
     asyncio.create_task(composer.start_loop())  
     # NOTE these are broken into multiple sequences for a reason.  
     # leave them this way. do not consolidate at this time.
-    await macro_player.run(
-        """
-        speak "Beginning startup procedure and status check. Please stand by, system test underway."
-        wait 0.5
-        speak "beginning Speech output test."
-        wait 0.5
-        speak "Speech output active."
-        wait 0.5
-        speak "Obviously."
-        wait 0.5
-        speak "Beginning sound output test."
-        wait 0.5
-        sound disgust
-        wait 0.5
-        speak "Sound output active."
-        wait 0.5
-        speak "Testing servos."
-        wait 0.5
-        action expressive
-        wait 0.5
-        speak "Servos active. Interactive Visual Display initiating."
-        """)
     
     await macro_player.run(
         """
@@ -94,66 +73,25 @@ async def main():
         wait 2
         speak " expression is now test. "
         expression set mood test
-        wait 4
-        speak " expression is now sleepy. "
-        expression set mood sleepy
-        wait 4
-        speak " expression is now test. "
-        expression set mood test
-        wait 4
+        
+        wait 6
+        speak " expression is now positive. "
+        gaze move to 10 5 0.9
+        expression set mood positive
+        wait 5
+        speak " expression is now negative. "
+        gaze move to 20 20 1.3
+        expression set mood negative
+        wait 5
         expression set mood neutral
-        wait 2
+        wait 4
         gaze move to 10 10 1.0
         wait 2
         """
     )
-    await macro_player.run(
-        """
-        speak "Interactive Visual Display active. Camera active. Gaze tracking active."
-        wait 5
-        speak "Listening active. Voiceprint recognition active."
-        wait 2
-        """)
-    # remaining startup sequence with Battery and News/Weather fetch removed until rewritten
 
-    while True:
-        print("Entering the main loop, waiting for input...")
-        await macro_player.run(f"""
-                               wait 2
-                               gaze move to 15 10 1.0
-                               wait 2
-                               gaze move to 10 15 1.0
-                               wait 2
-                               gaze move to 10 10 1.0
-                               """)
-        spoken_text, raw_audio = await audio_input.recognize_speech_vosk(return_audio=True)  # Get input and raw audio
-        
-        if not spoken_text:  # If no text was recognized, loop back and wait again
-            continue
-        # Verbal Command Handler removed until rewritten
-        # ThinkingTask loop removed for testing and because new model is superfast
+    print("Macro complete. Shutting down render loops.")
 
-        # Detect and play a sound based on user's emotion
-        user_emotion = emotion_categorizer.analyze_text_emotion(spoken_text)
-        await macro_player.run(f"sound {user_emotion}")
-
-        recognized_speaker = voiceprint_manager.recognize_speaker(raw_audio)
-
-        # Label the user input for the model
-        user_input_for_llm = f"{recognized_speaker}: {spoken_text}"
-        print(f"{recognized_speaker}: emotion: {user_emotion}\n{spoken_text}")
-
-        response_text = await llm_client.send_message_async(user_input_for_llm)
-        # Detect Hal's emotion from the response and play the corresponding sound
-        hal_emotion = emotion_categorizer.analyze_text_emotion(response_text)
-        await macro_player.run(f"""
-            expression set mood {hal_emotion}
-            sound {hal_emotion}
-            action expressive
-        """)
-        # Perform the response sequence
-        macro_script = TagToDSL.parse(response_text)
-        await macro_player.run(macro_script)
 
 if __name__ == "__main__":
     asyncio.run(main())
