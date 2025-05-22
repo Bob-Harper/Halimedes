@@ -11,13 +11,13 @@ class GazeChannel:
 
     async def move_to(self, x: float, y: float, pupil: float = 1.0):
         pupil = round(round(pupil / 0.05) * 0.05, 3)
-        self.composer.set_gaze(x, y, pupil)
+        await self.composer.interpolate_gaze(x, y, pupil, steps=12, delay=0.05)
 
     async def wander(self):
         x = random.randint(0, 20)
         y = random.randint(0, 20)
         pupil = self.rand_05(self.pmin, self.pmax)
-        await self.move_to(x, y, pupil)
+        await self.composer.interpolate_gaze(x, y, pupil, steps=12, delay=0.05)
 
     @staticmethod
     def rand_05(min_v: float, max_v: float) -> float:
@@ -32,8 +32,8 @@ class ExpressionChannel:
         self.composer = composer
 
     async def set_mood(self, mood: str):
-        print(f"[ExpressionChannel -> set mood to '{mood}'")
-        print("calling eye_frame_composer.py EyeFrameComposer - self.composer.set_expression(mood) ")
+        # print(f"[ExpressionChannel -> set mood to '{mood}'")
+        # print("calling eye_frame_composer.py EyeFrameComposer - self.composer.set_expression(mood) ")
         await self.composer.set_expression(mood)
 
 

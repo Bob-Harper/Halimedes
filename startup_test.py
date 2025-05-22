@@ -14,18 +14,16 @@ from body.picrawler import Picrawler
 picrawler_instance = Picrawler()
 # NOTE we now have a single instance of Picrawler to pass through
 from dsl.channels import GazeChannel, ExpressionChannel, SpeechChannel, ActionChannel, SoundChannel
-from dsl.macro_player import MacroPlayer, TagToDSL
+from dsl.macro_player import MacroPlayer
 from helpers.response_manager import Response_Manager
 from audio_input.audio_input_manager import AudioInputManager
 from audio_input.verbal_commands import CommandManager
 from audio_input.voice_recognition_manager import VoiceRecognitionManager
 from mind.emotional_sounds_manager import EmotionalSoundsManager
 from mind.emotions_manager import EmotionCategorizer
-from helpers.weather_command_manager import WeatherCommandManager
 from helpers.llm_client_handler import LLMClientHandler
 from helpers.passive_actions_manager import PassiveActionsManager
 from helpers.general_utilities_manager import GeneralUtilitiesManager
-from helpers.news_handler import NewsHandler
 from eyes.eye_frame_composer import load_eye_profile
 from eyes.eye_frame_composer import EyeAnimator
 from eyes.eye_frame_composer import EyeExpressionManager
@@ -46,8 +44,6 @@ emotion_sound_manager = EmotionalSoundsManager()
 actions_manager = PassiveActionsManager(picrawler_instance)
 response_manager = Response_Manager(picrawler_instance, actions_manager, eye_animator)
 general_utils = GeneralUtilitiesManager(picrawler_instance)
-weather_fetch = WeatherCommandManager(llm_client, actions_manager, emotion_sound_manager, picrawler_instance)
-news_api = NewsHandler(picrawler_instance)
 macro_player = MacroPlayer(
     gaze=GazeChannel(composer),
     expression=ExpressionChannel(composer),
@@ -59,13 +55,20 @@ macro_player = MacroPlayer(
 
 async def main():
     print("Entered main()")
+
     print("Starting EyeFrameComposer loop.")
     asyncio.create_task(composer.start_loop())  
-    print("Starting BlinkEngine loop.")
+
+    # print("Starting BlinkEngine loop.")
     # asyncio.create_task(composer.start_idle_blink_loop()) #expression changes power the blinks now
    
-    # NOTE these are broken into multiple sequences for a reason.  
-    # leave them this way. do not consolidate at this time.
+    await composer.interpolate_gaze(20, 0, 1.1, steps=20, delay=0.3)
+    await asyncio.sleep(2)
+    await composer.interpolate_gaze(0, 20, 0.9, steps=20, delay=0.3)
+    await asyncio.sleep(2)
+
+    # NOTE macros may be broken into multiple sequences for a reason during debugging.  
+    # leave them this way. do not consolidate..
     
     await macro_player.run(
         """
@@ -74,29 +77,28 @@ async def main():
         speak " expression is now test. "
         expression set mood test
         
-        wait 6
+        wait 2
         speak " expression is now positive. "
         gaze move to 10 5 0.9
         expression set mood positive
-        wait 5
+        wait 2
         speak " expression is now negative. "
         gaze move to 20 20 1.3
         expression set mood negative
-        wait 5
+        wait 2
         expression set mood neutral
-        wait 4
+        wait 2
         gaze move to 10 10 1.0
         wait 2
-        expression set mood closed
-        expression set mood neutral
-        wait 5
-        expression set mood closed
-        expression set mood negative
-        wait 5
-        expression set mood closed
-        expression set mood neutral
-        wait 5
-        expression set mood closed
+        gaze wander
+        wait 2
+        gaze wander
+        wait 2
+        gaze wander
+        wait 2
+        gaze wander
+        wait 2
+        gaze wander
 
         """
     )
