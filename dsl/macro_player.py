@@ -43,16 +43,6 @@ class MacroPlayer:
             else:
                 print(f"[Macro] Unknown command: {cmd}")
 
-    async def _expression(self, arg: str):
-        if not self.expression:
-            return
-        if arg.startswith("set mood"):
-            _, _, mood = arg.partition("set mood")
-            mood = mood.strip()
-            print(f"[Macro] Expression -> set mood to '{mood}'")
-            print("calling channels.py ExpressionManager - await self.expression.set_mood(mood) ")
-            await self.expression.set_mood(mood)
-
     async def _gaze(self, arg: str):
         if not self.gaze:
             return
@@ -93,6 +83,17 @@ class MacroPlayer:
             print(f"[Macro] Gaze -> wander ({x}, {y}) pupil=1.0")
             await self.gaze.move_to(x, y, 1.0)
 
+    async def _expression(self, arg: str):
+        if not self.expression:
+            return
+        if arg.startswith("set mood"):
+            _, _, mood = arg.partition("set mood")
+            mood = mood.strip()
+            # print(f"[Macro] Expression -> set mood to '{mood}'")
+            # print("calling channels.py ExpressionManager - await self.expression.set_mood(mood) ")
+            await self.expression.set_mood(mood)
+
+
     async def _speak(self, text: str):
         if self.speech:
             text = text.strip('"')
@@ -103,24 +104,24 @@ class MacroPlayer:
             if match:
                 text = match.group(1).strip()
 
-            print(f"[Macro] Speaking: {text}")
+            # print(f"[Macro] Speaking: {text}")
             await self.speech.speak(text)
 
     async def _action(self, arg: str):
         if self.action:
-            print(f"[Macro] Performing: {arg}")
+            # print(f"[Macro] Performing: {arg}")
             await self.action.perform(arg)
 
     async def _sound(self, arg: str):
         if self.sound:
-            print(f"[Macro] Playing sound: {arg}")
+            # print(f"[Macro] Playing sound: {arg}")
             await self.sound.play(arg)
 
 
     async def _wait(self, arg: str):
         try:
             seconds = float(arg)
-            print(f"[Macro] Waiting {seconds} seconds")
+            # print(f"[Macro] Waiting {seconds} seconds")
             await asyncio.sleep(seconds)
         except ValueError:
             print(f"[Macro] Invalid wait duration: {arg}")
