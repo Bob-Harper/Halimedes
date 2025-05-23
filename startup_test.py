@@ -62,9 +62,9 @@ async def main():
     # print("Starting BlinkEngine loop.")
     # asyncio.create_task(composer.start_idle_blink_loop()) #expression changes power the blinks now
    
-    await composer.interpolate_gaze(20, 0, 1.1, steps=20, delay=0.3)
+    await composer.interpolate_gaze(20, 0, 1.1, steps=20, delay=0.1)
     await asyncio.sleep(2)
-    await composer.interpolate_gaze(0, 20, 0.9, steps=20, delay=0.3)
+    await composer.interpolate_gaze(0, 20, 0.9, steps=20, delay=0.1)
     await asyncio.sleep(2)
 
     # NOTE macros may be broken into multiple sequences for a reason during debugging.  
