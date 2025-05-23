@@ -54,7 +54,7 @@ class EyeFrameComposer:
         except asyncio.TimeoutError:
             print("[FrameComposer] Warning: frame draw timed out.")
 
-    async def interpolate_gaze(self, to_x, to_y, to_pupil=1.0, steps=24, delay=0.02):
+    async def interpolate_gaze(self, to_x, to_y, to_pupil=1.0, steps=20, delay=0.01):
         from_x, from_y, from_pupil = self.state.x, self.state.y, self.state.pupil
 
         for i in range(1, steps + 1):
@@ -83,9 +83,9 @@ class EyeFrameComposer:
         start_expression = self.state.expression
         # print(f"[Blink] Blink starting from expression '{start_expression}'")
 
-        await self.animator.animate_expression("closed", steps=6, delay=0.02)
+        await self.animator.animate_expression("closed", steps=6, delay=0.01)
         await asyncio.sleep(0.1)
-        await self.animator.animate_expression(start_expression, steps=6, delay=0.02)
+        await self.animator.animate_expression(start_expression, steps=6, delay=0.01)
 
         # print("[Blink] Blink complete")
     
@@ -121,7 +121,7 @@ class EyeFrameComposer:
                     self.animator.drawer.render_gaze_frame,
                     self.state.x, self.state.y, self.state.pupil
                 )
-                print(f"[Perf] render_gaze_frame took {time.perf_counter() - start:.4f}s")
+                # print(f"[Perf] render_gaze_frame took {time.perf_counter() - start:.4f}s")
 
                 # Apply lids (expression masks)
                 try:
@@ -130,7 +130,7 @@ class EyeFrameComposer:
                         self.animator.drawer.apply_lids,
                         (left_buf, right_buf), lid_cfg
                     )
-                    print(f"[Perf] apply_lids took {time.perf_counter() - start:.4f}s")
+                    # print(f"[Perf] apply_lids took {time.perf_counter() - start:.4f}s")
                 except Exception:
                     masked = (left_buf, right_buf)
 
@@ -140,7 +140,7 @@ class EyeFrameComposer:
                     self.animator.drawer.display,
                     masked
                 )
-                print(f"[Perf] display took {time.perf_counter() - start:.4f}s")
+                # print(f"[Perf] display took {time.perf_counter() - start:.4f}s")
 
                 # Signal that the frame has been drawn
                 self._frame_drawn_event.set()
@@ -161,7 +161,7 @@ class GazeInterpolator:
     def __init__(self, animator):
         self.animator = animator  # this is EyeAnimator, to call draw_gaze()
 
-    def interp_pupil_transition(self, from_x, from_y, to_x, to_y, from_pupil, to_pupil, steps=8, delay=0.015):
+    def interp_pupil_transition(self, from_x, from_y, to_x, to_y, from_pupil, to_pupil, steps=8, delay=0.01):
         for i in range(1, steps + 1):
             interp_x = int(from_x + (to_x - from_x) * (i / steps))
             interp_y = int(from_y + (to_y - from_y) * (i / steps))
@@ -170,7 +170,7 @@ class GazeInterpolator:
             self.animator.composer.set_gaze(interp_x, interp_y, pupil=interp_pupil)
             time.sleep(delay)
 
-    async def interp_gaze_movement(self, to_x, to_y, to_pupil=1.0, steps=8, delay=0.015):
+    async def interp_gaze_movement(self, to_x, to_y, to_pupil=1.0, steps=8, delay=0.01):
         await self.animator.composer.interpolate_gaze(to_x, to_y, to_pupil, steps, delay)
 
     async def translate_gaze_mode(self, mode):
@@ -227,7 +227,7 @@ class EyeAnimator:
     async def smooth_gaze(self, x, y, pupil=1.0):
         await self.interpolator.interp_gaze_movement(x, y, pupil)
 
-    async def animate_expression(self, mood: str, steps=16, delay=0.02):
+    async def animate_expression(self, mood: str, steps=16, delay=0.01):
         # print(f"[Animator] Tweening to expression '{mood}'")
 
         target = self.drawer.lid_control.expression_map.get(mood)
@@ -331,6 +331,9 @@ class DrawEngine:
 
             # Cache a pair of buffers
             self.gaze_cache[key] = (left_buf, right_buf)
+
+        else:
+            print(f"[DrawEngine] Using cached gaze frame for key: {key}")    
 
         return self.gaze_cache[key]
 
@@ -629,10 +632,10 @@ class EyeDeformer:
             strength=perspective_shift
         )
         # t3 = time.perf_counter()
-        print(f"[Perf] generate_eye_frame: {t0:.4f}ms")
-        print(f"source_img dtype: {source_img.dtype}")
-        print(f"warped_pupil dtype: {warped_pupil.dtype}")
-        print(f"final_img dtype: {final_img.dtype}")
+        # print(f"[Perf] generate_eye_frame: {t0:.4f}ms")
+        # print(f"source_img dtype: {source_img.dtype}")
+        # print(f"warped_pupil dtype: {warped_pupil.dtype}")
+        # print(f"final_img dtype: {final_img.dtype}")
         # print(f"[Perf] pupil_map: {t1 - t0:.4f}s, pupil_warp: {t2 - t1:.4f}s, spherical: {t3 - t2:.4f}s")
         tx = time.perf_counter()
         return_image = Image.fromarray(final_img, mode='RGB')

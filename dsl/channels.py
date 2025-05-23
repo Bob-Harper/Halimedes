@@ -11,13 +11,13 @@ class GazeChannel:
 
     async def move_to(self, x: float, y: float, pupil: float = 1.0):
         pupil = round(round(pupil / 0.05) * 0.05, 3)
-        await self.composer.interpolate_gaze(x, y, pupil, steps=24, delay=0.02)
+        await self.composer.interpolate_gaze(x, y, pupil, steps=20, delay=0.01)
 
     async def wander(self):
         x = random.randint(0, 20)
         y = random.randint(0, 20)
         pupil = self.rand_05(self.pmin, self.pmax)
-        await self.composer.interpolate_gaze(x, y, pupil, steps=24, delay=0.02)
+        await self.composer.interpolate_gaze(x, y, pupil, steps=20, delay=0.01)
 
     @staticmethod
     def rand_05(min_v: float, max_v: float) -> float:

@@ -62,43 +62,48 @@ async def main():
     # print("Starting BlinkEngine loop.")
     # asyncio.create_task(composer.start_idle_blink_loop()) #expression changes power the blinks now
    
-    await composer.interpolate_gaze(20, 0, 1.1, steps=20, delay=0.1)
-    await asyncio.sleep(2)
-    await composer.interpolate_gaze(0, 20, 0.9, steps=20, delay=0.1)
-    await asyncio.sleep(2)
-
     # NOTE macros may be broken into multiple sequences for a reason during debugging.  
     # leave them this way. do not consolidate..
     
     await macro_player.run(
         """
-        gaze move to 10 20 1.5
+        gaze move to 10 20 1.0
         wait 2
         speak " expression is now test. "
         expression set mood test
         
         wait 2
         speak " expression is now positive. "
-        gaze move to 10 5 0.9
+        gaze move to 10 5 1.0
         expression set mood positive
         wait 2
         speak " expression is now negative. "
-        gaze move to 20 20 1.3
+        gaze move to 20 20 1.0
         expression set mood negative
         wait 2
         expression set mood neutral
-        wait 2
+        wait 0.2
+        gaze wander
+        wait 0.2
+        gaze wander
+        wait 0.2
+        gaze wander
+        wait 0.2
+        gaze wander
+        wait 0.2
+        gaze wander
+        wait 0.2
+        gaze move to 20 10 1.0
+        wait 0.2
+        gaze move to 0 10 1.0
+        wait 0.2
+        gaze move to 20 10 1.0
+        wait 0.2
+        gaze move to 0 10 1.0
+        wait 0.2
+        gaze move to 0 10 1.0
+        wait 0.2
         gaze move to 10 10 1.0
-        wait 2
-        gaze wander
-        wait 2
-        gaze wander
-        wait 2
-        gaze wander
-        wait 2
-        gaze wander
-        wait 2
-        gaze wander
 
         """
     )

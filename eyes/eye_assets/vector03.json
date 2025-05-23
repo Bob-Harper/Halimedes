@@ -1,8 +1,8 @@
 {
   "iris_radius": 72,
   "directional": true,
-  "pupil_min": 0.8,
-  "pupil_max": 1.05,
+  "pupil_min": 1.0,
+  "pupil_max": 1.0,
   "perspective_shift": 0.18,
   "x_off": 0,
   "y_off": 0,
@@ -14,6 +14,5 @@
   "use_case": "passive",
   "image_path": "vector03.png",
   "pupil_warp_strength": 3.5,
-  "eyelid_right": 0,
   "perspective_skew": 0.01
 }
