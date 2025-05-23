@@ -41,7 +41,7 @@ class EyeFrameComposer:
         self.running = False
         self._dirty = True
         self._frame_drawn_event = asyncio.Event()
-
+        
     def set_gaze(self, x: int, y: int, pupil: float):
         self.state.x = int(x)
         self.state.y = int(y)
@@ -54,7 +54,7 @@ class EyeFrameComposer:
         except asyncio.TimeoutError:
             print("[FrameComposer] Warning: frame draw timed out.")
 
-    async def interpolate_gaze(self, to_x, to_y, to_pupil=1.0, steps=12, delay=0.03):
+    async def interpolate_gaze(self, to_x, to_y, to_pupil=1.0, steps=24, delay=0.02):
         from_x, from_y, from_pupil = self.state.x, self.state.y, self.state.pupil
 
         for i in range(1, steps + 1):
@@ -65,8 +65,9 @@ class EyeFrameComposer:
 
             self.set_gaze(interp_x, interp_y, interp_pupil)
             self._dirty = True
-
+            print(f"[Tween] Before frame wait @ step {i}")
             await self.wait_for_frame()
+            print(f"[Tween] After frame wait @ step {i}")            
             await asyncio.sleep(delay)
 
     def set_eyelids(self, lid_cfg: dict | None):
@@ -189,7 +190,8 @@ class GazeInterpolator:
             return
 
         to_x, to_y = modes[mode]
-        to_pupil = random.uniform(0.85, 1.2) if mode == "wander" else 1.0
+        # to_pupil = random.uniform(0.85, 1.2) if mode == "wander" else 1.0
+        to_pupil = 1.0
         await self.interp_gaze_movement(to_x, to_y, to_pupil)
 
 
@@ -225,7 +227,7 @@ class EyeAnimator:
     async def smooth_gaze(self, x, y, pupil=1.0):
         await self.interpolator.interp_gaze_movement(x, y, pupil)
 
-    async def animate_expression(self, mood: str, steps=20, delay=0.02):
+    async def animate_expression(self, mood: str, steps=16, delay=0.02):
         # print(f"[Animator] Tweening to expression '{mood}'")
 
         target = self.drawer.lid_control.expression_map.get(mood)
@@ -259,23 +261,69 @@ class DrawEngine:
         )
         self.deformer.cache.warm_up_cache(kind="spherical", verbose=False)
         self.deformer.cache.warm_up_cache(kind="pupil", verbose=False)
-        self.image = profile.image
+        self.animation_style = profile.animation_style
+        # Convert PIL image to NumPy array once here
+        if isinstance(profile.image, Image.Image):
+            self.image = np.array(profile.image)
+        else:
+            self.image = profile.image
         self.width = self.height = 160
         self.gaze_cache = {}
         self.lid_control = EyelidController()
+        self._lid_mask_cache = {}
 
+    def _mask_key(self, cfg):
+        return tuple(cfg.values())
+
+    def _get_lid_mask(self, lid_cfg):
+        key = self._mask_key(lid_cfg)
+        if key not in self._lid_mask_cache:
+            self._lid_mask_cache[key] = self._make_mask_images(lid_cfg)
+        return self._lid_mask_cache[key]
+    
+    def _make_mask_images(self, cfg: dict) -> tuple[Image.Image, Image.Image]:
+        w, h = self.width, self.height
+
+        def make_mask(tl, tr, bl, br):
+            m = Image.new("L", (w, h), 255)
+            d = ImageDraw.Draw(m)
+            d.polygon([(0,0),(w,0),(w, tr),(0, tl)], fill=0)
+            d.polygon([(0,h),(w,h),(w, h - br),(0, h - bl)], fill=0)
+            return m
+
+        m1 = make_mask(cfg["eye1_top_left"], cfg["eye1_top_right"],
+                    cfg["eye1_bottom_left"], cfg["eye1_bottom_right"])
+        m2 = make_mask(cfg["eye2_top_left"], cfg["eye2_top_right"],
+                    cfg["eye2_bottom_left"], cfg["eye2_bottom_right"])
+        return m1, m2
+
+
+    def _apply_mask_np(self, img: Image.Image, mask: Image.Image) -> Image.Image:
+        arr = np.asarray(img)
+        mask_arr = np.asarray(mask, dtype=bool)
+
+        if arr.ndim == 3 and arr.shape[2] == 3:
+            arr[~mask_arr] = [0, 0, 0]
+        else:
+            arr[~mask_arr] = 0
+
+        return Image.fromarray(arr)
+    
     def render_gaze_frame(self, x_off, y_off, pupil_size=1.0):
         key = self._cache_key(x_off, y_off, pupil_size)
         if key not in self.gaze_cache:
             print(f"[DrawEngine] Generating new gaze frame for key: {key}")
+            start = time.perf_counter()
             warped = self.deformer.generate_eye_frame(
                 self.image,
                 pupil_size=pupil_size,
                 x_off=x_off,
                 y_off=y_off,
                 iris_radius=self.profile.iris_radius,
-                perspective_shift=self.profile.perspective_shift
+                perspective_shift=self.profile.perspective_shift,
+                animation_style=self.animation_style
             )
+            print(f"[Perf] generate_eye_frame took {time.perf_counter() - start:.4f}s")
             left_img = warped
             right_img = warped.copy()
             left_buf  = self._get_buffer(left_img)
@@ -324,7 +372,6 @@ class DrawEngine:
         bufs: tuple[bytearray, bytearray],
         lid_cfg: dict
         ) -> tuple[bytearray, bytearray]:
-        # print(f"[apply_lids] Using lid cfg: {lid_cfg}")
         left_raw, right_raw = bufs
 
         def buf_to_img(buf):
@@ -339,7 +386,9 @@ class DrawEngine:
         img1 = buf_to_img(left_raw)
         img2 = buf_to_img(right_raw)
 
-        masked_left_img, masked_right_img = apply_eyelids((img1, img2), lid_cfg)
+        m1, m2 = self._get_lid_mask(lid_cfg)
+        masked_left_img  = self._apply_mask_np(img1, m1)
+        masked_right_img = self._apply_mask_np(img2, m2)
 
         left_buf  = self._get_buffer(masked_left_img)
         right_buf = self._get_buffer(masked_right_img)
@@ -456,7 +505,7 @@ class EyeCacheManager:
         # Not in memory, attempt to load from disk
         file_path = self._get_path(key_dict, kind)
         if not file_path.exists():
-            return None
+            return None  # If no existing cache, get_or_generate will create a new one
 
         try:
             if kind == "spherical":
@@ -478,7 +527,7 @@ class EyeCacheManager:
     def exists(self, key_dict, kind="pupil"):
         return self._get_path(key_dict, kind).exists()
 
-    def warm_up_cache(self, kind="pupil", verbose=True):
+    def warm_up_cache(self, kind="pupil", verbose=False):
         ext = ".npz" if kind == "spherical" else ".npy"
         cache_dir = self.pupil_dir if kind == "pupil" else self.spherical_dir
         log_file = self.base_dir / f"bad_cache_{kind}.log"
@@ -493,9 +542,6 @@ class EyeCacheManager:
         skipped = 0
         deleted = 0
         errors = []
-
-        if verbose:
-            print(f"[Cache Warm-Up] Preloading '{kind}' maps from {cache_dir}...")
 
         for file in cache_dir.glob(f"*{ext}"):
             try:
@@ -537,21 +583,18 @@ class EyeCacheManager:
                 for e in errors:
                     log.write(f"- {e}\n")
 
-        if verbose:
-            print(f"[Cache Warm-Up] Complete. Loaded: {loaded}, Deleted: {deleted}, Errors Logged: {len(errors)}")
-
 
 class EyeDeformer:
     def __init__(
             self,
-            output_size=160,
             pupil_warp_strength=1.0,
             texture_name="default",
+            animation_style="default",
             verbose=False
             ):
         self.cache = EyeCacheManager(texture_name=texture_name)
-        self.output_size = output_size
         self.warp_strength = pupil_warp_strength
+        self.animation_style="default"
         self.verbose = verbose
 
     def generate_eye_frame(
@@ -562,24 +605,39 @@ class EyeDeformer:
         y_off=10,
         iris_radius=42,
         perspective_shift=0.02,
-        output_size=160
+        animation_style=None
     ):
-        pupil_maps = self.get_or_generate_pupil_warp_map(
-            pupil_size=pupil_size,
-            iris_radius=iris_radius,
-        )
-        warped_pupil = self.apply_pupil_warp(source_img, *pupil_maps)
+        t0 = time.perf_counter()
+        style = animation_style or self.animation_style
 
-        gaze_aligned = self.crop_to_display(warped_pupil, x_off, y_off, output_size)
+        if style == "vector":
+            warped_pupil = np.array(source_img)
+            # t1 = t0
+        else:
+            pupil_maps = self.get_or_generate_pupil_warp_map(
+                pupil_size=pupil_size,
+                iris_radius=iris_radius,
+            )
+            # t1 = time.perf_counter()
+            warped_pupil = self.apply_pupil_warp(source_img, *pupil_maps)
 
+        # t2 = time.perf_counter()
         final_img = self.apply_spherical_warp(
-            gaze_aligned,
+            warped_pupil,
             x_off=x_off,
             y_off=y_off,
             strength=perspective_shift
         )
-
-        return Image.fromarray(final_img.astype(np.uint8), mode='RGB')
+        # t3 = time.perf_counter()
+        print(f"[Perf] generate_eye_frame: {t0:.4f}ms")
+        print(f"source_img dtype: {source_img.dtype}")
+        print(f"warped_pupil dtype: {warped_pupil.dtype}")
+        print(f"final_img dtype: {final_img.dtype}")
+        # print(f"[Perf] pupil_map: {t1 - t0:.4f}s, pupil_warp: {t2 - t1:.4f}s, spherical: {t3 - t2:.4f}s")
+        tx = time.perf_counter()
+        return_image = Image.fromarray(final_img, mode='RGB')
+        print(f"[Perf] Image.fromarray(final_img.astype(np.uint8), mode='RGB'): {tx - t0:.4f}ms")
+        return return_image
 
     def get_or_generate_spherical_map(self, x_off=10, y_off=10, strength=0.03):
         key_dict = {
@@ -590,9 +648,7 @@ class EyeDeformer:
 
         cached = self.cache.load_map(key_dict, kind="spherical")
         if cached is not None:
-            print("[EyeDeformer] YES IT IS USING A CACHED SPHERICAL MAP")
             return cached
-        print("[EyeDeformer] NO IT IS NOT USING A CACHED SPHERICAL MAP")
         h = w = 180
         center_x = w // 2
         center_y = h // 2
@@ -600,7 +656,7 @@ class EyeDeformer:
         norm_x = (x_off - 10) / 10.0
         norm_y = (y_off - 10) / 10.0
 
-        yy, xx = np.meshgrid(np.arange(h), np.arange(w), indexing='xy')
+        yy, xx = np.meshgrid(np.arange(0, 180), np.arange(0, 180), indexing='xy')
         dx = (xx - center_x) / center_x # type: ignore # type: ignore
         dy = (yy - center_y) / center_y
         r = np.sqrt(dx**2 + dy**2)
@@ -618,7 +674,10 @@ class EyeDeformer:
 
     def apply_spherical_warp(self, image, x_off=10, y_off=10, strength=0.03):
         map_x, map_y = self.get_or_generate_spherical_map(x_off, y_off, strength)
-        return cv2.remap(image, map_x, map_y, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+        result = cv2.remap(image, map_x, map_y, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+        if result.dtype != np.uint8:
+            result = np.clip(result, 0, 255).astype(np.uint8)
+        return result
 
     def get_or_generate_pupil_warp_map(self, pupil_size, iris_radius):
 
@@ -631,9 +690,7 @@ class EyeDeformer:
         }        
         cached = self.cache.load_map(key_dict, kind="pupil")
         if cached is not None:
-            print("[EyeDeformer] YES IT IS USING A CACHED PUPIL MAP")
             return cached
-        print("[EyeDeformer] NO IT IS NOT USING A CACHED PUPIL MAP")
         h = w = 180
         center_x = w // 2
         center_y = h // 2
@@ -689,19 +746,6 @@ class EyeDeformer:
 
         return warped
 
-    def crop_to_display(self, image, x_off, y_off, output_size=160):
-        h, w = image.shape[:2]
-        center_x = w // 2
-        center_y = h // 2
-        crop_x = center_x - output_size // 2 + (x_off - 10)
-        crop_y = center_y - output_size // 2 + (y_off - 10)
-        crop_x = np.clip(crop_x, 0, w - output_size)
-        crop_y = np.clip(crop_y, 0, h - output_size)
-        crop_x = int(crop_x)
-        crop_y = int(crop_y)
-        output_size = int(output_size)
-        return image[crop_y:crop_y + output_size, crop_x:crop_x + output_size]
-
 
 class EyeConfig:
     def __init__(self, name, config_path, config, image):
@@ -751,36 +795,3 @@ def load_eye_profile(profile_name):
         img = img.rotate(90, expand=True)
 
     return EyeConfig(profile_name, config_path, config, img)
-
-
-def apply_eyelids(imgs: tuple[Image.Image, Image.Image], cfg: dict) -> tuple[Image.Image, Image.Image]:
-    """
-    Mask out each eyelid corner independently for both eyes.
-    cfg must have keys:
-      'eye1_top_left', 'eye1_top_right', 'eye1_bottom_left', 'eye1_bottom_right',
-      'eye2_top_left', 'eye2_top_right', 'eye2_bottom_left', 'eye2_bottom_right'.
-    Returns (left_eye_img, right_eye_img).
-    """
-    img1, img2 = imgs
-    w, h = img1.size
-
-    def make_mask(tl, tr, bl, br):
-        m = Image.new("L", (w, h), 255)
-        d = ImageDraw.Draw(m)
-        # top lid
-        d.polygon([(0,0),(w,0),(w, tr),(0, tl)], fill=0)
-        # bottom lid
-        d.polygon([(0,h),(w,h),(w, h - br),(0, h - bl)], fill=0)
-        return m
-
-    # build masks for each eye
-    m1 = make_mask(cfg["eye1_top_left"], cfg["eye1_top_right"],
-                   cfg["eye1_bottom_left"], cfg["eye1_bottom_right"])
-    m2 = make_mask(cfg["eye2_top_left"], cfg["eye2_top_right"],
-                   cfg["eye2_bottom_left"], cfg["eye2_bottom_right"])
-
-    arr1 = np.array(img1)
-    arr2 = np.array(img2)
-    out1 = Image.fromarray(arr1 * (np.array(m1)[:, :, None] // 255))
-    out2 = Image.fromarray(arr2 * (np.array(m2)[:, :, None] // 255))
-    return out1, out2
