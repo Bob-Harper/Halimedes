@@ -30,7 +30,10 @@ from eyes.eye_frame_composer import EyeExpressionManager
 from eyes.eye_frame_composer import EyeFrameComposer
 
 # Initialize everything at module level
+print("Initializing components...")
+# Initialize the Picrawler instance
 eye_profile = load_eye_profile("vector03")
+print("Eye profile loaded.")
 eye_animator = EyeAnimator(eye_profile)
 expression_manager = EyeExpressionManager(eye_animator)
 composer = EyeFrameComposer(eye_animator, expression_manager)
