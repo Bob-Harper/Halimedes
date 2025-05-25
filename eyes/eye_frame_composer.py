@@ -133,7 +133,9 @@ class EyeFrameComposer:
                     # print(f"[Perf] apply_lids took {time.perf_counter() - start:.4f}s")
                 except Exception:
                     masked = (left_buf, right_buf)
-
+                    print("left_buf type:", type(left_buf))
+                    print("right_buf type:", type(right_buf))
+            
                 # Display the final frame
                 start = time.perf_counter()
                 await asyncio.to_thread(
@@ -259,8 +261,10 @@ class DrawEngine:
             texture_name=profile.name,
             pupil_warp_strength=profile.pupil_warp_strength,
         )
-        self.deformer.cache.warm_up_cache(kind="spherical", verbose=False)
-        self.deformer.cache.warm_up_cache(kind="pupil", verbose=False)
+        # self.deformer.cache.warm_up_cache(kind="spherical", verbose=False)
+        # self.deformer.cache.warm_up_cache(kind="pupil", verbose=False)
+        # 10,000 plus cache files, crash pi, bad news, remove until/if we add alternate
+        # cache warmup.  will be testing eventually with things like maxfiles
         self.animation_style = profile.animation_style
         # Convert PIL image to NumPy array once here
         if isinstance(profile.image, Image.Image):
@@ -329,8 +333,11 @@ class DrawEngine:
             left_buf  = self._get_buffer(left_img)
             right_buf = self._get_buffer(right_img)
 
+            print("left_buf type:", type(left_buf))
+            print("right_buf type:", type(right_buf))
             # Cache a pair of buffers
             self.gaze_cache[key] = (left_buf, right_buf)
+
 
         else:
             print(f"[DrawEngine] Using cached gaze frame for key: {key}")    
@@ -348,6 +355,7 @@ class DrawEngine:
         return buf
 
     def display(self, bufs):
+        
         if not bufs or not isinstance(bufs, tuple) or len(bufs) != 2:
             print("[DrawEngine] Invalid buffer passed to display. Skipping.")
             return
@@ -472,12 +480,21 @@ class EyeCacheManager:
     def __init__(self, texture_name="default"):
         self.base_dir = EYE_CACHE_PATH
         self.texture_name = texture_name
+
         self.pupil_dir = self.base_dir / texture_name / "pupil"
         self.spherical_dir = self.base_dir / texture_name / "spherical"
+        self.gaze_dir = self.base_dir / texture_name / "gaze"
+        self.lid_mask_dir = self.base_dir / texture_name / "lids"
+
         self.pupil_dir.mkdir(parents=True, exist_ok=True)
         self.spherical_dir.mkdir(parents=True, exist_ok=True)
+        self.gaze_dir.mkdir(parents=True, exist_ok=True)
+        self.lid_mask_dir.mkdir(parents=True, exist_ok=True)
+
         self.pupil_maps = {}
         self.spherical_maps = {}
+        self.gaze_cache = {}
+        self.lid_mask_cache = {}
 
     def _generate_key(self, **kwargs):
         key_string = "_".join(f"{k}:{v}" for k, v in sorted(kwargs.items()))
@@ -530,37 +547,43 @@ class EyeCacheManager:
     def exists(self, key_dict, kind="pupil"):
         return self._get_path(key_dict, kind).exists()
 
-    def warm_up_cache(self, kind="pupil", verbose=False):
+    def warm_up_cache(self, kind="pupil", verbose=False, max_files=None):
         ext = ".npz" if kind == "spherical" else ".npy"
         cache_dir = self.pupil_dir if kind == "pupil" else self.spherical_dir
         log_file = self.base_dir / f"bad_cache_{kind}.log"
 
-        # init memory map
-        if kind == "pupil":
-            self.pupil_maps = {}
-        else:
-            self.spherical_maps = {}
+        map_dict = self.pupil_maps if kind == "pupil" else self.spherical_maps
+        map_dict.clear()
 
         loaded = 0
         skipped = 0
         deleted = 0
         errors = []
 
-        for file in cache_dir.glob(f"*{ext}"):
+        files = list(cache_dir.glob(f"*{ext}"))
+        total_files = len(files)
+
+        if max_files is not None:
+            files = files[:max_files]
+
+        if verbose:
+            print(f"[Cache Warm-Up] Loading {len(files)} {kind} files into memory (of {total_files} total)...")
+
+        for file in files:
             try:
-                key = file.stem  # filename minus extension
+                key = file.stem
 
                 if ext == ".npy":
                     data = np.load(file)
                     if data is None or not hasattr(data, 'shape'):
                         raise ValueError("Empty or malformed .npy")
-                    self.pupil_maps[key] = data
+                    map_dict[key] = data
 
                 else:
                     with np.load(file) as data:
                         if "map_x" not in data or "map_y" not in data:
                             raise ValueError("Missing keys in .npz")
-                        self.spherical_maps[key] = (data["map_x"], data["map_y"])
+                        map_dict[key] = (data["map_x"], data["map_y"])
 
                 loaded += 1
 
@@ -579,12 +602,16 @@ class EyeCacheManager:
                         print(f"[Cache Warm-Up] {err_msg}")
                 skipped += 1
 
-        # Write log if any errors
         if errors:
             with open(log_file, "a") as log:
                 log.write(f"\n[Run at {time.ctime()}] Errors in {kind} cache:\n")
                 for e in errors:
                     log.write(f"- {e}\n")
+
+        if verbose:
+            print(f"[Cache Warm-Up] Done. Loaded: {loaded}, Deleted: {deleted}, Errors: {len(errors)}")
+
+        return loaded
 
 
 class EyeDeformer:
