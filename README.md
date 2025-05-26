@@ -19,7 +19,7 @@ Halimedes is a four-legged Raspberry Pi–powered crawler bot that can:
 - **Emotion-aware sound system:** Reacts with custom SFX based on emotion or intent
 - **LLM-powered dialogue:** Modular responses with embedded `<action>`, `<sound effect>`, `<gaze>`, and `<face>` tags
 - **Smooth animation:** Blinks, saccades, and expressions driven by a unified `EyeAnimator` engine
-- **High intensity LED-based photon projector because a laser is awesome and fun but also a lawsuit waiting to happen.  Uses motorport to control active/inactive state and beam intensity
+- **High intensity LED-based photon projector** because a laser is awesome and fun but also a lawsuit waiting to happen.  Uses motorport to control active/inactive state and beam intensity
 - **Upcoming:** Memory embedding + recall, weather & news display, servo-driven scanning for lost faces.
 
 ## Setup
