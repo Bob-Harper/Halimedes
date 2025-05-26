@@ -14,8 +14,13 @@ def apply_power():
 
 print("""
 [ LED Spotlight Test - Halimedes Style ]
+      Note- effective minimum is 0.12% power
 Controls: 
     1-9, 0   = Set brightness (10% to 100%)
+    [ ]     = Adjust brightness by 1%
+    { }     = Adjust brightness by 0.1%
+    , .     = Adjust brightness by 0.01%
+    q       = Quit
     SPACE    = Toggle ON/OFF
     CTRL+C   = Quit
 """)
@@ -24,12 +29,33 @@ try:
     while True:
         key = readchar.readkey().lower()
         if key in '1234567890':
-            power = int(key) * 10 if key != '0' else 100
+            power = int(key) * 10 if key != '0' else 200
             apply_power()
+
+        elif key == "[":
+            power = max(0, power - 1)
+            apply_power()
+        elif key == "]":
+            power = max(0, power + 1)
+            apply_power()
+        elif key == "{":
+            power = max(0, power - 0.1)
+            apply_power()
+        elif key == "}":
+            power = max(0, power + 0.1)
+            apply_power()
+
+        elif key == ",":
+            power = max(0, power - 0.01)
+            apply_power()
+        elif key == ".":
+            power = max(0, power + 0.01)
+            apply_power()
+
         elif key == ' ':
             enabled = not enabled
             apply_power()
-        elif key == readchar.key.CTRL_C:
+        elif key == "q":
             break
         time.sleep(0.1)
 

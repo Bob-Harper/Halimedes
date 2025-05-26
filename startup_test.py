@@ -36,6 +36,7 @@ eye_profile = load_eye_profile("vector03")
 print("Eye profile loaded.")
 eye_animator = EyeAnimator(eye_profile)
 expression_manager = EyeExpressionManager(eye_animator)
+expression_manager.set_expression("neutral") 
 composer = EyeFrameComposer(eye_animator, expression_manager)
 server_host = OLLAMALAPTOP
 llm_client = LLMClientHandler(server_host)

@@ -74,7 +74,7 @@ class EyeFrameComposer:
         self.state.eyelid_cfg = lid_cfg
         self._dirty = True
 
-    async def set_expression(self, mood: str):
+    def set_expression(self, mood: str):
         # print("EyeFrameComposer class:  async def set_expression(self, mood: str):")
         self.state.expression = mood
         self._dirty = True
@@ -102,6 +102,11 @@ class EyeFrameComposer:
         self.running = True
         while self.running:
             if self._dirty or self.state != self._previous:
+                
+                if random.random() < 0.01:  # ~1% chance per frame
+                    if not self.animator.blinker.is_blinking():
+                        print("[Blink] Triggered")
+                        self.animator.blinker.trigger()
 
                 # Clear the event before starting a new frame render
                 self._frame_drawn_event.clear()
@@ -113,7 +118,16 @@ class EyeFrameComposer:
                 )
 
                 # Get lid config (either override or from expression)
-                lid_cfg = self.state.eyelid_cfg or self.animator.drawer.lid_control.get_mask_config()
+                # Handle blink override if active
+                dt = FRAME_DURATION  # ~0.016s at 60fps
+                if self.animator.blinker and self.animator.blinker.is_blinking():
+                    blink_lids = self.animator.blinker.update(dt)
+                    if blink_lids:
+                        lid_cfg = blink_lids
+                    else:
+                        lid_cfg = self.state.eyelid_cfg or self.animator.drawer.lid_control.get_mask_config()
+                else:
+                    lid_cfg = self.state.eyelid_cfg or self.animator.drawer.lid_control.get_mask_config()
 
                 # Render the gaze frame
                 start = time.perf_counter()
@@ -122,6 +136,10 @@ class EyeFrameComposer:
                     self.state.x, self.state.y, self.state.pupil
                 )
                 # print(f"[Perf] render_gaze_frame took {time.perf_counter() - start:.4f}s")
+                self.expression_manager.update(FRAME_DURATION)
+                expr_cfg = self.expression_manager.current_mask
+                print("[Expression] Current eyelid mask:", expr_cfg)
+                lid_cfg = expr_cfg
 
                 # Apply lids (expression masks)
                 try:
@@ -207,7 +225,11 @@ class EyeAnimator:
         }
         self.composer = EyeFrameComposer(self, None)
         self.drawer = DrawEngine(profile)
-        self.blinker = None  # <-- initially empty
+        self.blinker = BlinkAnimator(
+            expression_getter=self.drawer.lid_control.get_mask_config,
+            duration=profile.close_speed,
+            hold=profile.hold
+        )
         self.interpolator = GazeInterpolator(self)
         self.drawer.gaze_cache.clear()  # clear the gaze cache
         self.last_buf = None  # clear the last buffer for blinking
@@ -405,6 +427,65 @@ class DrawEngine:
         right_buf = self._get_buffer(masked_right_img)
         return left_buf, right_buf
 
+# === blink_animator.py ===
+
+class BlinkAnimator:
+    def __init__(self, expression_getter, duration=0.15, hold=0.08):
+        self.expression_getter = expression_getter  # callback to query expression config
+        self.duration = duration
+        self.hold = hold
+        self.timer = 0.0
+        self.active = False
+        self.phase = None  # 'closing', 'holding', 'opening'
+
+        self.closed_cfg = {
+            "eye1_top_left": 0, "eye1_top_right": 0,
+            "eye1_bottom_left": 0, "eye1_bottom_right": 0,
+            "eye2_top_left": 0, "eye2_top_right": 0,
+            "eye2_bottom_left": 0, "eye2_bottom_right": 0,
+        }
+
+    def trigger(self):
+        self.timer = 0.0
+        self.active = True
+        self.phase = 'closing'
+
+    def is_blinking(self):
+        return self.active
+
+    def update(self, dt):
+        if not self.active:
+            return None
+
+        self.timer += dt
+
+        if self.phase == 'closing':
+            if self.timer >= self.duration:
+                self.phase = 'holding'
+                self.timer = 0.0
+            t = self.timer / self.duration
+            return self._interpolate(self.expression_getter(), self.closed_cfg, t)
+
+        elif self.phase == 'holding':
+            if self.timer >= self.hold:
+                self.phase = 'opening'
+                self.timer = 0.0
+            return self.closed_cfg
+
+        elif self.phase == 'opening':
+            if self.timer >= self.duration:
+                self.active = False
+                self.phase = None
+                return None
+            t = self.timer / self.duration
+            return self._interpolate(self.closed_cfg, self.expression_getter(), t)
+
+    def _interpolate(self, from_cfg, to_cfg, t):
+        return {
+            k: int(round((1 - t) * from_cfg[k] + t * to_cfg[k]))
+            for k in from_cfg
+        }
+
 
 class EyelidController:
     def __init__(self):
@@ -449,6 +530,7 @@ class EyeExpressionManager:
         self.animator = animator
         self.multi_file = multi_file
         self.lid_control = EyelidController()
+        self.composer = EyeFrameComposer(animator, self)
         self.expressions = self._load_expressions()
 
     def _load_expressions(self):
@@ -474,6 +556,21 @@ class EyeExpressionManager:
             except Exception as e:
                 print(f"[ExpressionManager] Failed to load expressions: {e}")
         return expressions
+
+    def set_expression(self, mood: str):
+        self.composer.set_expression(mood)
+
+    def update(self, dt):
+        print(f"[ExpressionManager] Updating expression for {dt:.2f}s")
+        if self.composer.state.expression:
+            self.lid_control.set_eyelid_expression(self.composer.state.expression)
+            self.composer.set_eyelids(self.lid_control.get_mask_config())
+        else:
+            self.composer.set_eyelids(None)
+
+    def current_mask(self):
+        # Return the current eyelid mask configuration
+        return self.lid_control.get_mask_config()
 
 
 class EyeCacheManager:
