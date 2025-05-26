@@ -1,6 +1,7 @@
 import asyncio
 import random
 from dataclasses import dataclass
+from typing import Optional
 import time
 import os
 import json
@@ -33,7 +34,7 @@ class EyeState:
 
 
 class EyeFrameComposer:
-    def __init__(self, animator, expression_manager):
+    def __init__(self, animator, expression_manager: Optional['EyeExpressionManager'] = None):
         self.expression_manager = expression_manager
         self.animator = animator
         self.state = EyeState()
@@ -46,6 +47,11 @@ class EyeFrameComposer:
         self.state.x = int(x)
         self.state.y = int(y)
         self.state.pupil = quantize_pupil(pupil)
+        self._dirty = True
+
+    def set_expression(self, mood: str):
+        # print("EyeFrameComposer class:  async def set_expression(self, mood: str):")
+        self.state.expression = mood
         self._dirty = True
 
     async def wait_for_frame(self):
@@ -65,38 +71,12 @@ class EyeFrameComposer:
 
             self.set_gaze(interp_x, interp_y, interp_pupil)
             self._dirty = True
-            print(f"[Tween] Before frame wait @ step {i}")
             await self.wait_for_frame()
-            print(f"[Tween] After frame wait @ step {i}")            
             await asyncio.sleep(delay)
 
     def set_eyelids(self, lid_cfg: dict | None):
         self.state.eyelid_cfg = lid_cfg
         self._dirty = True
-
-    def set_expression(self, mood: str):
-        # print("EyeFrameComposer class:  async def set_expression(self, mood: str):")
-        self.state.expression = mood
-        self._dirty = True
-
-    async def play_blink(self):
-        start_expression = self.state.expression
-        # print(f"[Blink] Blink starting from expression '{start_expression}'")
-
-        await self.animator.animate_expression("closed", steps=6, delay=0.01)
-        await asyncio.sleep(0.1)
-        await self.animator.animate_expression(start_expression, steps=6, delay=0.01)
-
-        # print("[Blink] Blink complete")
-    
-    async def start_idle_blink_loop(self):
-        try:
-            while True:
-                # await asyncio.sleep(random.randint(8, 12))
-                await asyncio.sleep(5)
-                await self.play_blink()
-        except asyncio.CancelledError:
-            pass
 
     async def start_loop(self):
         self.running = True
@@ -130,38 +110,29 @@ class EyeFrameComposer:
                     lid_cfg = self.state.eyelid_cfg or self.animator.drawer.lid_control.get_mask_config()
 
                 # Render the gaze frame
-                start = time.perf_counter()
                 left_buf, right_buf = await asyncio.to_thread(
                     self.animator.drawer.render_gaze_frame,
                     self.state.x, self.state.y, self.state.pupil
                 )
-                # print(f"[Perf] render_gaze_frame took {time.perf_counter() - start:.4f}s")
-                self.expression_manager.update(FRAME_DURATION)
-                expr_cfg = self.expression_manager.current_mask
-                print("[Expression] Current eyelid mask:", expr_cfg)
-                lid_cfg = expr_cfg
+                # assert self.expression_manager is not None
+                # self.expression_manager.update()
+                # expr_cfg = self.expression_manager.get_current_mask()
+                # lid_cfg = expr_cfg
 
                 # Apply lids (expression masks)
                 try:
-                    start = time.perf_counter()
                     masked = await asyncio.to_thread(
                         self.animator.drawer.apply_lids,
                         (left_buf, right_buf), lid_cfg
                     )
-                    # print(f"[Perf] apply_lids took {time.perf_counter() - start:.4f}s")
                 except Exception:
                     masked = (left_buf, right_buf)
-                    print("left_buf type:", type(left_buf))
-                    print("right_buf type:", type(right_buf))
             
                 # Display the final frame
-                start = time.perf_counter()
                 await asyncio.to_thread(
                     self.animator.drawer.display,
                     masked
                 )
-                # print(f"[Perf] display took {time.perf_counter() - start:.4f}s")
-
                 # Signal that the frame has been drawn
                 self._frame_drawn_event.set()
 
@@ -242,12 +213,6 @@ class EyeAnimator:
             eye.fill_screen(0x0000)  # clear both displays black
         time.sleep(0.1)  # short SPI bus stabilization
 
-    def draw_gaze(self, x, y, pupil=1.0):
-        raise RuntimeError("Do not use draw_gaze() directly. Use composer.set_gaze() instead.")
-
-    async def apply_gaze_mode(self, mode):
-        await self.interpolator.translate_gaze_mode(mode)
-
     async def smooth_gaze(self, x, y, pupil=1.0):
         await self.interpolator.interp_gaze_movement(x, y, pupil)
 
@@ -274,7 +239,6 @@ class EyeAnimator:
             await asyncio.sleep(delay)
 
         self.composer.set_eyelids(None)  # release override once tween done
-
 
 class DrawEngine:
     def __init__(self, profile):
@@ -338,8 +302,6 @@ class DrawEngine:
     def render_gaze_frame(self, x_off, y_off, pupil_size=1.0):
         key = self._cache_key(x_off, y_off, pupil_size)
         if key not in self.gaze_cache:
-            print(f"[DrawEngine] Generating new gaze frame for key: {key}")
-            start = time.perf_counter()
             warped = self.deformer.generate_eye_frame(
                 self.image,
                 pupil_size=pupil_size,
@@ -349,20 +311,12 @@ class DrawEngine:
                 perspective_shift=self.profile.perspective_shift,
                 animation_style=self.animation_style
             )
-            print(f"[Perf] generate_eye_frame took {time.perf_counter() - start:.4f}s")
             left_img = warped
             right_img = warped.copy()
             left_buf  = self._get_buffer(left_img)
             right_buf = self._get_buffer(right_img)
-
-            print("left_buf type:", type(left_buf))
-            print("right_buf type:", type(right_buf))
             # Cache a pair of buffers
             self.gaze_cache[key] = (left_buf, right_buf)
-
-
-        else:
-            print(f"[DrawEngine] Using cached gaze frame for key: {key}")    
 
         return self.gaze_cache[key]
 
@@ -393,11 +347,8 @@ class DrawEngine:
         eye_right.set_window(0, 0, self.width - 1, self.height - 1)
         for i in range(0, len(right_buf), 1024):
             eye_right.write_data(right_buf[i:i+1024])
-        print("[DrawEngine] Buffers sent to both eyes.")
-        # time.sleep(0.15)
 
     def _cache_key(self, x, y, pupil):
-        # lids = tuple(self.lid_control.get_mask_config().values())
         return (x, y, pupil)
 
     def apply_lids(
@@ -426,8 +377,6 @@ class DrawEngine:
         left_buf  = self._get_buffer(masked_left_img)
         right_buf = self._get_buffer(masked_right_img)
         return left_buf, right_buf
-
-# === blink_animator.py ===
 
 class BlinkAnimator:
     def __init__(self, expression_getter, duration=0.15, hold=0.08):
@@ -489,7 +438,6 @@ class BlinkAnimator:
 
 class EyelidController:
     def __init__(self):
-        # start with either hard-coded defaults or pull your "neutral" from the map:
         neutral = expression_map.get("neutral", {})
         # ensure all four corners exist
         self.lids = {
@@ -505,7 +453,7 @@ class EyelidController:
         self.expression_map = expression_map
 
     def set_eyelid_expression(self, name: str):
-        # print(f"[LidController] Switching to expression: {name}")
+        print(f"[LidController] Switching to expression: {name}")
         exp = self.expression_map.get(name)
         if not exp:
             print(f"[EyelidController] Unknown expression: {name}")
@@ -522,16 +470,22 @@ class EyelidController:
 
     def get_mask_config(self) -> dict:
         lids = self.lids
+        print(f"[get_current_mask] Current mask: {lids}")
         return lids
 
 
 class EyeExpressionManager:
-    def __init__(self, animator, multi_file=False):
+    def __init__(self, animator, composer, multi_file=False):
         self.animator = animator
+        self.composer = composer
         self.multi_file = multi_file
         self.lid_control = EyelidController()
-        self.composer = EyeFrameComposer(animator, self)
         self.expressions = self._load_expressions()
+        self.state = EyeState()
+
+    async def set_expression(self, mood: str):
+        print(f"[ExpressionManager] Animate expression: {mood}")
+        await self.animator.animate_expression(mood)
 
     def _load_expressions(self):
         expressions = {}
@@ -552,23 +506,18 @@ class EyeExpressionManager:
             try:
                 with open(expr_path, "r") as f:
                     expressions = json.load(f)
-                    # print(f"[ExpressionManager] Loaded expressions from single file.")
             except Exception as e:
                 print(f"[ExpressionManager] Failed to load expressions: {e}")
         return expressions
 
-    def set_expression(self, mood: str):
-        self.composer.set_expression(mood)
-
-    def update(self, dt):
-        print(f"[ExpressionManager] Updating expression for {dt:.2f}s")
+    def update(self):
         if self.composer.state.expression:
             self.lid_control.set_eyelid_expression(self.composer.state.expression)
             self.composer.set_eyelids(self.lid_control.get_mask_config())
         else:
             self.composer.set_eyelids(None)
 
-    def current_mask(self):
+    def get_current_mask(self):
         # Return the current eyelid mask configuration
         return self.lid_control.get_mask_config()
 
@@ -734,36 +683,24 @@ class EyeDeformer:
         perspective_shift=0.02,
         animation_style=None
     ):
-        t0 = time.perf_counter()
         style = animation_style or self.animation_style
 
         if style == "vector":
             warped_pupil = np.array(source_img)
-            # t1 = t0
         else:
             pupil_maps = self.get_or_generate_pupil_warp_map(
                 pupil_size=pupil_size,
                 iris_radius=iris_radius,
             )
-            # t1 = time.perf_counter()
             warped_pupil = self.apply_pupil_warp(source_img, *pupil_maps)
 
-        # t2 = time.perf_counter()
         final_img = self.apply_spherical_warp(
             warped_pupil,
             x_off=x_off,
             y_off=y_off,
             strength=perspective_shift
         )
-        # t3 = time.perf_counter()
-        # print(f"[Perf] generate_eye_frame: {t0:.4f}ms")
-        # print(f"source_img dtype: {source_img.dtype}")
-        # print(f"warped_pupil dtype: {warped_pupil.dtype}")
-        # print(f"final_img dtype: {final_img.dtype}")
-        # print(f"[Perf] pupil_map: {t1 - t0:.4f}s, pupil_warp: {t2 - t1:.4f}s, spherical: {t3 - t2:.4f}s")
-        tx = time.perf_counter()
         return_image = Image.fromarray(final_img, mode='RGB')
-        print(f"[Perf] Image.fromarray(final_img.astype(np.uint8), mode='RGB'): {tx - t0:.4f}ms")
         return return_image
 
     def get_or_generate_spherical_map(self, x_off=10, y_off=10, strength=0.03):
@@ -784,7 +721,7 @@ class EyeDeformer:
         norm_y = (y_off - 10) / 10.0
 
         yy, xx = np.meshgrid(np.arange(0, 180), np.arange(0, 180), indexing='xy')
-        dx = (xx - center_x) / center_x # type: ignore # type: ignore
+        dx = (xx - center_x) / center_x # type: ignore
         dy = (yy - center_y) / center_y
         r = np.sqrt(dx**2 + dy**2)
         z = np.sqrt(1.0 - np.clip(r**2, 0, 1))

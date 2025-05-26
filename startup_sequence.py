@@ -3,6 +3,7 @@ import asyncio
 import warnings
 warnings.simplefilter('ignore')
 import os
+import time
 # Explicitly clear any previously cached env variables
 os.environ.clear()
 from helpers.global_config import OLLAMALAPTOP
@@ -21,6 +22,7 @@ from audio_input.verbal_commands import CommandManager
 from audio_input.voice_recognition_manager import VoiceRecognitionManager
 from mind.emotional_sounds_manager import EmotionalSoundsManager
 from mind.emotions_manager import EmotionCategorizer
+from body.robot_hat import Motors
 from helpers.weather_command_manager import WeatherCommandManager
 from helpers.llm_client_handler import LLMClientHandler
 from helpers.passive_actions_manager import PassiveActionsManager
@@ -34,8 +36,9 @@ from eyes.eye_frame_composer import EyeFrameComposer
 # Initialize everything at module level
 eye_profile = load_eye_profile("vector03")
 eye_animator = EyeAnimator(eye_profile)
-expression_manager = EyeExpressionManager(eye_animator)
-composer = EyeFrameComposer(eye_animator, expression_manager)
+composer = EyeFrameComposer(eye_animator, None)
+expression_manager = EyeExpressionManager(eye_animator, composer)
+composer.expression_manager = expression_manager
 server_host = OLLAMALAPTOP
 llm_client = LLMClientHandler(server_host)
 voiceprint_manager = VoiceRecognitionManager()
@@ -55,12 +58,14 @@ macro_player = MacroPlayer(
     action=ActionChannel(actions_manager),
     sound=SoundChannel(emotion_sound_manager.play_sound)
 )
+motors = Motors(db="./body/motors_override.db")
+motor_id = 1
 
 
 async def main():
     print("Entered main()")
     print("Starting BlinkEngine loop.")
-    asyncio.create_task(composer.start_idle_blink_loop()) #expression changes power the blinks now
+    # asyncio.create_task(composer.start_idle_blink_loop()) #expression changes power the blinks now
     print("Starting EyeFrameComposer loop.")
     asyncio.create_task(composer.start_loop())  
     # NOTE these are broken into multiple sequences for a reason.  
@@ -75,21 +80,36 @@ async def main():
         wait 0.5
         speak "Obviously."
         wait 0.5
-        speak "Beginning sound output test."
+        speak "Beginning sound effect output test."
         wait 0.5
         sound disgust
         wait 0.5
-        speak "Sound output active."
+        speak "Sound effect output active."
         wait 0.5
         speak "Testing servos."
         wait 0.5
         action expressive
         wait 0.5
-        speak "Servos active. Interactive Visual Display initiating."
+        action sit
+        wait 0.5
+        speak "Servos active. Testing shoulder mounted photon projector."
         """)
-    
+    motors[motor_id].speed(10)
+    time.sleep(0.2)
+    motors[motor_id].speed(1)
+    time.sleep(0.5)
+    motors[motor_id].speed(20)
+    time.sleep(0.2)
+    motors[motor_id].speed(1)
+    time.sleep(0.5)
+    motors[motor_id].speed(100)
+    time.sleep(1)
+    motors[motor_id].speed(0)
     await macro_player.run(
         """
+        speak "Photon Projector active.  "
+        wait 1
+        speak "Interactive Visual Display initiating."
         gaze move to 10 20 1.5
         wait 2
         speak " expression is now test. "

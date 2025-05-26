@@ -35,9 +35,9 @@ print("Initializing components...")
 eye_profile = load_eye_profile("vector03")
 print("Eye profile loaded.")
 eye_animator = EyeAnimator(eye_profile)
-expression_manager = EyeExpressionManager(eye_animator)
-expression_manager.set_expression("neutral") 
-composer = EyeFrameComposer(eye_animator, expression_manager)
+composer = EyeFrameComposer(eye_animator, None)
+expression_manager = EyeExpressionManager(eye_animator, composer)
+composer.expression_manager = expression_manager
 server_host = OLLAMALAPTOP
 llm_client = LLMClientHandler(server_host)
 voiceprint_manager = VoiceRecognitionManager()
@@ -59,6 +59,8 @@ macro_player = MacroPlayer(
 
 async def main():
     print("Entered main()")
+
+    await expression_manager.set_expression("neutral")
 
     print("Starting EyeFrameComposer loop.")
     asyncio.create_task(composer.start_loop())  
