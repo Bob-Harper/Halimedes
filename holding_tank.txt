@@ -1,0 +1,64 @@
+    async def play_blink(self):
+        start_expression = self.state.expression
+        # print(f"[Blink] Blink starting from expression '{start_expression}'")
+
+        await self.animator.animate_expression("closed", steps=6, delay=0.01)
+        await asyncio.sleep(0.1)
+        await self.animator.animate_expression(start_expression, steps=6, delay=0.01)
+
+        # print("[Blink] Blink complete")
+    
+    async def start_idle_blink_loop(self):
+        try:
+            while True:
+                # await asyncio.sleep(random.randint(8, 12))
+                await asyncio.sleep(5)
+                await self.play_blink()
+        except asyncio.CancelledError:
+            pass
+
+
+    def set_expression(self, mood: str):
+        # print("EyeFrameComposer class:  async def set_expression(self, mood: str):")
+        self.state.expression = mood
+        self._dirty = True
+
+
+    def set_expression(self, mood: str):
+        print(f"[ExpressionManager] Setting expression: {mood}")
+        self.state.expression = mood
+        self._dirty = True
+        
+
+    def draw_gaze(self, x, y, pupil=1.0):
+        raise RuntimeError("Do not use draw_gaze() directly. Use composer.set_gaze() instead.")
+
+
+    async def apply_gaze_mode(self, mode):
+        await self.interpolator.translate_gaze_mode(mode)
+
+    async def animate_expression(self, mood: str, steps=16, delay=0.01):
+        # print(f"[Animator] Tweening to expression '{mood}'")
+
+        target = self.drawer.lid_control.expression_map.get(mood)
+        if not target:
+            print(f"[EyeAnimator] Unknown expression: {mood}")
+            return
+
+        start_cfg = self.drawer.lid_control.lids.copy()
+        for step in range(1, steps + 1):
+            frac = step / steps
+            interp_cfg = {
+                k: int(start_cfg.get(k, 0) + (target.get(k, 0) - start_cfg.get(k, 0)) * frac)
+                for k in target
+            }
+            self.drawer.lid_control.lids.update(interp_cfg)
+            self.current_expression = mood
+
+            # Hand off the current state to Composer
+            self.composer.set_eyelids(interp_cfg)
+            await asyncio.sleep(delay)
+
+        self.composer.set_eyelids(None)  # release override once tween done
+
+
