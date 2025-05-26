@@ -29,7 +29,7 @@ try:
     while True:
         key = readchar.readkey().lower()
         if key in '1234567890':
-            power = int(key) * 10 if key != '0' else 100
+            power = int(key) * 10 if key != '0' else 200
             apply_power()
 
         elif key == "[":
