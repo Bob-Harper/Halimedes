@@ -25,7 +25,7 @@ signal.signal(signal.SIGINT, handle_shutdown_signal)
 
 
 class CommandManager:
-    def __init__(self, llm_client, picrawler_instance, eye_animator):
+    def __init__(self, llm_client, picrawler_instance):
         self.picrawler_instance = picrawler_instance
         self.llm_client = llm_client
         self.weather_helper = WeatherHandler()
@@ -36,7 +36,6 @@ class CommandManager:
         self.response_manager = Response_Manager(self.picrawler_instance)
         self.general_utils = GeneralUtilitiesManager(self.picrawler_instance)
         self.news_api = NewsHandler(self.picrawler_instance)
-        self.eye_animator = eye_animator
 
     async def handle_command(self, spoken_text):
         command = self.match_command(spoken_text)  # Check if input matches a known command

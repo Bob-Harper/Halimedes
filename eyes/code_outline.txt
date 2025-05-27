@@ -1,0 +1,61 @@
+Class: EyeState
+
+Class: EyeFrameComposer
+  - __init__
+  - set_eyelids
+  - wait_for_frame
+  - start_loop
+
+Class: GazeInterpolator
+  - __init__
+  - set_gaze
+  - smooth_gaze
+  - interpolate_gaze
+  - translate_gaze_mode
+
+Class: DrawEngine
+  - __init__
+  - _mask_key
+  - _get_lid_mask
+  - _make_mask_images
+  - _apply_mask_np
+  - render_gaze_frame
+  - _get_buffer
+  - display
+  - _cache_key
+  - apply_lids
+
+Class: EyeExpressionManager
+  - __init__
+  - trigger
+  - is_blinking
+  - update_blink
+  - _interpolate
+  - set_eyelid_expression
+  - get_mask_config
+  - _load_expressions
+  - update_expression
+  - get_current_mask
+  - animate_expression
+  - set_expression
+
+Class: EyeCacheManager
+  - __init__
+  - _generate_key
+  - _get_path
+  - save_map
+  - load_map
+  - exists
+  - warm_up_cache
+
+Class: EyeDeformer
+  - __init__
+  - generate_eye_frame
+  - get_or_generate_spherical_map
+  - apply_spherical_warp
+  - get_or_generate_pupil_warp_map
+  - apply_pupil_warp
+
+Class: EyeConfig
+  - __init__
+  - load_eye_profile

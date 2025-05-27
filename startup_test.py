@@ -24,29 +24,32 @@ from mind.emotions_manager import EmotionCategorizer
 from helpers.llm_client_handler import LLMClientHandler
 from helpers.passive_actions_manager import PassiveActionsManager
 from helpers.general_utilities_manager import GeneralUtilitiesManager
-from eyes.eye_frame_composer import load_eye_profile
-from eyes.eye_frame_composer import EyeAnimator
+from eyes.eye_frame_composer import EyeConfig
 from eyes.eye_frame_composer import EyeExpressionManager
 from eyes.eye_frame_composer import EyeFrameComposer
+from eyes.eye_frame_composer import GazeInterpolator
 
 # Initialize everything at module level
 print("Initializing components...")
-# Initialize the Picrawler instance
-eye_profile = load_eye_profile("vector03")
+eye_profile = EyeConfig.load_eye_profile("vector03")
 print("Eye profile loaded.")
-eye_animator = EyeAnimator(eye_profile)
-composer = EyeFrameComposer(eye_animator, None)
-expression_manager = EyeExpressionManager(eye_animator, composer)
+gaze_interpolator = GazeInterpolator(None)
+expression_manager = EyeExpressionManager(None)
+composer = EyeFrameComposer(gaze_interpolator, expression_manager)
 composer.expression_manager = expression_manager
+assert composer.gaze_interpolator is gaze_interpolator
+assert composer.expression_manager is expression_manager
+assert gaze_interpolator.composer is composer
+assert expression_manager.composer is composer
 server_host = OLLAMALAPTOP
 llm_client = LLMClientHandler(server_host)
 voiceprint_manager = VoiceRecognitionManager()
-command_manager = CommandManager(llm_client, picrawler_instance, eye_animator)
+command_manager = CommandManager(llm_client, picrawler_instance)
 audio_input = AudioInputManager(picrawler_instance)
 emotion_categorizer = EmotionCategorizer()
 emotion_sound_manager = EmotionalSoundsManager()
 actions_manager = PassiveActionsManager(picrawler_instance)
-response_manager = Response_Manager(picrawler_instance, actions_manager, eye_animator)
+response_manager = Response_Manager(picrawler_instance, actions_manager)
 general_utils = GeneralUtilitiesManager(picrawler_instance)
 macro_player = MacroPlayer(
     gaze=GazeChannel(composer),
