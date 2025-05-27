@@ -34,24 +34,23 @@ class EyeState:
 
 
 class EyeFrameComposer:
-    def __init__(self, animator, expression_manager: Optional['EyeExpressionManager'] = None):
+    def __init__(self, 
+                 gaze_interpolator: Optional['GazeInterpolator'] = None,
+                 expression_manager: Optional['EyeExpressionManager'] = None
+                 ):
+        
         self.expression_manager = expression_manager
-        self.animator = animator
+        self.gaze_interpolator = gaze_interpolator
         self.state = EyeState()
         self._previous = EyeState()
+        self.drawer = DrawEngine(self.state)
         self.running = False
         self._dirty = True
         self._frame_drawn_event = asyncio.Event()
-        
-    def set_gaze(self, x: int, y: int, pupil: float):
-        self.state.x = int(x)
-        self.state.y = int(y)
-        self.state.pupil = quantize_pupil(pupil)
-        self._dirty = True
 
-    def set_expression(self, mood: str):
-        # print("EyeFrameComposer class:  async def set_expression(self, mood: str):")
-        self.state.expression = mood
+    # set_eyelids directly overrides the current eyelid mask (used for blinks or tweening)
+    def set_eyelids(self, lid_cfg: dict | None):
+        self.state.eyelid_cfg = lid_cfg
         self._dirty = True
 
     async def wait_for_frame(self):
@@ -60,58 +59,42 @@ class EyeFrameComposer:
         except asyncio.TimeoutError:
             print("[FrameComposer] Warning: frame draw timed out.")
 
-    async def interpolate_gaze(self, to_x, to_y, to_pupil=1.0, steps=20, delay=0.01):
-        from_x, from_y, from_pupil = self.state.x, self.state.y, self.state.pupil
-
-        for i in range(1, steps + 1):
-            frac = i / steps
-            interp_x = int(from_x + (to_x - from_x) * frac)
-            interp_y = int(from_y + (to_y - from_y) * frac)
-            interp_pupil = quantize_pupil(from_pupil + (to_pupil - from_pupil) * frac)
-
-            self.set_gaze(interp_x, interp_y, interp_pupil)
-            self._dirty = True
-            await self.wait_for_frame()
-            await asyncio.sleep(delay)
-
-    def set_eyelids(self, lid_cfg: dict | None):
-        self.state.eyelid_cfg = lid_cfg
-        self._dirty = True
-
     async def start_loop(self):
+        assert self.expression_manager is not None, "GazeInterpolator must be set before starting the loop"
+        assert self.gaze_interpolator is not None, "ExpressionManager must be set before starting the loop"
         self.running = True
         while self.running:
             if self._dirty or self.state != self._previous:
                 
                 if random.random() < 0.01:  # ~1% chance per frame
-                    if not self.animator.blinker.is_blinking():
+                    if not self.expression_manager.is_blinking():
                         print("[Blink] Triggered")
-                        self.animator.blinker.trigger()
+                        self.expression_manager.trigger()
 
                 # Clear the event before starting a new frame render
                 self._frame_drawn_event.clear()
 
                 # Gaze update
                 await asyncio.to_thread(
-                    self.animator.smooth_gaze,
+                    self.gaze_interpolator.smooth_gaze,
                     x=self.state.x, y=self.state.y, pupil=self.state.pupil
                 )
 
                 # Get lid config (either override or from expression)
                 # Handle blink override if active
                 dt = FRAME_DURATION  # ~0.016s at 60fps
-                if self.animator.blinker and self.animator.blinker.is_blinking():
-                    blink_lids = self.animator.blinker.update(dt)
+                if self.expression_manager and self.expression_manager.is_blinking():
+                    blink_lids = self.expression_manager.update_blink(dt)
                     if blink_lids:
                         lid_cfg = blink_lids
                     else:
-                        lid_cfg = self.state.eyelid_cfg or self.animator.drawer.lid_control.get_mask_config()
+                        lid_cfg = self.state.eyelid_cfg or self.expression_manager.get_mask_config()
                 else:
-                    lid_cfg = self.state.eyelid_cfg or self.animator.drawer.lid_control.get_mask_config()
+                    lid_cfg = self.state.eyelid_cfg or self.expression_manager.get_mask_config()
 
                 # Render the gaze frame
                 left_buf, right_buf = await asyncio.to_thread(
-                    self.animator.drawer.render_gaze_frame,
+                    self.drawer.render_gaze_frame,
                     self.state.x, self.state.y, self.state.pupil
                 )
                 # assert self.expression_manager is not None
@@ -122,7 +105,7 @@ class EyeFrameComposer:
                 # Apply lids (expression masks)
                 try:
                     masked = await asyncio.to_thread(
-                        self.animator.drawer.apply_lids,
+                        self.drawer.apply_lids,
                         (left_buf, right_buf), lid_cfg
                     )
                 except Exception:
@@ -130,7 +113,7 @@ class EyeFrameComposer:
             
                 # Display the final frame
                 await asyncio.to_thread(
-                    self.animator.drawer.display,
+                    self.drawer.display,
                     masked
                 )
                 # Signal that the frame has been drawn
@@ -149,20 +132,35 @@ class EyeFrameComposer:
 
 
 class GazeInterpolator:
-    def __init__(self, animator):
-        self.animator = animator  # this is EyeAnimator, to call draw_gaze()
+    def __init__(self, 
+                 composer: Optional['EyeFrameComposer'] = None
+                 ):
+        self.state = EyeState()
+        self.composer = composer
 
-    def interp_pupil_transition(self, from_x, from_y, to_x, to_y, from_pupil, to_pupil, steps=8, delay=0.01):
+    def set_gaze(self, x: int, y: int, pupil: float):
+        self.state.x = int(x)
+        self.state.y = int(y)
+        self.state.pupil = quantize_pupil(pupil)
+        self._dirty = True
+
+    async def smooth_gaze(self, x, y, pupil=1.0):
+        await self.interpolate_gaze(x, y, pupil)
+
+    async def interpolate_gaze(self, to_x, to_y, to_pupil=1.0, steps=20, delay=0.01):
+        assert self.composer is not None, "Composer must be set before interpolating gaze"
+        from_x, from_y, from_pupil = self.state.x, self.state.y, self.state.pupil
+
         for i in range(1, steps + 1):
-            interp_x = int(from_x + (to_x - from_x) * (i / steps))
-            interp_y = int(from_y + (to_y - from_y) * (i / steps))
-            interp_pupil = self.animator.composer.quantize_pupil(
-                from_pupil + (to_pupil - from_pupil) * (i / steps))
-            self.animator.composer.set_gaze(interp_x, interp_y, pupil=interp_pupil)
-            time.sleep(delay)
+            frac = i / steps
+            interp_x = int(from_x + (to_x - from_x) * frac)
+            interp_y = int(from_y + (to_y - from_y) * frac)
+            interp_pupil = quantize_pupil(from_pupil + (to_pupil - from_pupil) * frac)
 
-    async def interp_gaze_movement(self, to_x, to_y, to_pupil=1.0, steps=8, delay=0.01):
-        await self.animator.composer.interpolate_gaze(to_x, to_y, to_pupil, steps, delay)
+            self.set_gaze(interp_x, interp_y, interp_pupil)
+            self._dirty = True
+            await self.composer.wait_for_frame()
+            await asyncio.sleep(delay)
 
     async def translate_gaze_mode(self, mode):
         modes = {
@@ -181,64 +179,9 @@ class GazeInterpolator:
             return
 
         to_x, to_y = modes[mode]
-        # to_pupil = random.uniform(0.85, 1.2) if mode == "wander" else 1.0
         to_pupil = 1.0
-        await self.interp_gaze_movement(to_x, to_y, to_pupil)
+        await self.interpolate_gaze(to_x, to_y, to_pupil)
 
-
-class EyeAnimator:
-    def __init__(self, profile):
-        self.profile = profile
-        self.state = {
-            "x": 10,
-            "y": 10,
-            "pupil": 1.0
-        }
-        self.composer = EyeFrameComposer(self, None)
-        self.drawer = DrawEngine(profile)
-        self.blinker = BlinkAnimator(
-            expression_getter=self.drawer.lid_control.get_mask_config,
-            duration=profile.close_speed,
-            hold=profile.hold
-        )
-        self.interpolator = GazeInterpolator(self)
-        self.drawer.gaze_cache.clear()  # clear the gaze cache
-        self.last_buf = None  # clear the last buffer for blinking
-        self.current_expression = None  # track what’s live now
-        # create a blank gaze buffer to seed last_buf
-        left, right = self.drawer.render_gaze_frame(10, 10, 1.0)
-        self.last_buf = (left, right)
-        from eyes.dualeye_driver import eye_left, eye_right
-        for eye in (eye_left, eye_right):
-            eye.fill_screen(0x0000)  # clear both displays black
-        time.sleep(0.1)  # short SPI bus stabilization
-
-    async def smooth_gaze(self, x, y, pupil=1.0):
-        await self.interpolator.interp_gaze_movement(x, y, pupil)
-
-    async def animate_expression(self, mood: str, steps=16, delay=0.01):
-        # print(f"[Animator] Tweening to expression '{mood}'")
-
-        target = self.drawer.lid_control.expression_map.get(mood)
-        if not target:
-            print(f"[EyeAnimator] Unknown expression: {mood}")
-            return
-
-        start_cfg = self.drawer.lid_control.lids.copy()
-        for step in range(1, steps + 1):
-            frac = step / steps
-            interp_cfg = {
-                k: int(start_cfg.get(k, 0) + (target.get(k, 0) - start_cfg.get(k, 0)) * frac)
-                for k in target
-            }
-            self.drawer.lid_control.lids.update(interp_cfg)
-            self.current_expression = mood
-
-            # Hand off the current state to Composer
-            self.composer.set_eyelids(interp_cfg)
-            await asyncio.sleep(delay)
-
-        self.composer.set_eyelids(None)  # release override once tween done
 
 class DrawEngine:
     def __init__(self, profile):
@@ -259,7 +202,6 @@ class DrawEngine:
             self.image = profile.image
         self.width = self.height = 160
         self.gaze_cache = {}
-        self.lid_control = EyelidController()
         self._lid_mask_cache = {}
 
     def _mask_key(self, cfg):
@@ -286,7 +228,6 @@ class DrawEngine:
         m2 = make_mask(cfg["eye2_top_left"], cfg["eye2_top_right"],
                     cfg["eye2_bottom_left"], cfg["eye2_bottom_right"])
         return m1, m2
-
 
     def _apply_mask_np(self, img: Image.Image, mask: Image.Image) -> Image.Image:
         arr = np.asarray(img)
@@ -378,9 +319,31 @@ class DrawEngine:
         right_buf = self._get_buffer(masked_right_img)
         return left_buf, right_buf
 
-class BlinkAnimator:
-    def __init__(self, expression_getter, duration=0.15, hold=0.08):
-        self.expression_getter = expression_getter  # callback to query expression config
+
+class EyeExpressionManager:
+    def __init__(self, 
+                 composer: Optional['EyeFrameComposer'] = None, 
+                 duration=0.15, 
+                 hold=0.08, 
+                 multi_file=False
+                 ):
+        self.composer = composer
+        self.multi_file = multi_file
+        self.expressions = self._load_expressions()
+        self.state = EyeState()
+        neutral = expression_map.get("neutral", {})
+        # ensure all four corners exist
+        self.lids = {
+            "eye1_top_left":        neutral.get("eye1_top_left",    36),
+            "eye1_top_right":       neutral.get("eye1_top_right",   40),
+            "eye1_bottom_left":     neutral.get("eye1_bottom_left",  0),
+            "eye1_bottom_right":    neutral.get("eye1_bottom_right", 0),
+            "eye2_top_left":        neutral.get("eye2_top_left",    36),
+            "eye2_top_right":       neutral.get("eye2_top_right",   36),
+            "eye2_bottom_left":     neutral.get("eye2_bottom_left",  40),
+            "eye2_bottom_right":    neutral.get("eye2_bottom_right", 40),
+        }
+        self.expression_map = expression_map
         self.duration = duration
         self.hold = hold
         self.timer = 0.0
@@ -402,7 +365,7 @@ class BlinkAnimator:
     def is_blinking(self):
         return self.active
 
-    def update(self, dt):
+    def update_blink(self, dt):
         if not self.active:
             return None
 
@@ -413,7 +376,7 @@ class BlinkAnimator:
                 self.phase = 'holding'
                 self.timer = 0.0
             t = self.timer / self.duration
-            return self._interpolate(self.expression_getter(), self.closed_cfg, t)
+            return self._interpolate(self.get_current_mask(), self.closed_cfg, t)
 
         elif self.phase == 'holding':
             if self.timer >= self.hold:
@@ -427,31 +390,14 @@ class BlinkAnimator:
                 self.phase = None
                 return None
             t = self.timer / self.duration
-            return self._interpolate(self.closed_cfg, self.expression_getter(), t)
+            return self._interpolate(self.closed_cfg, self.get_current_mask(), t)
 
     def _interpolate(self, from_cfg, to_cfg, t):
         return {
             k: int(round((1 - t) * from_cfg[k] + t * to_cfg[k]))
             for k in from_cfg
         }
-
-
-class EyelidController:
-    def __init__(self):
-        neutral = expression_map.get("neutral", {})
-        # ensure all four corners exist
-        self.lids = {
-            "eye1_top_left":        neutral.get("eye1_top_left",    36),
-            "eye1_top_right":       neutral.get("eye1_top_right",   40),
-            "eye1_bottom_left":     neutral.get("eye1_bottom_left",  0),
-            "eye1_bottom_right":    neutral.get("eye1_bottom_right", 0),
-            "eye2_top_left":        neutral.get("eye2_top_left",    36),
-            "eye2_top_right":       neutral.get("eye2_top_right",   36),
-            "eye2_bottom_left":     neutral.get("eye2_bottom_left",  40),
-            "eye2_bottom_right":    neutral.get("eye2_bottom_right", 40),
-        }
-        self.expression_map = expression_map
-
+    
     def set_eyelid_expression(self, name: str):
         print(f"[LidController] Switching to expression: {name}")
         exp = self.expression_map.get(name)
@@ -472,20 +418,6 @@ class EyelidController:
         lids = self.lids
         print(f"[get_current_mask] Current mask: {lids}")
         return lids
-
-
-class EyeExpressionManager:
-    def __init__(self, animator, composer, multi_file=False):
-        self.animator = animator
-        self.composer = composer
-        self.multi_file = multi_file
-        self.lid_control = EyelidController()
-        self.expressions = self._load_expressions()
-        self.state = EyeState()
-
-    async def set_expression(self, mood: str):
-        print(f"[ExpressionManager] Animate expression: {mood}")
-        await self.animator.animate_expression(mood)
 
     def _load_expressions(self):
         expressions = {}
@@ -510,16 +442,45 @@ class EyeExpressionManager:
                 print(f"[ExpressionManager] Failed to load expressions: {e}")
         return expressions
 
-    def update(self):
+    def update_expression(self):
+        assert self.composer is not None, "Composer must be set before updating expression" 
         if self.composer.state.expression:
-            self.lid_control.set_eyelid_expression(self.composer.state.expression)
-            self.composer.set_eyelids(self.lid_control.get_mask_config())
+            self.set_eyelid_expression(self.composer.state.expression)
+            self.composer.set_eyelids(self.get_mask_config())
         else:
             self.composer.set_eyelids(None)
 
     def get_current_mask(self):
         # Return the current eyelid mask configuration
-        return self.lid_control.get_mask_config()
+        return self.get_mask_config()
+    
+    async def animate_expression(self, mood: str, steps=16, delay=0.01):
+        assert self.composer is not None, "Composer must be set before animating expression"
+        target = self.expression_map.get(mood)
+        if not target:
+            print(f"[EyeExpressionManager] Unknown expression: {mood}")
+            return
+
+        start_cfg = self.lids.copy()
+        for step in range(1, steps + 1):
+            frac = step / steps
+            interp_cfg = {
+                k: int(start_cfg.get(k, 0) + (target.get(k, 0) - start_cfg.get(k, 0)) * frac)
+                for k in target
+            }
+            self.lids.update(interp_cfg)
+            self.current_expression = mood
+
+            # Hand off the current state to Composer
+            self.composer.set_eyelids(interp_cfg)
+            await asyncio.sleep(delay)
+
+        self.composer.set_eyelids(None)  # release override once tween done
+
+    # set_expression changes the high-level mood, the expression manager handles the lid config
+    async def set_expression(self, mood: str):
+        self.state.expression = mood
+        self._dirty = True
 
 
 class EyeCacheManager:
@@ -832,30 +793,24 @@ class EyeConfig:
         self.expression_profile = config.get("expression_profile", "default")
         self.use_case = config.get("use_case", "default")
 
+    @classmethod
+    def load_eye_profile(cls, name):
+        from helpers.global_config import EYE_ASSETS_PATH
+        from PIL import Image
+        import json
 
-# End of Classes
+        config_path = EYE_ASSETS_PATH / f"{name}.json"
+        image_path = EYE_ASSETS_PATH / f"{name}.png"
 
-def load_eye_profile(profile_name):
-    config_path = EYE_ASSETS_PATH / f"{profile_name}.json"
+        if not config_path.exists():
+            raise FileNotFoundError(f"No config for {name} at {config_path}")
+        if not image_path.exists():
+            raise FileNotFoundError(f"No image for {name} at {image_path}")
 
-    if not config_path.exists():
-        raise FileNotFoundError(f"[EyeLoader] No profile named '{profile_name}' in {config_path}/")
+        with open(config_path, "r") as f:
+            config = json.load(f)
 
-    with open(config_path, "r") as f:
-        config = json.load(f)
+        image = Image.open(image_path).convert("RGB")
+        return cls(name, config_path, config, image)
 
-    # Resolve texture path relative to the config file
-    texture_path = (config_path.parent / config["image_path"]).resolve()
-    if not texture_path.exists():
-        raise FileNotFoundError(f"[EyeLoader] Texture file '{texture_path}' not found.")
-
-    img = Image.open(texture_path).convert("RGB")
-
-    if img.width != img.height:
-        print(f"[WARNING] Eye texture is not square ({img.width}x{img.height})")
-    if img.width != 180:
-        img = img.resize((180, 180), resample=Image.Resampling.LANCZOS)
-    if config.get("directional", False):
-        img = img.rotate(90, expand=True)
-
-    return EyeConfig(profile_name, config_path, config, img)
+                              
