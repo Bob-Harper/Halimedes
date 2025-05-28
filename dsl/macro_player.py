@@ -8,6 +8,7 @@ from dsl.macro_tag_validator import MacroTagValidator
 
 emotion_categorizer = EmotionCategorizer()
 
+
 class MacroPlayer:
     def __init__(self,
                  gaze: Optional[GazeChannel] = None,
@@ -93,7 +94,6 @@ class MacroPlayer:
             # print("calling channels.py ExpressionManager - await self.expression.set_mood(mood) ")
             await self.expression.set_mood(mood)
 
-
     async def _speak(self, text: str):
         if self.speech:
             text = text.strip('"')
@@ -167,3 +167,4 @@ class TagToDSL:
                 dsl_lines.append(f'speak "{line}"')
 
         return "\n".join(dsl_lines)
+    
