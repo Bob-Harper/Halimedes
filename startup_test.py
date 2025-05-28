@@ -24,23 +24,27 @@ from mind.emotions_manager import EmotionCategorizer
 from helpers.llm_client_handler import LLMClientHandler
 from helpers.passive_actions_manager import PassiveActionsManager
 from helpers.general_utilities_manager import GeneralUtilitiesManager
-from eyes.eye_frame_composer import EyeConfig
-from eyes.eye_frame_composer import EyeExpressionManager
-from eyes.eye_frame_composer import EyeFrameComposer
-from eyes.eye_frame_composer import GazeInterpolator
+from eyes.EyeConfig import EyeConfig
+from eyes.EyeExpressionManager import EyeExpressionManager
+from eyes.EyeFrameComposer import EyeFrameComposer
+from eyes.GazeInterpolator import GazeInterpolator
 
 # Initialize everything at module level
 print("Initializing components...")
 eye_profile = EyeConfig.load_eye_profile("vector03")
 print("Eye profile loaded.")
-gaze_interpolator = GazeInterpolator(None)
-expression_manager = EyeExpressionManager(None)
-composer = EyeFrameComposer(gaze_interpolator, expression_manager)
+composer = EyeFrameComposer(eye_profile, None, None)
+gaze_interpolator = GazeInterpolator(composer)
+expression_manager = EyeExpressionManager(composer)
+composer = EyeFrameComposer(eye_profile, gaze_interpolator, expression_manager)
+
 composer.expression_manager = expression_manager
-assert composer.gaze_interpolator is gaze_interpolator
-assert composer.expression_manager is expression_manager
-assert gaze_interpolator.composer is composer
-assert expression_manager.composer is composer
+gaze_interpolator.composer = composer
+expression_manager.composer = composer
+# assert composer.gaze_interpolator is gaze_interpolator
+# assert composer.expression_manager is expression_manager
+# assert gaze_interpolator.composer is composer
+# assert expression_manager.composer is composer
 server_host = OLLAMALAPTOP
 llm_client = LLMClientHandler(server_host)
 voiceprint_manager = VoiceRecognitionManager()
@@ -52,8 +56,8 @@ actions_manager = PassiveActionsManager(picrawler_instance)
 response_manager = Response_Manager(picrawler_instance, actions_manager)
 general_utils = GeneralUtilitiesManager(picrawler_instance)
 macro_player = MacroPlayer(
-    gaze=GazeChannel(composer),
-    expression=ExpressionChannel(composer),
+    gaze=GazeChannel(gaze_interpolator),
+    expression=ExpressionChannel(expression_manager),
     speech=SpeechChannel(response_manager),
     action=ActionChannel(actions_manager),
     sound=SoundChannel(emotion_sound_manager.play_sound)

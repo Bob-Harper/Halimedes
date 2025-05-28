@@ -1,7 +1,10 @@
+from eyes.DrawEngine import DrawEngine
+
+
 def main(texture_name="vector03", pupil=1.0):
     import numpy as np
-    from eyes.eye_frame_composer import load_eye_profile, DrawEngine
-    from eyes.eye_frame_composer import GazeFrameCacheManager
+    from eyes.EyeFrameComposer import load_eye_profile
+    from eyes.EyeFrameComposer import GazeFrameCacheManager
 
     profile = load_eye_profile(texture_name)
     engine = DrawEngine(profile)

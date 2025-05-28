@@ -28,10 +28,10 @@ from helpers.llm_client_handler import LLMClientHandler
 from helpers.passive_actions_manager import PassiveActionsManager
 from helpers.general_utilities_manager import GeneralUtilitiesManager
 from helpers.news_handler import NewsHandler
-from eyes.eye_frame_composer import load_eye_profile
-from eyes.eye_frame_composer import EyeAnimator
-from eyes.eye_frame_composer import EyeExpressionManager
-from eyes.eye_frame_composer import EyeFrameComposer
+from eyes.EyeFrameComposer import load_eye_profile
+from eyes.EyeFrameComposer import EyeAnimator
+from eyes.EyeExpressionManager import EyeExpressionManager
+from eyes.EyeFrameComposer import EyeFrameComposer
 
 # Initialize everything at module level
 eye_profile = load_eye_profile("vector03")

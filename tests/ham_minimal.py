@@ -1,4 +1,5 @@
-from eyes.eye_frame_composer import load_eye_profile, DrawEngine
+from eyes.DrawEngine import DrawEngine
+from eyes.EyeFrameComposer import load_eye_profile
 
 profile = load_eye_profile("vector03")
 engine = DrawEngine(profile)

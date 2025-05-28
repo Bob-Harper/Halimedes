@@ -14,7 +14,8 @@ def apply_power():
 
 print("""
 [ LED Spotlight Test - Halimedes Style ]
-      Note- effective minimum is 0.12% power
+      Note- effective minimum is 0.12
+      maximum is 100
 Controls: 
     1-9, 0   = Set brightness (10% to 100%)
     [ ]     = Adjust brightness by 1%
@@ -29,7 +30,7 @@ try:
     while True:
         key = readchar.readkey().lower()
         if key in '1234567890':
-            power = int(key) * 10 if key != '0' else 200
+            power = int(key) * 10 if key != '0' else 100
             apply_power()
 
         elif key == "[":

@@ -4,20 +4,20 @@ from typing import Callable
 
 
 class GazeChannel:
-    def __init__(self, composer, pmin=0.8, pmax=1.3):
-        self.composer = composer
+    def __init__(self, gaze_interpolator, pmin=0.8, pmax=1.3):
+        self.gaze_interpolator = gaze_interpolator
         self.pmin = pmin
         self.pmax = pmax
 
     async def move_to(self, x: float, y: float, pupil: float = 1.0):
         pupil = round(round(pupil / 0.05) * 0.05, 3)
-        await self.composer.interpolate_gaze(x, y, pupil, steps=20, delay=0.01)
+        await self.gaze_interpolator.interpolate_gaze(x, y, pupil, steps=20, delay=0.01)
 
     async def wander(self):
         x = random.randint(0, 20)
         y = random.randint(0, 20)
         pupil = self.rand_05(self.pmin, self.pmax)
-        await self.composer.interpolate_gaze(x, y, pupil, steps=20, delay=0.01)
+        await self.gaze_interpolator.interpolate_gaze(x, y, pupil, steps=20, delay=0.01)
 
     @staticmethod
     def rand_05(min_v: float, max_v: float) -> float:
@@ -28,13 +28,13 @@ class GazeChannel:
 
 
 class ExpressionChannel:
-    def __init__(self, composer):
-        self.composer = composer
+    def __init__(self, expression_manager):
+        self.expression_manager = expression_manager
 
     async def set_mood(self, mood: str):
         # print(f"[ExpressionChannel -> set mood to '{mood}'")
         # print("calling eye_frame_composer.py EyeFrameComposer - self.composer.set_expression(mood) ")
-        self.composer.set_expression(mood)
+        self.expression_manager.set_expression(mood)
 
 
 class SoundChannel:
@@ -70,4 +70,3 @@ class ActionChannel:
                         await asyncio.to_thread(fn)
                         return
             print(f"[WARN] Unknown action: '{action}'")
-
