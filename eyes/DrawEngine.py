@@ -14,7 +14,8 @@ class DrawEngine:
         self.animation_style = eye_profile.animation_style
         # Convert PIL image to NumPy array once here
         if isinstance(eye_profile.image, Image.Image):
-            self.image = np.array(eye_profile.image)
+            eye_img = eye_profile.image.resize((180, 180))  # ← if needed, do it here
+            self.image = np.array(eye_img)
         else:
             self.image = eye_profile.image
         self.width = self.height = 160
@@ -57,14 +58,14 @@ class DrawEngine:
 
         return Image.fromarray(arr)
 
-    def render_gaze_frame(self, x_off, y_off, pupil_size=1.0):
-        key = self._cache_key(x_off, y_off, pupil_size)
+    def render_gaze_frame(self, x, y, pupil_size=1.0):
+        key = self._cache_key(x, y, pupil_size)
         if key not in self.gaze_cache:
             warped = self.deformer.generate_eye_frame(
                 self.image,
                 pupil_size=pupil_size,
-                x_off=x_off,
-                y_off=y_off,
+                x=x,
+                y=y,
                 iris_radius=self.profile.iris_radius,
                 perspective_shift=self.profile.perspective_shift,
                 animation_style=self.animation_style

@@ -31,7 +31,7 @@ from eyes.GazeInterpolator import GazeInterpolator
 
 # Initialize everything at module level
 print("Initializing components...")
-eye_profile = EyeConfig.load_eye_profile("vector03")
+eye_profile = EyeConfig.load_eye_profile("whitegold01")
 print("Eye profile loaded.")
 composer = EyeFrameComposer(eye_profile, None, None)
 gaze_interpolator = GazeInterpolator(composer)
@@ -80,43 +80,19 @@ async def main():
     
     await macro_player.run(
         """
-        gaze move to 10 20 1.0
-        wait 2
-        speak " expression is now test. "
-        expression set mood test
-        
-        wait 2
-        speak " expression is now positive. "
-        gaze move to 10 5 1.0
-        expression set mood positive
-        wait 2
-        speak " expression is now negative. "
-        gaze move to 20 20 1.0
-        expression set mood negative
-        wait 2
-        expression set mood neutral
+        gaze move to 80 80 1.0
         wait 0.2
-        gaze wander
+        gaze move to 90 90 1.0
         wait 0.2
-        gaze wander
+        gaze move to 100 100 1.0
         wait 0.2
-        gaze wander
+        gaze move to 80 100 1.0
         wait 0.2
-        gaze wander
+        gaze move to 100 100 1.0
         wait 0.2
-        gaze wander
+        gaze move to 100 80 1.0
         wait 0.2
-        gaze move to 20 10 1.0
-        wait 0.2
-        gaze move to 0 10 1.0
-        wait 0.2
-        gaze move to 20 10 1.0
-        wait 0.2
-        gaze move to 0 10 1.0
-        wait 0.2
-        gaze move to 0 10 1.0
-        wait 0.2
-        gaze move to 10 10 1.0
+        gaze move to 90 90 1.0
 
         """
     )

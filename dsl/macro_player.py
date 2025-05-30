@@ -47,16 +47,16 @@ class MacroPlayer:
     async def _gaze(self, arg: str):
         if not self.gaze:
             return
-
+        # Using pixel coords, not offset from center
         modes = {
-            "left": (10, 20),
-            "right": (10, 0),
-            "up": (20, 10),
-            "down": (0, 10),
-            "center": (10, 10),
+            "left": (90, 100),
+            "right": (100, 90),
+            "up": (100, 90),
+            "down": (80, 90),
+            "center": (90, 90),
             "wander": (
-                random.randint(0, 20),
-                random.randint(0, 20)
+                random.randint(80, 100),
+                random.randint(80, 100)
             )
         }
 
@@ -76,12 +76,12 @@ class MacroPlayer:
                 print(f"[Macro] Invalid gaze args: {parts}")
                 return
 
-            # print(f"[Macro] Gaze -> move to ({x}, {y}) pupil={pupil}")
+            print(f"[Macro] Gaze -> move to ({x}, {y}) pupil={pupil}")
             await self.gaze.move_to(x, y, pupil)
 
         elif arg == "wander":
             x, y = modes["wander"]
-            # print(f"[Macro] Gaze -> wander ({x}, {y}) pupil=1.0")
+            print(f"[Macro] Gaze -> wander ({x}, {y}) pupil=1.0")
             await self.gaze.move_to(x, y, 1.0)
 
     async def _expression(self, arg: str):

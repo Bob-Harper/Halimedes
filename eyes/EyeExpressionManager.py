@@ -1,5 +1,9 @@
-from eyes.EyeFrameComposer import EyeFrameComposer, EyeState, expression_map
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+from eyes.EyeState import EyeState
+if TYPE_CHECKING:
+    from eyes.EyeFrameComposer import EyeFrameComposer
+from eyes.EyeFrameComposer import expression_map
 import asyncio
 import json
 import os
@@ -84,7 +88,7 @@ class EyeExpressionManager:
         }
 
     def set_eyelid_expression(self, name: str):
-        print(f"[LidController] Switching to expression: {name}")
+        # print(f"[LidController] Switching to expression: {name}")
         exp = self.expression_map.get(name)
         if not exp:
             print(f"[EyelidController] Unknown expression: {name}")
@@ -101,7 +105,7 @@ class EyeExpressionManager:
 
     def get_mask_config(self) -> dict:
         lids = self.lids
-        print(f"[get_current_mask] Current mask: {lids}")
+        # print(f"[get_current_mask] Current mask: {lids}")
         return lids
 
     def _load_expressions(self):
