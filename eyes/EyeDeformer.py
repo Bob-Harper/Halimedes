@@ -22,12 +22,13 @@ class EyeDeformer:
         self,
         source_img,
         pupil_size=1.0,
-        x_off=10,
-        y_off=10,
+        x=90,
+        y=90,
         iris_radius=42,
         perspective_shift=0.02,
         animation_style=None
     ):
+
         style = animation_style or self.animation_style
 
         if style == "vector":
@@ -39,31 +40,33 @@ class EyeDeformer:
             )
             warped_pupil = self.apply_pupil_warp(source_img, *pupil_maps)
 
+        cropped_to_display = self.crop_to_display(warped_pupil, x, y, 160)
+
         final_img = self.apply_spherical_warp(
-            warped_pupil,
-            x_off=x_off,
-            y_off=y_off,
+            cropped_to_display,
+            x=x,
+            y=y,
             strength=perspective_shift
         )
         return_image = Image.fromarray(final_img, mode='RGB')
         return return_image
 
-    def get_or_generate_spherical_map(self, x_off=10, y_off=10, strength=0.03):
+    def get_or_generate_spherical_map(self, x, y, strength=0.03):
         key_dict = {
-            "x_off": x_off,
-            "y_off": y_off,
+            "x": x,
+            "y": y,
             "strength": round(float(strength), 4)
         }
 
         cached = self.cache.load_map(key_dict, kind="spherical")
         if cached is not None:
             return cached
-        h = w = 180
-        center_x = w // 2
+        h = w = 160
+        center_x = w // 2  # 180 → 90
         center_y = h // 2
 
-        norm_x = (x_off - 10) / 10.0
-        norm_y = (y_off - 10) / 10.0
+        norm_x = (x - center_x) / center_x  # Now ranges from -1 to +1
+        norm_y = (y - center_y) / center_y
 
         yy, xx = np.meshgrid(np.arange(0, 180), np.arange(0, 180), indexing='xy')
         dx = (xx - center_x) / center_x # type: ignore
@@ -81,8 +84,8 @@ class EyeDeformer:
         self.cache.save_map(key_dict, (map_x, map_y), kind="spherical")
         return map_x, map_y
 
-    def apply_spherical_warp(self, image, x_off=10, y_off=10, strength=0.03):
-        map_x, map_y = self.get_or_generate_spherical_map(x_off, y_off, strength)
+    def apply_spherical_warp(self, image, x=90, y=90, strength=0.03):
+        map_x, map_y = self.get_or_generate_spherical_map(x, y, strength)
         result = cv2.remap(image, map_x, map_y, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
         if result.dtype != np.uint8:
             result = np.clip(result, 0, 255).astype(np.uint8)
@@ -155,3 +158,15 @@ class EyeDeformer:
 
         return warped
     
+    def crop_to_display(self, image, x, y, output_size=160):
+        h, w = image.shape[:2]
+        center_x = int(x)
+        center_y = int(y)
+
+        crop_x = center_x - output_size // 2
+        crop_y = center_y - output_size // 2
+
+        crop_x = np.clip(crop_x, 0, w - output_size)
+        crop_y = np.clip(crop_y, 0, h - output_size)
+
+        return image[crop_y:crop_y + output_size, crop_x:crop_x + output_size]

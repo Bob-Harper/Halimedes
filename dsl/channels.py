@@ -10,12 +10,14 @@ class GazeChannel:
         self.pmax = pmax
 
     async def move_to(self, x: float, y: float, pupil: float = 1.0):
+        print(f"[GazeChannel] Moving gaze to ({x}, {y}) with pupil size {pupil}")
         pupil = round(round(pupil / 0.05) * 0.05, 3)
         await self.gaze_interpolator.interpolate_gaze(x, y, pupil, steps=20, delay=0.01)
 
     async def wander(self):
-        x = random.randint(0, 20)
-        y = random.randint(0, 20)
+        print("[GazeChannel] Wandering gaze")
+        x = random.randint(80, 100)
+        y = random.randint(80, 100)
         pupil = self.rand_05(self.pmin, self.pmax)
         await self.gaze_interpolator.interpolate_gaze(x, y, pupil, steps=20, delay=0.01)
 
