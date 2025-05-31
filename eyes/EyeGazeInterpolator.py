@@ -16,7 +16,6 @@ class GazeInterpolator:
         await self.interpolate_gaze(x, y, pupil)
 
     async def interpolate_gaze(self, to_x, to_y, to_pupil=1.0, steps=20, delay=0.01):
-        print(f"[GazeInterpolator] Interpolating gaze to ({to_x}, {to_y}) with pupil size {to_pupil}")
         assert self.composer is not None, "Composer must be set before interpolating gaze"
         from_x, from_y, from_pupil = (
             self.composer.state.x,
@@ -28,7 +27,6 @@ class GazeInterpolator:
             interp_x = int(from_x + (to_x - from_x) * frac)
             interp_y = int(from_y + (to_y - from_y) * frac)
             interp_pupil = quantize_pupil(from_pupil + (to_pupil - from_pupil) * frac)
-            print(f"[GazeInterpolator] eee Step {i}/{steps}: Gaze to ({interp_x}, {interp_y}) with pupil size {interp_pupil}")
             self.composer.set_gaze(interp_x, interp_y, interp_pupil)
             self._dirty = True
             await self.composer.wait_for_frame()

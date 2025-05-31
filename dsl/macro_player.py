@@ -76,12 +76,10 @@ class MacroPlayer:
                 print(f"[Macro] Invalid gaze args: {parts}")
                 return
 
-            print(f"[Macro] Gaze -> move to ({x}, {y}) pupil={pupil}")
             await self.gaze.move_to(x, y, pupil)
 
         elif arg == "wander":
             x, y = modes["wander"]
-            print(f"[Macro] Gaze -> wander ({x}, {y}) pupil=1.0")
             await self.gaze.move_to(x, y, 1.0)
 
     async def _expression(self, arg: str):

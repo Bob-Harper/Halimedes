@@ -13,7 +13,7 @@ class EyeExpressionManager:
     def __init__(self,
                  composer: Optional['EyeFrameComposer'] = None,
                  duration=0.15,
-                 hold=0.08,
+                 eyelid_hold_closed=0.08,
                  multi_file=False
                  ):
         self.composer = composer
@@ -34,10 +34,10 @@ class EyeExpressionManager:
         }
         self.expression_map = expression_map
         self.duration = duration
-        self.hold = hold
+        self.eyelid_hold_closed = eyelid_hold_closed
         self.timer = 0.0
         self.active = False
-        self.phase = None  # 'closing', 'holding', 'opening'
+        self.phase = None  # 'closing', 'eyelid_stay_closed', 'opening'
 
         self.closed_cfg = {
             "eye1_top_left": 0, "eye1_top_right": 0,
@@ -62,13 +62,13 @@ class EyeExpressionManager:
 
         if self.phase == 'closing':
             if self.timer >= self.duration:
-                self.phase = 'holding'
+                self.phase = 'eyelid_stay_closed'
                 self.timer = 0.0
             t = self.timer / self.duration
             return self._interpolate(self.get_current_mask(), self.closed_cfg, t)
 
-        elif self.phase == 'holding':
-            if self.timer >= self.hold:
+        elif self.phase == 'eyelid_stay_closed':
+            if self.timer >= self.eyelid_hold_closed:
                 self.phase = 'opening'
                 self.timer = 0.0
             return self.closed_cfg

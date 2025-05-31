@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from eyes.EyeExpressionManager import EyeExpressionManager
 from eyes.EyeState import EyeState
-from eyes.GazeInterpolator import GazeInterpolator
+from eyes.EyeGazeInterpolator import GazeInterpolator
 from helpers.global_config import EYE_EXPRESSIONS_PATH, EYE_EXPRESSIONS_FILE
 from eyes.tools.eye_maths import quantize_pupil
 
@@ -41,7 +41,6 @@ class EyeFrameComposer:
         self._dirty = True
 
     def set_gaze(self, x: int, y: int, pupil: float):
-        print(f"[EyeFrameComposer] bbb Setting gaze to ({x}, {y}) with pupil size {pupil}")
         self.state.x = int(x)
         self.state.y = int(y)
         self.state.pupil = quantize_pupil(pupil)
@@ -70,7 +69,6 @@ class EyeFrameComposer:
 
                 # Gaze update
                 self.set_gaze(self.state.x, self.state.y, self.state.pupil)
-                print(f"[EyeFrameComposer] ddd Updating gaze to ({self.state.x}, {self.state.y}) with pupil size {self.state.pupil}")
                 # Get lid config (either override or from expression)
                 # Handle blink override if active
                 dt = FRAME_DURATION  # ~0.016s at 60fps
@@ -84,7 +82,6 @@ class EyeFrameComposer:
                     lid_cfg = self.state.eyelid_cfg or self.expression_manager.get_mask_config()
 
                 # Render the gaze frame
-                print(f"[EyeFrameComposer] ccc Rendering gaze frame at ({self.state.x}, {self.state.y}) with pupil size {self.state.pupil}")
                 left_buf, right_buf = await asyncio.to_thread(
                     self.drawer.render_gaze_frame,
                     self.state.x,
@@ -106,7 +103,6 @@ class EyeFrameComposer:
                     masked = (left_buf, right_buf)
             
                 # Display the final frame
-                print("[EyeFrameComposer] aaa Displaying frame")
                 await asyncio.to_thread(
                     self.drawer.display,
                     masked
@@ -121,7 +117,6 @@ class EyeFrameComposer:
                     expression=self.state.expression,
                     blink=self.state.blink
                 )
-                print(f"[EyeFrameComposer] fff Frame drawn with state: {self._previous}")
                 self._dirty = False
 
             await asyncio.sleep(FRAME_DURATION)
