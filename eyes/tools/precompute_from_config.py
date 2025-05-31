@@ -14,22 +14,22 @@ def precompute_all_maps_from_config(config_path):
     profile = load_profile_config(config_path)
     texture_name = Path(config_path).stem
 
-    pupil_min = profile.get("pupil_min", 0.95)
-    pupil_max = profile.get("pupil_max", 1.15)
+    pupil_scale_min = profile.get("pupil_scale_min", 0.95)
+    pupil_scale_max = profile.get("pupil_scale_max", 1.15)
     pupil_step = 0.01
     iris_radius = profile.get("iris_radius", 44)
-    perspective_shift = profile.get("perspective_shift", 0.03)
+    gaze_perspective_shift = profile.get("gaze_perspective_shift", 0.03)
 
     print(f"[Precompute] Profile: {texture_name}")
-    print(f"  pupil range: {pupil_min} to {pupil_max}")
+    print(f"  pupil range: {pupil_scale_min} to {pupil_scale_max}")
     print(f"  iris_radius: {iris_radius}")
-    print(f"  perspective shift: {perspective_shift}")
+    print(f"  perspective shift: {gaze_perspective_shift}")
 
     deformer = EyeDeformer(texture_name=texture_name, verbose=True)
 
-    for pupil_size in np.arange(pupil_min, pupil_max + pupil_step, pupil_step):
+    for pupil_scale in np.arange(pupil_scale_min, pupil_scale_max + pupil_step, pupil_step):
         deformer.get_or_generate_pupil_warp_map(
-            pupil_size=round(pupil_size, 3),
+            pupil_scale=round(pupil_scale, 3),
             iris_radius=iris_radius
         )
 
@@ -38,7 +38,7 @@ def precompute_all_maps_from_config(config_path):
             deformer.get_or_generate_spherical_map(
                 x_off=x,
                 y_off=y,
-                strength=perspective_shift
+                strength=gaze_perspective_shift
             )
 
     print("[Precompute] Done.")

@@ -1,16 +1,16 @@
 {
+  "image_path": "whitegold02.png",
+  "animation_style": "vector",
   "iris_radius": 72,
-  "directional": true,
   "pupil_scale_min": 1.0,
   "pupil_scale_max": 1.0,
+  "pupil_warp_strength": 3.5,
   "gaze_perspective_shift": 0.2,
   "max_gaze_range": 10,
   "eyelid_close_speed": 0.01,
   "eyelid_open_speed": 0.01,
   "eyelid_hold_closed": 0.1,
-  "animation_style": "vector",
-  "expression_profile": "default",
+  "directional": true,
   "use_case": "passive",
-  "image_path": "vector03.png",
-  "pupil_warp_strength": 3.5
+  "expression_profile": "default"
 }

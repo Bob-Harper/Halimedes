@@ -14,9 +14,9 @@ def precompute_all_maps(
     deformer = EyeDeformer(texture_name=texture_name, verbose=True)
 
     print("[Precompute] Caching pupil warp maps...")
-    for pupil_size in np.arange(pupil_range[0], pupil_range[1] + pupil_step, pupil_step):
+    for pupil_scale in np.arange(pupil_range[0], pupil_range[1] + pupil_step, pupil_step):
         deformer.get_or_generate_pupil_warp_map(
-            pupil_size=round(pupil_size, 3),
+            pupil_scale=round(pupil_scale, 3),
             iris_radius=42
         )
 

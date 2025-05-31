@@ -58,16 +58,16 @@ class DrawEngine:
 
         return Image.fromarray(arr)
 
-    def render_gaze_frame(self, x, y, pupil_size=1.0):
-        key = self._cache_key(x, y, pupil_size)
+    def render_gaze_frame(self, x, y, pupil_scale=1.0):
+        key = self._cache_key(x, y, pupil_scale)
         if key not in self.gaze_cache:
             warped = self.deformer.generate_eye_frame(
                 self.image,
-                pupil_size=pupil_size,
+                pupil_scale=pupil_scale,
                 x=x,
                 y=y,
                 iris_radius=self.profile.iris_radius,
-                perspective_shift=self.profile.perspective_shift,
+                gaze_perspective_shift=self.profile.gaze_perspective_shift,
                 animation_style=self.animation_style
             )
             left_img = warped

@@ -21,11 +21,11 @@ class EyeDeformer:
     def generate_eye_frame(
         self,
         source_img,
-        pupil_size=1.0,
+        pupil_scale=1.0,
         x=90,
         y=90,
         iris_radius=42,
-        perspective_shift=0.02,
+        gaze_perspective_shift=0.02,
         animation_style=None
     ):
 
@@ -35,7 +35,7 @@ class EyeDeformer:
             warped_pupil = np.array(source_img)
         else:
             pupil_maps = self.get_or_generate_pupil_warp_map(
-                pupil_size=pupil_size,
+                pupil_scale=pupil_scale,
                 iris_radius=iris_radius,
             )
             warped_pupil = self.apply_pupil_warp(source_img, *pupil_maps)
@@ -46,7 +46,7 @@ class EyeDeformer:
             cropped_to_display,
             x=x,
             y=y,
-            strength=perspective_shift
+            strength=gaze_perspective_shift
         )
         return_image = Image.fromarray(final_img, mode='RGB')
         return return_image
@@ -91,12 +91,12 @@ class EyeDeformer:
             result = np.clip(result, 0, 255).astype(np.uint8)
         return result
 
-    def get_or_generate_pupil_warp_map(self, pupil_size, iris_radius):
+    def get_or_generate_pupil_warp_map(self, pupil_scale, iris_radius):
 
-        pupil_size = quantize_pupil(pupil_size)  # ensures stable keys
+        pupil_scale = quantize_pupil(pupil_scale)  # ensures stable keys
 
         key_dict = {
-            "pupil_size": pupil_size,
+            "pupil_scale": pupil_scale,
             "iris_radius": iris_radius,
             "warp_strength": self.warp_strength,
         }
@@ -112,7 +112,7 @@ class EyeDeformer:
         radius = np.sqrt(dx**2 + dy**2)
         angle  = np.arctan2(dy, dx)
 
-        delta = pupil_size - 1.0
+        delta = pupil_scale - 1.0
         scale = 1.0 - delta * self.warp_strength
 
         norm = np.clip(radius / iris_radius, 0.0, 1.0)

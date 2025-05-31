@@ -27,7 +27,7 @@ from helpers.general_utilities_manager import GeneralUtilitiesManager
 from eyes.EyeConfig import EyeConfig
 from eyes.EyeExpressionManager import EyeExpressionManager
 from eyes.EyeFrameComposer import EyeFrameComposer
-from eyes.GazeInterpolator import GazeInterpolator
+from eyes.EyeGazeInterpolator import GazeInterpolator
 
 # Initialize everything at module level
 print("Initializing components...")
@@ -80,18 +80,45 @@ async def main():
     
     await macro_player.run(
         """
-        gaze move to 80 80 1.0
-        wait 0.2
         gaze move to 90 90 1.0
-        wait 0.2
+        gaze move to 100 90 1.0
+        gaze move to 80 90 1.0
+        gaze move to 90 90 1.0
+        gaze move to 90 100 1.0
+        gaze move to 90 80 1.0
+        gaze move to 90 90 1.0
+
+        """
+    )    
+    await macro_player.run(
+        """
+        gaze move to 80 80 1.0
+        wait 1.2
+        gaze move to 90 90 1.0
+        wait 1.2
         gaze move to 100 100 1.0
-        wait 0.2
+        wait 1.2
         gaze move to 80 100 1.0
-        wait 0.2
+        wait 1.2
         gaze move to 100 100 1.0
-        wait 0.2
+        wait 1.2
         gaze move to 100 80 1.0
-        wait 0.2
+        wait 1.2
+        gaze move to 80 80 1.0
+        wait 1.2
+        gaze move to 90 90 1.0
+
+        """
+    )    
+    await macro_player.run(
+        """
+        gaze move to 80 80 1.0
+        gaze move to 90 90 1.0
+        gaze move to 100 100 1.0
+        gaze move to 80 100 1.0
+        gaze move to 100 100 1.0
+        gaze move to 100 80 1.0
+        gaze move to 80 80 1.0
         gaze move to 90 90 1.0
 
         """
