@@ -6,7 +6,7 @@ import os
 import time
 # Explicitly clear any previously cached env variables
 os.environ.clear()
-from helpers.global_config import OLLAMALAPTOP
+from helpers.global_config import OLLAMASERVER
 """ 
 NOTE Import the Picrawler class first to pass through.
 This prevents multiple initializations of the Picrawler class.
@@ -39,7 +39,7 @@ eye_animator = EyeAnimator(eye_profile)
 composer = EyeFrameComposer(eye_animator, None)
 expression_manager = EyeExpressionManager(eye_animator, composer)
 composer.expression_manager = expression_manager
-server_host = OLLAMALAPTOP
+server_host = OLLAMASERVER
 llm_client = LLMClientHandler(server_host)
 voiceprint_manager = VoiceRecognitionManager()
 command_manager = CommandManager(llm_client, picrawler_instance, eye_animator)

@@ -83,14 +83,17 @@ class MacroPlayer:
             await self.gaze.move_to(x, y, 1.0)
 
     async def _expression(self, arg: str):
+        print(f"[MacroPlayer] Received expression command: '{arg}'")
         if not self.expression:
+            print("[MacroPlayer] No expression channel assigned.")
             return
         if arg.startswith("set mood"):
             _, _, mood = arg.partition("set mood")
             mood = mood.strip()
-            # print(f"[Macro] Expression -> set mood to '{mood}'")
-            # print("calling channels.py ExpressionManager - await self.expression.set_mood(mood) ")
+            print(f"[MacroPlayer] Dispatching mood: {mood}")
             await self.expression.set_mood(mood)
+        else:
+            print(f"[MacroPlayer] Unknown expression command: {arg}")
 
     async def _speak(self, text: str):
         if self.speech:

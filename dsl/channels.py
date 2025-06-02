@@ -32,6 +32,7 @@ class ExpressionChannel:
         self.expression_manager = expression_manager
 
     async def set_mood(self, mood: str):
+        print(f"[ExpressionChannel] set_mood called with: {mood}")
         self.expression_manager.set_expression(mood)
 
 
