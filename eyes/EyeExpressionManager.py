@@ -19,26 +19,15 @@ class EyeExpressionManager:
         self.composer = composer
         self.multi_file = multi_file
         self.expressions = self._load_expressions()
-        self.state = EyeState()
-        neutral = expression_map.get("neutral", {})
         # ensure all four corners exist
-        self.lids = {
-            "eye1_top_left":        neutral.get("eye1_top_left",    36),
-            "eye1_top_right":       neutral.get("eye1_top_right",   40),
-            "eye1_bottom_left":     neutral.get("eye1_bottom_left",  0),
-            "eye1_bottom_right":    neutral.get("eye1_bottom_right", 0),
-            "eye2_top_left":        neutral.get("eye2_top_left",    36),
-            "eye2_top_right":       neutral.get("eye2_top_right",   36),
-            "eye2_bottom_left":     neutral.get("eye2_bottom_left",  40),
-            "eye2_bottom_right":    neutral.get("eye2_bottom_right", 40),
-        }
-        self.expression_map = expression_map
+        self.lids = {}
+        self.expression_map = self.expressions
         self.duration = duration
         self.eyelid_hold_closed = eyelid_hold_closed
         self.timer = 0.0
         self.active = False
         self.phase = None  # 'closing', 'eyelid_stay_closed', 'opening'
-
+        self.state = EyeState()
         self.closed_cfg = {
             "eye1_top_left": 0, "eye1_top_right": 0,
             "eye1_bottom_left": 0, "eye1_bottom_right": 0,
@@ -50,14 +39,18 @@ class EyeExpressionManager:
         self.timer = 0.0
         self.active = True
         self.phase = 'closing'
+        self.blink_start_cfg = self.lids.copy()  # capture expression *at start*
 
-    def is_blinking(self):
+
+    def is_blinking(self):  # CHECK FOR REDUNDANCY REMOVAL
+        print(f"[EyelidController] www Checking if blinking: {self.active}")
         return self.active
 
     def update_blink(self, dt):
         if not self.active:
             return None
-
+        
+        print(f"[Blink] Phase: {self.phase}, timer: {self.timer:.3f}")
         self.timer += dt
 
         if self.phase == 'closing':
@@ -65,31 +58,51 @@ class EyeExpressionManager:
                 self.phase = 'eyelid_stay_closed'
                 self.timer = 0.0
             t = self.timer / self.duration
-            return self._interpolate(self.get_current_mask(), self.closed_cfg, t)
+            print(f"[Blink] CLOSING t={t:.2f}")
+            print(f"[Blink] Interpolating FROM {self.blink_start_cfg} TO {self.closed_cfg}")
+            return self._interpolate(self.blink_start_cfg, self.closed_cfg, t)
 
         elif self.phase == 'eyelid_stay_closed':
             if self.timer >= self.eyelid_hold_closed:
                 self.phase = 'opening'
                 self.timer = 0.0
+            print(f"[Blink] STAY CLOSED using: {self.closed_cfg}")
             return self.closed_cfg
 
         elif self.phase == 'opening':
             if self.timer >= self.duration:
                 self.active = False
                 self.phase = None
+                print("[Blink] COMPLETE. Returning to expression lids.")
                 return None
             t = self.timer / self.duration
-            return self._interpolate(self.closed_cfg, self.get_current_mask(), t)
+            current_lids = self.get_mask_config()
+            print(f"[Blink] OPENING t={t:.2f}")
+            print(f"[Blink] Interpolating FROM {self.closed_cfg} TO {current_lids}")
+            return self._interpolate(self.closed_cfg, current_lids, t)
+
 
     def _interpolate(self, from_cfg, to_cfg, t):
+        missing_keys = [k for k in from_cfg if k not in to_cfg]
+        if missing_keys:
+            print(f"[EyelidController] !!! ERROR: Missing keys in target config: {missing_keys}")
+            raise KeyError(missing_keys[0])
+
         return {
             k: int(round((1 - t) * from_cfg[k] + t * to_cfg[k]))
             for k in from_cfg
         }
 
     def set_eyelid_expression(self, name: str):
-        # print(f"[LidController] Switching to expression: {name}")
+        if self.state.expression == name:
+            print(f"[ExprMgr] === Skipping redundant eyelid config for '{name}'")
+            return
+
+        self.state.expression = name  # make sure this tracks the last set
         exp = self.expression_map.get(name)
+        
+        print("[ExprMgr] rrr Switching to expression:", name)
+        print("[ExprMgr] fff Loaded mask:", exp)        
         if not exp:
             print(f"[EyelidController] Unknown expression: {name}")
             return
@@ -102,11 +115,19 @@ class EyeExpressionManager:
         ):
             if corner in exp:
                 self.lids[corner] = exp[corner]
+        print(f"[EyelidController] vvv Current eyelid config: {self.lids}") 
 
-    def get_mask_config(self) -> dict:
-        lids = self.lids
-        # print(f"[get_current_mask] Current mask: {lids}")
-        return lids
+
+    def get_mask_config(self) -> dict:  # CHECK FOR REDUNDANCY REMOVAL
+        if not self.lids:
+            print("[EyelidController] !!! WARNING: get_mask_config() called before expression set.")
+            return {
+                "eye1_top_left": 36, "eye1_top_right": 36,
+                "eye1_bottom_left": 40, "eye1_bottom_right": 40,
+                "eye2_top_left": 36, "eye2_top_right": 36,
+                "eye2_bottom_left": 40, "eye2_bottom_right": 40
+            }  # fallback, temporary
+        return self.lids
 
     def _load_expressions(self):
         expressions = {}
@@ -133,19 +154,23 @@ class EyeExpressionManager:
 
     def update_expression(self):
         assert self.composer is not None, "Composer must be set before updating expression"
-        if self.composer.state.expression:
+        if self.composer.state.expression != self.state.expression:
+            print(f"[ExprMgr] *** Composer state changed, updating from '{self.state.expression}' to '{self.composer.state.expression}'")
             self.set_eyelid_expression(self.composer.state.expression)
+            self.state.expression = self.composer.state.expression
             self.composer.set_eyelids(self.get_mask_config())
         else:
-            self.composer.set_eyelids(None)
+            print(f"[ExprMgr] --- Expression unchanged: '{self.state.expression}', skipping update")
 
-    def get_current_mask(self):
+    def get_current_mask(self):  # CHECK FOR REDUNDANCY REMOVAL
         # Return the current eyelid mask configuration
+        # print("[EyeExpressionManager] yyy Getting current mask configuration")
         return self.get_mask_config()
 
     async def animate_expression(self, mood: str, steps=16, delay=0.01):
         assert self.composer is not None, "Composer must be set before animating expression"
         target = self.expression_map.get(mood)
+        print(f"[EyeExpressionManager] hhh Animating expression: {mood} with target config: {target}")
         if not target:
             print(f"[EyeExpressionManager] Unknown expression: {mood}")
             return
@@ -153,6 +178,7 @@ class EyeExpressionManager:
         start_cfg = self.lids.copy()
         for step in range(1, steps + 1):
             frac = step / steps
+            # print(f"[EyeExpressionManager] nnn Tweening step {step}/{steps} with fraction {frac}")
             interp_cfg = {
                 k: int(start_cfg.get(k, 0) + (target.get(k, 0) - start_cfg.get(k, 0)) * frac)
                 for k in target
@@ -162,11 +188,25 @@ class EyeExpressionManager:
 
             # Hand off the current state to Composer
             self.composer.set_eyelids(interp_cfg)
+            print(f"[EyeExpressionManager] uuu Updated eyelids to {interp_cfg}")
             await asyncio.sleep(delay)
 
         self.composer.set_eyelids(None)  # release override once tween done
+        # print("[EyeExpressionManager] jjj Animation complete, eyelids cleared")
 
-    # set_expression changes the high-level mood, the expression manager handles the lid config
     async def set_expression(self, mood: str):
+        print(f"[ExprMgr] !!! NEW EXPRESSION SET: {mood}")
+        if self.state.expression == mood:
+            print(f"[ExprMgr] (SKIP) Already in expression '{mood}'")
+            return
+        assert self.composer is not None, "Composer must be set before animating expression"
+
         self.state.expression = mood
-        self._dirty = True
+        if self.composer:
+            self.composer.state.expression = mood
+            self.composer._dirty = True
+
+        # Force apply and log
+        self.set_eyelid_expression(mood)
+        print(f"[ExprMgr] >>> set lids to: {self.lids}")
+        self.composer.set_eyelids(self.get_mask_config())

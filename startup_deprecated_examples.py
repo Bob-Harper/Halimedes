@@ -3,7 +3,7 @@
 # import warnings
 # warnings.simplefilter('ignore')
 # import asyncio
-# from helpers.global_config import OLLAMALAPTOP
+# from helpers.global_config import OLLAMASERVER
 # """ 
 # Import the Picrawler class from the picrawler module first 
 # to pass through to all helper classes that use it.  This
@@ -33,7 +33,7 @@
 # eye_animator = EyeAnimator(eye_profile)
 # #blinker = BlinkEngine(eye_animator)
 # # template_manager = PromptTemplateManager(model_name="gemma3:1b")
-# llm_client = LLMClientHandler(server_host=OLLAMALAPTOP)
+# llm_client = LLMClientHandler(server_host=OLLAMASERVER)
 # voiceprint_manager = VoiceRecognitionManager()
 # command_manager = CommandManager(llm_client, picrawler_instance, eye_animator)
 # audio_input = AudioInputManager(picrawler_instance)
