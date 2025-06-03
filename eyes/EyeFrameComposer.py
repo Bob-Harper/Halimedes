@@ -1,6 +1,7 @@
 import asyncio
 import random
 import json
+import traceback
 from eyes.DrawEngine import DrawEngine
 from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
@@ -22,18 +23,22 @@ FRAME_DURATION = 1.0 / FRAME_RATE
 class EyeFrameComposer:
     def __init__(self, 
                  eye_profile,
-                 gaze_interpolator: Optional['GazeInterpolator'] = None,
-                 expression_manager: Optional['EyeExpressionManager'] = None
                  ):
+        print("[Composer] CONSTRUCTED:", id(self))
+        traceback.print_stack(limit=4)
         self.eye_profile = eye_profile
-        self.expression_manager = expression_manager
-        self.gaze_interpolator = gaze_interpolator
+        self.expression_manager = None
+        self.gaze_interpolator = None
         self.state = EyeState()
         self._previous = EyeState()
         self.drawer = DrawEngine(self.eye_profile)
         self.running = False
         self._dirty = True
         self._frame_drawn_event = asyncio.Event()
+
+    def setup(self, gaze_interpolator, expression_manager):
+        self.gaze_interpolator = gaze_interpolator
+        self.expression_manager = expression_manager
 
     # set_eyelids directly overrides the current eyelid mask (used for blinks or tweening)
     def set_eyelids(self, lid_cfg: dict | None):

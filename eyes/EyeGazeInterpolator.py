@@ -8,10 +8,12 @@ import random
 
 class GazeInterpolator:
     def __init__(self,
-                 composer: Optional['EyeFrameComposer'] = None
                  ):
-        self.composer = composer
+        self.composer = None
 
+    def setup(self, composer):
+        self.composer = composer
+        
     async def smooth_gaze(self, x, y, pupil=1.0):
         await self.interpolate_gaze(x, y, pupil)
 
