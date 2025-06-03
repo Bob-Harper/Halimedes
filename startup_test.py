@@ -67,11 +67,11 @@ print(f"[Debug] gaze_interpolator.composer: {id(gaze_interpolator.composer)}")
 async def main():
     print("Entered main()")
     print(">>>> STARTING MAIN")
-    # try:
-    #     await expression_manager.set_expression("test2")
-    #     print("[Startup] Expression set to 'test2'")
-    # except Exception as e:
-    #     print(f"[Startup] CRASHED in set_expression: {e}")
+    try:
+        await expression_manager.set_expression("test2")
+        print("[Startup] Expression set to 'test2'")
+    except Exception as e:
+        print(f"[Startup] CRASHED in set_expression: {e}")
 
 
     print("Starting EyeFrameComposer loop.")

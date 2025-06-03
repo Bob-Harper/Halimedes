@@ -94,9 +94,9 @@ class EyeExpressionManager:
         }
 
     def set_eyelid_expression(self, name: str):
-        if self.state.expression == name:
-            print(f"[ExprMgr] === Skipping redundant eyelid config for '{name}'")
-            return
+        # if self.state.expression == name:
+        #     print(f"[ExprMgr] === Skipping redundant eyelid config for '{name}'")
+        #     return
 
         self.state.expression = name  # make sure this tracks the last set
         exp = self.expression_map.get(name)
@@ -152,15 +152,24 @@ class EyeExpressionManager:
                 print(f"[ExpressionManager] Failed to load expressions: {e}")
         return expressions
 
+    # def update_expression(self):
+    #     assert self.composer is not None, "Composer must be set before updating expression"
+    #     if self.composer.state.expression != self.state.expression:
+    #         print(f"[ExprMgr] *** Composer state changed, updating from '{self.state.expression}' to '{self.composer.state.expression}'")
+    #         self.set_eyelid_expression(self.composer.state.expression)
+    #         self.state.expression = self.composer.state.expression
+    #         self.composer.set_eyelids(self.get_mask_config())
+    #     else:
+    #         print(f"[ExprMgr] --- Expression unchanged: '{self.state.expression}', skipping update")
+
     def update_expression(self):
         assert self.composer is not None, "Composer must be set before updating expression"
-        if self.composer.state.expression != self.state.expression:
-            print(f"[ExprMgr] *** Composer state changed, updating from '{self.state.expression}' to '{self.composer.state.expression}'")
-            self.set_eyelid_expression(self.composer.state.expression)
-            self.state.expression = self.composer.state.expression
-            self.composer.set_eyelids(self.get_mask_config())
-        else:
-            print(f"[ExprMgr] --- Expression unchanged: '{self.state.expression}', skipping update")
+        # 👇 Force reapply lids on every frame
+        current_expr = self.composer.state.expression
+        self.set_eyelid_expression(current_expr)
+        self.composer.set_eyelids(self.get_mask_config())
+        print(f"[EyeExpressionManager] ggg [FORCED] Applied expression '{current_expr}' with lids: {self.get_mask_config()}")
+
 
     def get_current_mask(self):  # CHECK FOR REDUNDANCY REMOVAL
         # Return the current eyelid mask configuration
