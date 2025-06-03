@@ -33,14 +33,13 @@ from eyes.EyeGazeInterpolator import GazeInterpolator
 print("Initializing components...")
 eye_profile = EyeConfig.load_eye_profile("whitegold01")
 print("Eye profile loaded.")
-composer = EyeFrameComposer(eye_profile, None, None)
-gaze_interpolator = GazeInterpolator(composer)
-expression_manager = EyeExpressionManager(composer)
+composer = EyeFrameComposer(eye_profile)
+gaze_interpolator = GazeInterpolator()
+expression_manager = EyeExpressionManager()
 
-composer.gaze_interpolator = gaze_interpolator
-composer.expression_manager = expression_manager
-gaze_interpolator.composer = composer
-expression_manager.composer = composer
+composer.setup(gaze_interpolator, expression_manager)
+gaze_interpolator.setup(composer)
+expression_manager.setup(composer)
 
 server_host = OLLAMASERVER
 llm_client = LLMClientHandler(server_host)
@@ -60,6 +59,7 @@ macro_player = MacroPlayer(
     sound=SoundChannel(emotion_sound_manager.play_sound)
 )
 print(f"[Debug] composer: {id(composer)}")
+print(f"[Debug] expression_manager: {id(expression_manager)} composer: {id(expression_manager.composer)}")
 print(f"[Debug] expression_manager.composer: {id(expression_manager.composer)}")
 print(f"[Debug] gaze_interpolator.composer: {id(gaze_interpolator.composer)}")
 
