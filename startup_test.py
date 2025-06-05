@@ -68,7 +68,7 @@ async def main():
     print("Entered main()")
     print(">>>> STARTING MAIN")
     try:
-        await expression_manager.set_expression("test2")
+        await expression_manager.set_expression("neutral")
         print("[Startup] Expression set to 'test2'")
     except Exception as e:
         print(f"[Startup] CRASHED in set_expression: {e}")
@@ -82,6 +82,44 @@ async def main():
     
     await macro_player.run(
         """
+        gaze move to 90 90 1.0
+        wait 1.2
+        expression set mood neutral
+        gaze move to 100 90 1.0
+        wait 1.2
+        expression set mood sleepy
+        gaze move to 80 90 1.0
+        wait 1.2
+        expression set mood positive
+        gaze move to 90 90 1.0
+        wait 1.2
+        expression set mood negative
+        gaze move to 90 100 1.0
+        wait 1.2
+        expression set mood joy
+        gaze move to 90 80 1.0
+        wait 1.2
+        expression set mood surprise
+        gaze move to 90 90 1.0
+        gaze move to 90 90 1.0
+        wait 1.2
+        expression set mood neutral
+        gaze move to 100 90 1.0
+        wait 1.2
+        expression set mood sleepy
+        gaze move to 80 90 1.0
+        wait 1.2
+        expression set mood positive
+        gaze move to 90 90 1.0
+        wait 1.2
+        expression set mood negative
+        gaze move to 90 100 1.0
+        wait 1.2
+        expression set mood joy
+        gaze move to 90 80 1.0
+        wait 1.2
+        expression set mood surprise
+        gaze move to 90 90 1.0
         gaze move to 90 90 1.0
         wait 1.2
         expression set mood neutral
