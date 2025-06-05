@@ -16,15 +16,13 @@ if not expressionconfig_path.exists():
     raise FileNotFoundError(f"[EyeLoader] No profile named '{EYE_EXPRESSIONS_FILE}' in {EYE_EXPRESSIONS_PATH}/")
 with open(expressionconfig_path, "r") as f:
     expression_map = json.load(f)
-FRAME_RATE = 30
+FRAME_RATE = 60
 FRAME_DURATION = 1.0 / FRAME_RATE
 
 
 class EyeFrameComposer:
-    def __init__(self, 
-                 eye_profile,
-                 ):
-        print("[Composer] CONSTRUCTED:", id(self))
+    def __init__(self, eye_profile):
+        # print("[Composer] CONSTRUCTED:", id(self))
         traceback.print_stack(limit=4)
         self.eye_profile = eye_profile
         self.expression_manager = None
@@ -37,21 +35,22 @@ class EyeFrameComposer:
         self._frame_drawn_event = asyncio.Event()
 
     def setup(self, gaze_interpolator, expression_manager):
+        # print(f"[Composer] Setup called with gaze_interpolator={id(gaze_interpolator)}, expression_manager={id(expression_manager)}")
         self.gaze_interpolator = gaze_interpolator
         self.expression_manager = expression_manager
 
-    # set_eyelids directly overrides the current eyelid mask (used for blinks or tweening)
     def set_eyelids(self, lid_cfg: dict | None):
+        # print(f"[Composer] set_eyelids called with: {lid_cfg}")
         self.state.eyelid_cfg = lid_cfg
-        # print(f"[EyeFrameComposer] j6l Eyelids set to {lid_cfg}")
         self._dirty = True
 
     def set_gaze(self, x: int, y: int, pupil: float):
+        # print(f"[Composer] set_gaze called with x={x}, y={y}, pupil={pupil}")
         self.state.x = int(x)
         self.state.y = int(y)
         self.state.pupil = quantize_pupil(pupil)
         self._dirty = True
-        
+
     async def wait_for_frame(self):
         try:
             await asyncio.wait_for(self._frame_drawn_event.wait(), timeout=1)
@@ -62,75 +61,71 @@ class EyeFrameComposer:
         assert self.gaze_interpolator is not None, "Gaze interpolator is not set"
         assert self.expression_manager is not None, "Expression manager is not set"
         self.running = True
+        # print("[Composer] start_loop entered")
         while self.running:
             if self._dirty or self.state != self._previous:
-                
-                if random.random() < 0.05:  # ~1% chance per frame
+                # print("[Composer] State dirty or changed, proceeding with frame update")
+                if random.random() < 0.05:
                     if not self.expression_manager.is_blinking():
-                        print("[Blink] Triggered")
+                        # print("[Blink] Triggered")
                         self.expression_manager.trigger()
 
-                # Clear the event before starting a new frame render
                 self._frame_drawn_event.clear()
 
-                # Gaze update
                 self.set_gaze(self.state.x, self.state.y, self.state.pupil)
-                print(f"[EyeFrameComposer] g4i Gaze set to ({self.state.x}, {self.state.y}) with pupil {self.state.pupil}")              
-                # Only update expression if not blinking
+                # print(f"[Composer] Current Gaze: ({self.state.x}, {self.state.y}) Pupil: {self.state.pupil}")
+
                 if not self.expression_manager.is_blinking():
+                    # print("[Composer] Updating expression (not blinking)")
                     self.expression_manager.update_expression()
-                    # print(f"[EyeFrameComposer] f5d Expression NOT blinking, updated to {self.expression_manager.get_current_mask()}")
                 else:
-                    print(f"[EyeFrameComposer] h7d Expression IS BLINKING, update skipped.")                
-                # Handle blink override if active
-                dt = FRAME_DURATION  # ~0.016s at 60fps
+                    print("[Composer] Skipping expression update (blinking)")
+
+                dt = FRAME_DURATION
                 if self.expression_manager and self.expression_manager.is_blinking():
                     blink_lids = self.expression_manager.update_blink(dt)
                     if blink_lids:
                         lid_cfg = blink_lids
-                        print(f"[EyeFrameComposer] Blink override active with lids: {lid_cfg}")
+                        # print(f"[Composer] Blink override active. Using lids: {lid_cfg}")
                     else:
                         lid_cfg = self.state.eyelid_cfg or self.expression_manager.get_mask_config()
-                        print("[EyeFrameComposer] a8c No blink override, using eyelid config.")
+                        # print("[Composer] Blink override ended. Falling back to expression lids.")
                 else:
                     lid_cfg = self.state.eyelid_cfg or self.expression_manager.get_mask_config()
-                    print("[EyeFrameComposer] d3f No blink override, using eyelid config.")
-                # Render the gaze frame
+                    # print("[Composer] No blink override. Using expression lids.")
+
+                # print(f"[Composer] Frame eyelids set to: {lid_cfg}")
+
                 left_buf, right_buf = await asyncio.to_thread(
                     self.drawer.render_gaze_frame,
                     self.state.x,
                     self.state.y,
                     self.state.pupil
                 )
-                # Apply lids (expression masks)
+
                 try:
                     masked = await asyncio.to_thread(
                         self.drawer.apply_lids,
                         (left_buf, right_buf), lid_cfg
                     )
-                    print("[EyeFrameComposer] e2b Lids applied successfully.")
-                except Exception:
-                    print("[EyeFrameComposer] Error applying lids, using unmasked buffers.")
+                    # print("[Composer] Lids applied successfully.")
+                except Exception as e:
+                    # print(f"[Composer] Error applying lids: {e}. Using unmasked buffers.")
                     masked = (left_buf, right_buf)
-            
-                # Display the final frame
-                await asyncio.to_thread(
-                    self.drawer.display,
-                    masked
-                )
-                print("[EyeFrameComposer] Frame displayed successfully.")
-                # Signal that the frame has been drawn
+
+                await asyncio.to_thread(self.drawer.display, masked)
+                # print("[Composer] Frame displayed successfully.")
                 self._frame_drawn_event.set()
-                print("[EyeFrameComposer] Frame drawn and event set.")
+                # print("[Composer] Frame event set.")
+
             else:
-                # Save the current state
+                # print("[Composer] No changes detected. Skipping frame update.")
                 self._previous = EyeState(
                     x=self.state.x, y=self.state.y,
                     pupil=self.state.pupil,
                     expression=self.state.expression,
                     blink=self.state.blink
                 )
-                print("[EyeFrameComposer] No changes detected, skipping frame render.")
                 self._dirty = False
 
             await asyncio.sleep(FRAME_DURATION)
