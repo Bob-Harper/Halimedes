@@ -83,6 +83,8 @@ class EyeCacheManager:
     """    
 
     def warm_up_cache(self, kind="pupil", verbose=False, max_files=None):
+        print(__file__)
+        print("Running from", __name__)
         ext = ".npz" if kind == "spherical" else ".npy"
         cache_dir = self.pupil_dir if kind == "pupil" else self.spherical_dir
         log_file = self.base_dir / f"bad_cache_{kind}.log"
