@@ -1,9 +1,5 @@
-from typing import TYPE_CHECKING, Optional
-if TYPE_CHECKING:
-    from eyes.EyeFrameComposer import EyeFrameComposer
 from eyes.tools.eye_maths import quantize_pupil
 import asyncio
-import random
 
 
 class GazeInterpolator:

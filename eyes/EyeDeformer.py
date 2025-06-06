@@ -15,7 +15,7 @@ class EyeDeformer:
             ):
         self.cache = EyeCacheManager(texture_name=texture_name)
         self.warp_strength = pupil_warp_strength
-        self.animation_style="default"
+        self.animation_style=animation_style
         self.verbose = verbose
 
     def generate_eye_frame(

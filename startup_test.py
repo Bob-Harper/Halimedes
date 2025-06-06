@@ -3,7 +3,6 @@ import asyncio
 import warnings
 warnings.simplefilter('ignore')
 import os
-# Explicitly clear any previously cached env variables
 os.environ.clear()
 from helpers.global_config import OLLAMASERVER
 """ 
@@ -30,9 +29,7 @@ from eyes.EyeFrameComposer import EyeFrameComposer
 from eyes.EyeGazeInterpolator import GazeInterpolator
 
 # Initialize everything at module level
-print("Initializing components...")
 eye_profile = EyeConfig.load_eye_profile("whitegold01")
-print("Eye profile loaded.")
 composer = EyeFrameComposer(eye_profile)
 gaze_interpolator = GazeInterpolator()
 expression_manager = EyeExpressionManager()
@@ -51,6 +48,7 @@ emotion_sound_manager = EmotionalSoundsManager()
 actions_manager = PassiveActionsManager(picrawler_instance)
 response_manager = Response_Manager(picrawler_instance, actions_manager)
 general_utils = GeneralUtilitiesManager(picrawler_instance)
+
 macro_player = MacroPlayer(
     gaze=GazeChannel(gaze_interpolator),
     expression=ExpressionChannel(expression_manager),
@@ -58,23 +56,10 @@ macro_player = MacroPlayer(
     action=ActionChannel(actions_manager),
     sound=SoundChannel(emotion_sound_manager.play_sound)
 )
-print(f"[Debug] composer: {id(composer)}")
-print(f"[Debug] expression_manager: {id(expression_manager)} composer: {id(expression_manager.composer)}")
-print(f"[Debug] expression_manager.composer: {id(expression_manager.composer)}")
-print(f"[Debug] gaze_interpolator.composer: {id(gaze_interpolator.composer)}")
 
 
 async def main():
     print("Entered main()")
-    print(">>>> STARTING MAIN")
-    try:
-        await expression_manager.set_expression("neutral")
-        print("[Startup] Expression set to 'test2'")
-    except Exception as e:
-        print(f"[Startup] CRASHED in set_expression: {e}")
-
-
-    print("Starting EyeFrameComposer loop.")
     asyncio.create_task(composer.start_loop())  
   
     # NOTE macros may be broken into multiple sequences for a reason during debugging.  
@@ -82,6 +67,7 @@ async def main():
     
     await macro_player.run(
         """
+        expression set mood sleepy
         gaze move to 90 90 1.0
         wait 1.2
         expression set mood neutral
@@ -144,9 +130,6 @@ async def main():
     )    
 
     print("Macro complete. Shutting down render loops.")
-    print(">>>> END OF MAIN")
 
 if __name__ == "__main__":
-    print(__file__)
-    print("Running from", __name__)
     asyncio.run(main())

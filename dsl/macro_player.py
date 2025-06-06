@@ -83,6 +83,7 @@ class MacroPlayer:
             await self.gaze.move_to(x, y, 1.0)
 
     async def _expression(self, arg: str):
+        
         print(f"[MacroPlayer] Received expression command: '{arg}'")
         if not self.expression:
             print("[MacroPlayer] No expression channel assigned.")

@@ -12,9 +12,9 @@ class DrawEngine:
             pupil_warp_strength=eye_profile.pupil_warp_strength,
         )
         self.animation_style = eye_profile.animation_style
-        # Convert PIL image to NumPy array once here
+        # Resize and Convert PIL image to NumPy array
         if isinstance(eye_profile.image, Image.Image):
-            eye_img = eye_profile.image.resize((180, 180))  # ← if needed, do it here
+            eye_img = eye_profile.image.resize((180, 180))
             self.image = np.array(eye_img)
         else:
             self.image = eye_profile.image
@@ -23,19 +23,16 @@ class DrawEngine:
         self._lid_mask_cache = {}
 
     def _mask_key(self, cfg):
-        # print("[DrawEngine] qaz Generating mask key with cfg:", cfg)
         return tuple(cfg.values())
 
     def _get_lid_mask(self, lid_cfg):
         key = self._mask_key(lid_cfg)
         if key not in self._lid_mask_cache:
             self._lid_mask_cache[key] = self._make_mask_images(lid_cfg)
-        # print("[DrawEngine] wsx Generating mask with cfg:", lid_cfg)
     
         return self._lid_mask_cache[key]
 
     def _make_mask_images(self, cfg: dict) -> tuple[Image.Image, Image.Image]:
-        # print("[DrawEngine] edc Making mask images with cfg:", cfg)
         w, h = self.width, self.height
 
         def make_mask(tl, tr, bl, br):
@@ -43,7 +40,6 @@ class DrawEngine:
             d = ImageDraw.Draw(m)
             d.polygon([(0,0),(w,0),(w, tr),(0, tl)], fill=0)
             d.polygon([(0,h),(w,h),(w, h - br),(0, h - bl)], fill=0)
-            # print("[DrawEngine] rfv Created mask with corners:", tl, tr, bl, br)
             d.polygon([(0,0),(tl,0),(tr,0),(w,0)], fill=0)
             return m
 
@@ -56,15 +52,10 @@ class DrawEngine:
     def _apply_mask_np(self, img: Image.Image, mask: Image.Image) -> Image.Image:
         arr = np.array(img)
         mask_arr = np.array(mask)
-        # print("[DrawEngine] tgb Applying mask to image with shape:", arr.shape, "and mask shape:", mask_arr.shape)
-        # Ensure mask is broadcastable
         if mask_arr.ndim == 2 and arr.ndim == 3:
             mask_arr = np.expand_dims(mask_arr, axis=2)  # (H, W) → (H, W, 1)
 
-        # Create a black image
         black = np.zeros_like(arr)
-        # print("[DrawEngine] yhn Creating black image with shape:", black.shape)
-        # Where mask is 0, apply black
         result = np.where(mask_arr == 0, black, arr)
 
         return Image.fromarray(result.astype(np.uint8))
@@ -104,7 +95,6 @@ class DrawEngine:
     def display(self, bufs):
 
         if not bufs or not isinstance(bufs, tuple) or len(bufs) != 2:
-            # print("[DrawEngine] Invalid buffer passed to display. Skipping.")
             return
 
         left_buf, right_buf = bufs
@@ -127,8 +117,8 @@ class DrawEngine:
         bufs: tuple[bytearray, bytearray],
         lid_cfg: dict
         ) -> tuple[bytearray, bytearray]:
+        
         left_raw, right_raw = bufs
-        # print("[DrawEngine] ujm Applying lids with config:", lid_cfg)
         def buf_to_img(buf):
             arr = np.frombuffer(buf, dtype=np.uint8).reshape((160, 160, 2))
             rgb565 = (arr[:, :, 0].astype(np.uint16) << 8) | arr[:, :, 1].astype(np.uint16)
@@ -140,12 +130,10 @@ class DrawEngine:
 
         img1 = buf_to_img(left_raw)
         img2 = buf_to_img(right_raw)
-        # print("[DrawEngine] iki Converted buffers to images for lid application.")
         m1, m2 = self._get_lid_mask(lid_cfg)
         masked_left_img  = self._apply_mask_np(img1, m1)
         masked_right_img = self._apply_mask_np(img2, m2)
 
         left_buf  = self._get_buffer(masked_left_img)
         right_buf = self._get_buffer(masked_right_img)
-        # print("[DrawEngine] olo Applied masks to images and converted back to buffers.")
         return left_buf, right_buf
