@@ -68,7 +68,7 @@ class LLMClientHandler:
                     'messages': chat_payload,
                     'stream':   False,
                     'options': {
-                        'temperature': 0.8,
+                        'temperature': 0.7,
                         'top_k':       20,
                         'top_p':       0.9
                     }

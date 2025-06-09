@@ -3,10 +3,10 @@ import asyncio
 import warnings
 warnings.simplefilter('ignore')
 import os
-import time
 # Explicitly clear any previously cached env variables
 os.environ.clear()
 from helpers.global_config import OLLAMASERVER
+import time
 """ 
 NOTE Import the Picrawler class first to pass through.
 This prevents multiple initializations of the Picrawler class.
@@ -22,44 +22,46 @@ from audio_input.verbal_commands import CommandManager
 from audio_input.voice_recognition_manager import VoiceRecognitionManager
 from mind.emotional_sounds_manager import EmotionalSoundsManager
 from mind.emotions_manager import EmotionCategorizer
-from body.robot_hat import Motors
+# from body.robot_hat.searchlight import Motor as Searchlight
 from helpers.weather_command_manager import WeatherCommandManager
 from helpers.llm_client_handler import LLMClientHandler
 from helpers.passive_actions_manager import PassiveActionsManager
 from helpers.general_utilities_manager import GeneralUtilitiesManager
 from helpers.news_handler import NewsHandler
-from eyes.EyeFrameComposer import load_eye_profile
-from eyes.EyeFrameComposer import EyeAnimator
+from eyes.EyeConfig import EyeConfig
 from eyes.EyeExpressionManager import EyeExpressionManager
 from eyes.EyeFrameComposer import EyeFrameComposer
+from eyes.EyeGazeInterpolator import GazeInterpolator
 
 # Initialize everything at module level
-eye_profile = load_eye_profile("vector03")
-eye_animator = EyeAnimator(eye_profile)
-composer = EyeFrameComposer(eye_animator, None)
-expression_manager = EyeExpressionManager(eye_animator, composer)
-composer.expression_manager = expression_manager
+eye_profile = EyeConfig.load_eye_profile("whitegold01")
+composer = EyeFrameComposer(eye_profile)
+gaze_interpolator = GazeInterpolator()
+expression_manager = EyeExpressionManager()
+
+composer.setup(gaze_interpolator, expression_manager)
+gaze_interpolator.setup(composer)
+expression_manager.setup(composer)
 server_host = OLLAMASERVER
 llm_client = LLMClientHandler(server_host)
 voiceprint_manager = VoiceRecognitionManager()
-command_manager = CommandManager(llm_client, picrawler_instance, eye_animator)
+command_manager = CommandManager(llm_client, picrawler_instance)
 audio_input = AudioInputManager(picrawler_instance)
 emotion_categorizer = EmotionCategorizer()
 emotion_sound_manager = EmotionalSoundsManager()
 actions_manager = PassiveActionsManager(picrawler_instance)
-response_manager = Response_Manager(picrawler_instance, actions_manager, eye_animator)
+response_manager = Response_Manager(picrawler_instance, actions_manager)
 general_utils = GeneralUtilitiesManager(picrawler_instance)
 weather_fetch = WeatherCommandManager(llm_client, actions_manager, emotion_sound_manager, picrawler_instance)
 news_api = NewsHandler(picrawler_instance)
 macro_player = MacroPlayer(
-    gaze=GazeChannel(composer),
-    expression=ExpressionChannel(composer),
+    gaze=GazeChannel(gaze_interpolator),
+    expression=ExpressionChannel(expression_manager),
     speech=SpeechChannel(response_manager),
     action=ActionChannel(actions_manager),
     sound=SoundChannel(emotion_sound_manager.play_sound)
 )
-motors = Motors(db="./body/motors_override.db")
-motor_id = 1
+# searchlight = Searchlight()
 
 
 async def main():
@@ -94,36 +96,33 @@ async def main():
         wait 0.5
         speak "Servos active. Testing shoulder mounted photon projector."
         """)
-    motors[motor_id].speed(10)
-    time.sleep(0.2)
-    motors[motor_id].speed(1)
-    time.sleep(0.5)
-    motors[motor_id].speed(20)
-    time.sleep(0.2)
-    motors[motor_id].speed(1)
-    time.sleep(0.5)
-    motors[motor_id].speed(100)
-    time.sleep(1)
-    motors[motor_id].speed(0)
+    # searchlight.speed(10)
+    # time.sleep(0.1)
+    # searchlight.speed(1)
+    # time.sleep(0.5)
+    # searchlight.speed(100)
+    # time.sleep(0.1)
+    # searchlight.speed(0)
     await macro_player.run(
         """
         speak "Photon Projector active.  "
         wait 1
         speak "Interactive Visual Display initiating."
-        gaze move to 10 20 1.5
+        gaze move to 80 100
         wait 2
         speak " expression is now test. "
         expression set mood test
-        wait 4
+        wait 2
         speak " expression is now sleepy. "
         expression set mood sleepy
-        wait 4
+        gaze move to 100 80
+        wait 2
         speak " expression is now test. "
         expression set mood test
-        wait 4
+        wait 2
         expression set mood neutral
         wait 2
-        gaze move to 10 10 1.0
+        gaze move to 90 90
         wait 2
         """
     )
@@ -140,11 +139,11 @@ async def main():
         print("Entering the main loop, waiting for input...")
         await macro_player.run(f"""
                                wait 2
-                               gaze move to 15 10 1.0
+                               gaze move to 95 90 1.0
                                wait 2
-                               gaze move to 10 15 1.0
+                               gaze move to 90 95 1.0
                                wait 2
-                               gaze move to 10 10 1.0
+                               gaze move to 90 90 1.0
                                """)
         spoken_text, raw_audio = await audio_input.recognize_speech_vosk(return_audio=True)  # Get input and raw audio
         
