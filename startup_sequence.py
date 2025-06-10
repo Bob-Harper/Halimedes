@@ -22,7 +22,7 @@ from audio_input.verbal_commands import CommandManager
 from audio_input.voice_recognition_manager import VoiceRecognitionManager
 from mind.emotional_sounds_manager import EmotionalSoundsManager
 from mind.emotions_manager import EmotionCategorizer
-# from body.robot_hat.searchlight import Motor as Searchlight
+from body.robot_hat.searchlight import Searchlight
 from helpers.weather_command_manager import WeatherCommandManager
 from helpers.llm_client_handler import LLMClientHandler
 from helpers.passive_actions_manager import PassiveActionsManager
@@ -61,7 +61,7 @@ macro_player = MacroPlayer(
     action=ActionChannel(actions_manager),
     sound=SoundChannel(emotion_sound_manager.play_sound)
 )
-# searchlight = Searchlight()
+searchlight = Searchlight()
 
 
 async def main():
@@ -96,13 +96,13 @@ async def main():
         wait 0.5
         speak "Servos active. Testing shoulder mounted photon projector."
         """)
-    # searchlight.speed(10)
-    # time.sleep(0.1)
-    # searchlight.speed(1)
-    # time.sleep(0.5)
-    # searchlight.speed(100)
-    # time.sleep(0.1)
-    # searchlight.speed(0)
+    searchlight.brightness(10)
+    time.sleep(0.1)
+    searchlight.brightness(1)
+    time.sleep(0.5)
+    searchlight.brightness(100)
+    time.sleep(0.1)
+    searchlight.brightness(0)
     await macro_player.run(
         """
         speak "Photon Projector active.  "

@@ -84,14 +84,14 @@ class MacroPlayer:
 
     async def _expression(self, arg: str):
         
-        print(f"[MacroPlayer] Received expression command: '{arg}'")
+        # print(f"[MacroPlayer] Received expression command: '{arg}'")
         if not self.expression:
             print("[MacroPlayer] No expression channel assigned.")
             return
         if arg.startswith("set mood"):
             _, _, mood = arg.partition("set mood")
             mood = mood.strip()
-            print(f"[MacroPlayer] Dispatching mood: {mood}")
+            # print(f"[MacroPlayer] Dispatching mood: {mood}")
             await self.expression.set_mood(mood)
         else:
             print(f"[MacroPlayer] Unknown expression command: {arg}")
