@@ -97,9 +97,6 @@ class EyeExpressionManager:
             exp = self.expression_map.get(name)
             if exp and self.lids == exp:
                 return
-            else:
-                print(f"[ExprMgr] --- Expression '{name}' already set, but lids do not match — forcing update")
-
         self.state.expression = name
         exp = self.expression_map.get(name)
 
