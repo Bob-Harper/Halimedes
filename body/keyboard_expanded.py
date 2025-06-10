@@ -1,13 +1,13 @@
-from .picrawler import Picrawler
+from body.picrawler import Picrawler
 from time import sleep
 import readchar
 import asyncio
-from .picrawler_extended import PicrawlerExtended
+from body.picrawler_extended import PicrawlerExtended
 
 
 class RobotKeyboard:
     def __init__(self):
-        self.speed = 99
+        self.speed = 85
         self.picrawler = Picrawler()
         self.new_movements = PicrawlerExtended(self.picrawler)
         self.manual = '''
@@ -69,8 +69,8 @@ class RobotKeyboard:
                     self.picrawler.do_action('stand', 1, self.speed)
                 elif key == '3':
                     self.picrawler.do_action('wave', 1, self.speed)
-                elif key == '4':
-                    self.picrawler.do_action('dance', 1, self.speed)
+                # elif key == '4':
+                #     self.picrawler.do_action('dance', 1, self.speed)
                 elif key == '5':
                     self.new_movements.swimming(count=3, speed=self.speed)
                 elif key == '6':

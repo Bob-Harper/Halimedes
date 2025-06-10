@@ -65,10 +65,14 @@ searchlight = Searchlight()
 
 
 async def main():
-    print("Entered main()")
-    print("Starting BlinkEngine loop.")
-    # asyncio.create_task(composer.start_idle_blink_loop()) #expression changes power the blinks now
-    print("Starting EyeFrameComposer loop.")
+    tasks = asyncio.all_tasks()
+    print(f"[Startup] Pre-main task count: {len(tasks)}")
+
+    for t in tasks:
+        coro = t.get_coro()
+        coro_name = getattr(coro, '__name__', repr(coro))
+        print(f"[Startup] Task: {coro_name}, done={t.done()}, cancelled={t.cancelled()}")
+    print("[Startup] Starting main sequence...")
     asyncio.create_task(composer.start_loop())  
     # NOTE these are broken into multiple sequences for a reason.  
     # leave them this way. do not consolidate at this time.
@@ -129,22 +133,24 @@ async def main():
     await macro_player.run(
         """
         speak "Interactive Visual Display active. Camera active. Gaze tracking active."
-        wait 5
-        speak "Listening active. Voiceprint recognition active."
         wait 2
+        speak "Listening active. Voiceprint recognition active."
         """)
-    # remaining startup sequence with Battery and News/Weather fetch removed until rewritten
+        #     await general_utils.announce_battery_status()
+        #     await weather_fetch.startup_fetch_forecast()
+        #     startup_news_item = await news_api.startup_fetch_news(llm_client)
+        #     current_time = news_api.current_datetime()
+        #     await response_manager.speak_with_flite(f"Today's date is {current_time}.", emotion="announcement") 
+        #     await eye_animator.set_expression("surprised") 
+        #     startup_words = "This is so exciting! What shall we talk about today?"
+        #     await actions_manager.startup_speech_actions(startup_words)
+        #     if startup_news_item:
+        #         await eye_animator.set_expression("happy")
+        #         conversation_starter = f"Oh, I know! Did you hear about this? {startup_news_item}"
+        #         await response_manager.speak_with_flite(conversation_starter, emotion="announcement")
 
     while True:
         print("Entering the main loop, waiting for input...")
-        await macro_player.run(f"""
-                               wait 2
-                               gaze move to 95 90 1.0
-                               wait 2
-                               gaze move to 90 95 1.0
-                               wait 2
-                               gaze move to 90 90 1.0
-                               """)
         spoken_text, raw_audio = await audio_input.recognize_speech_vosk(return_audio=True)  # Get input and raw audio
         
         if not spoken_text:  # If no text was recognized, loop back and wait again
