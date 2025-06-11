@@ -22,3 +22,10 @@ class MacroTagValidator:
     def validate_gaze(cls, tag: str):
         return cls.closest_match(tag, cls.VALID_GAZE)
     
+    # def validate_markup(text):
+    # # Basic sanity check: every opening tag has a matching closing tag
+    # open_tags = re.findall(r'<(\w+)>', text)
+    # close_tags = re.findall(r'</(\w+)>', text)
+    # return open_tags == close_tags
+
+    

@@ -129,44 +129,32 @@ class MacroPlayer:
             print(f"[Macro] Invalid wait duration: {arg}")
 
 
+import re
+
 class TagToDSL:
     @staticmethod
     def parse(text: str) -> str:
-        lines = text.strip().split("\n")
         dsl_lines = []
 
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
+        # Match tags
+        pattern = re.compile(r'<(\w+)>(.*?)</\1>', re.DOTALL)
+        matches = pattern.findall(text)
 
-            if line.startswith("<") and ":" in line and line.endswith(">"):
-                tag_type, value = line[1:-1].split(":", 1)
-                tag_type = tag_type.strip().lower()
-                value = value.strip()
+        for tag_type, value in matches:
+            tag_type = tag_type.lower().strip()
+            value = value.strip()
 
-                validated_tag = MacroTagValidator.validate_tag_type(tag_type)
-
-                if validated_tag == "sound":
-                    mapped = emotion_categorizer.analyze_text_emotion(value)
-                    dsl_lines.append(f"sound {mapped}")
-                elif validated_tag == "face":
-                    mapped = emotion_categorizer.analyze_text_emotion(value)
-                    dsl_lines.append(f"expression set mood {mapped}")
-                elif validated_tag == "gaze":
-                    mapped = MacroTagValidator.validate_gaze(value)
-                    dsl_lines.append(f"gaze move to {mapped}")
-                elif validated_tag == "action":
-                    mapped = MacroTagValidator.validate_action(value)
-                    dsl_lines.append(f"action {mapped}")
-                elif validated_tag == "speak":
-                    dsl_lines.append(f'speak "{value}"')
-                else:
-                    print(f"[Validator] Unknown tag '{tag_type}', skipping.")
-                    continue
+            if tag_type == "speak":
+                dsl_lines.append(f'speak "{value}"')
+            elif tag_type == "gaze":
+                dsl_lines.append(f'gaze move to {value}')
+            elif tag_type == "face":
+                dsl_lines.append(f'expression set mood {value}')
+            elif tag_type == "sound":
+                dsl_lines.append(f'sound {value}')
+            elif tag_type == "action":
+                dsl_lines.append(f'action {value}')
             else:
-                # Not a tag, treat as natural speech
-                dsl_lines.append(f'speak "{line}"')
+                print(f"[Validator] Unknown tag '{tag_type}', skipping.")
 
         return "\n".join(dsl_lines)
-    
