@@ -161,14 +161,14 @@ async def main():
         # Detect and play a sound based on user's emotion
         user_emotion = emotion_categorizer.analyze_text_emotion(spoken_text)
         await macro_player.run(f"sound {user_emotion}")
-
         recognized_speaker = voiceprint_manager.recognize_speaker(raw_audio)
-
-        # Label the user input for the model
-        user_input_for_llm = f"{recognized_speaker}: {spoken_text}"
         print(f"{recognized_speaker}: emotion: {user_emotion}\n{spoken_text}")
 
+        # Inject personality prompt based on recognition
+        llm_client.set_speaker(recognized_speaker)
+        user_input_for_llm = f"{recognized_speaker}: {spoken_text}"
         response_text = await llm_client.send_message_async(user_input_for_llm)
+
         # Detect Hal's emotion from the response and play the corresponding sound
         hal_emotion = emotion_categorizer.analyze_text_emotion(response_text)
         await macro_player.run(f"""
