@@ -1,0 +1,6 @@
+{
+    "python.analysis.exclude": [
+        "_deprecated",
+        "body/picrawler.py"
+    ]
+}

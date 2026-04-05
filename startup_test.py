@@ -14,14 +14,14 @@ picrawler_instance = Picrawler()
 # NOTE we now have a single instance of Picrawler to pass through
 from dsl.channels import GazeChannel, ExpressionChannel, SpeechChannel, ActionChannel, SoundChannel
 from dsl.macro_player import MacroPlayer
-from helpers.response_manager import Response_Manager
+from audio_output.response_manager import Response_Manager
 from audio_input.audio_input_manager import AudioInputManager
 from audio_input.verbal_commands import CommandManager
 from audio_input.voice_recognition_manager import VoiceRecognitionManager
 from mind.emotional_sounds_manager import EmotionalSoundsManager
 from mind.emotions_manager import EmotionCategorizer
 from helpers.llm_client_handler import LLMClientHandler
-from helpers.passive_actions_manager import PassiveActionsManager
+from body.passive_actions_manager import PassiveActionsManager
 from helpers.general_utilities_manager import GeneralUtilitiesManager
 from eyes.EyeConfig import EyeConfig
 from eyes.EyeExpressionManager import EyeExpressionManager

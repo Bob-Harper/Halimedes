@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# pyright: reportOptionalMemberAccess=false
+# pyright: reportOptionalSubscript=false
+# pyright: reportArgumentType=false
 from .basic import _Basic_class
 from .pwm import PWM
 from .servo import Servo

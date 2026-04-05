@@ -1,4 +1,11 @@
-# STARTUP.PY AUTOSTART SERVICE IS DISABLED, HAL WILL BOOT STRAIGHT INTO CODE MODE
+# STARTUP.PY AUTOSTART SERVICE IS DISABLED.  
+# This must be started Manually until the new autonomous decision making layer 
+# is fully implemented and tested.  
+# HAL will boot straight into code mode. This file uses a simplified startup sequence 
+# before entering the main loop.  
+# Once the new system is fully tested and stable, we can re-enable the autostart service 
+# and rename this file, then designate it as the default on-boot startup.
+# Autonomous Decision Making Layer Testing Enabled.
 import asyncio
 import warnings
 warnings.simplefilter('ignore')
@@ -16,17 +23,19 @@ picrawler_instance = Picrawler()
 # NOTE we now have a single instance of Picrawler to pass through
 from body.searchlight import Searchlight
 from dsl.channels import GazeChannel, ExpressionChannel, SpeechChannel, ActionChannel, SoundChannel
-from dsl.macro_player import MacroPlayer, TagToDSL
+from dsl.macro_player import MacroPlayer
 from audio_input.audio_input_manager import AudioInputManager
 from audio_input.verbal_commands import CommandManager
 from audio_input.voice_recognition_manager import VoiceRecognitionManager
 from mind.decision_manager import DecisionManager, Intent
-from mind.emotional_sounds_manager import EmotionalSoundsManager
+from audio_output.speech_interaction_manager import SpeechInteractionManager
+from audio_output.emotional_sounds_manager import EmotionalSoundsManager
 from mind.emotions_manager import EmotionCategorizer
 from audio_output.response_manager import Response_Manager
 from helpers.weather_command_manager import WeatherCommandManager
 from helpers.llm_client_handler import LLMClientHandler
 from body.passive_actions_manager import PassiveActionsManager
+from body.locomotion_manager import LocomotionManager
 from helpers.general_utilities_manager import GeneralUtilitiesManager
 from helpers.news_handler import NewsHandler
 from eyes.EyeConfig import EyeConfig
@@ -40,7 +49,6 @@ eye_profile = EyeConfig.load_eye_profile("whitegold01")
 composer = EyeFrameComposer(eye_profile)
 gaze_interpolator = GazeInterpolator()
 expression_manager = EyeExpressionManager()
-
 composer.setup(gaze_interpolator, expression_manager)
 gaze_interpolator.setup(composer)
 expression_manager.setup(composer)
@@ -51,19 +59,26 @@ command_manager = CommandManager(llm_client, picrawler_instance)
 audio_input = AudioInputManager(picrawler_instance)
 emotion_categorizer = EmotionCategorizer()
 emotion_sound_manager = EmotionalSoundsManager()
-actions_manager = PassiveActionsManager(picrawler_instance)
-response_manager = Response_Manager(picrawler_instance, actions_manager)
+active_actions_manager = LocomotionManager(picrawler_instance)
+passive_actions_manager = PassiveActionsManager(picrawler_instance)
+response_manager = Response_Manager(picrawler_instance, passive_actions_manager)
 general_utils = GeneralUtilitiesManager(picrawler_instance)
-weather_fetch = WeatherCommandManager(llm_client, actions_manager, emotion_sound_manager, picrawler_instance)
+weather_fetch = WeatherCommandManager(llm_client, passive_actions_manager, emotion_sound_manager, picrawler_instance)
 news_api = NewsHandler(picrawler_instance)
 macro_player = MacroPlayer(
     gaze=GazeChannel(gaze_interpolator),
     expression=ExpressionChannel(expression_manager),
     speech=SpeechChannel(response_manager),
-    action=ActionChannel(actions_manager),
+    action=ActionChannel(passive_actions_manager),
     sound=SoundChannel(emotion_sound_manager.play_sound)
 )
 searchlight = Searchlight()
+speech_manager = SpeechInteractionManager(
+    emotion_categorizer,
+    macro_player,
+    voiceprint_manager,
+    llm_client
+)
 
 
 async def main():
@@ -153,34 +168,34 @@ async def main():
 
     while True:
         print("Entering the main loop, waiting for input...")
-        spoken_text, raw_audio = await audio_input.recognize_speech_vosk(return_audio=True)  # Get input and raw audio
-        
-        if not spoken_text:  # If no text was recognized, loop back and wait again
-            continue
-        # Verbal Command Handler removed until rewritten
-        # ThinkingTask loop removed for testing and because new model is superfast
 
-        # Detect and play a sound based on user's emotion
-        user_emotion = emotion_categorizer.analyze_text_emotion(spoken_text)
-        await macro_player.run(f"sound {user_emotion}")
-        recognized_speaker = voiceprint_manager.recognize_speaker(raw_audio)
-        print(f"{recognized_speaker}: emotion: {user_emotion}\n{spoken_text}")
+        spoken_text, raw_audio = await audio_input.recognize_speech_vosk(return_audio=True)
 
-        # Inject personality prompt based on recognition
-        llm_client.set_speaker(recognized_speaker)
-        user_input_for_llm = f"{recognized_speaker}: {spoken_text}"
-        response_text = await llm_client.send_message_async(user_input_for_llm)
+        if spoken_text:
+            sensory_event = {
+                "type": "speech",
+                "data": {
+                    "text": spoken_text,
+                    "audio": raw_audio
+                }
+            }
+        else:
+            sensory_event = {"type": "silence", "data": None}
 
-        # Detect Hal's emotion from the response and play the corresponding sound
-        hal_emotion = emotion_categorizer.analyze_text_emotion(response_text)
-        await macro_player.run(f"""
-            expression set mood {hal_emotion}
-            sound {hal_emotion}
-            action expressive
-        """)
-        # Perform the response sequence
-        macro_script = TagToDSL.parse(response_text)
-        await macro_player.run(macro_script)
+        intent = decision_manager.decide(sensory_event)
 
+        if intent == Intent.RESPOND_TO_USER and spoken_text:
+            await speech_manager.handle_speech(spoken_text, raw_audio)
+
+        elif intent == Intent.PERFORM_IDLE_BEHAVIOR:
+            await passive_actions_manager.perform_idle_behavior()
+
+        elif intent == Intent.INVESTIGATE_SOUND:
+            await active_actions_manager.look_toward_sound()
+
+        else:
+            await passive_actions_manager.idle_tick()
+
+                    
 if __name__ == "__main__":
     asyncio.run(main())
