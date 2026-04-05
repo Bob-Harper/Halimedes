@@ -1,8 +1,8 @@
 import subprocess
 import asyncio
-from mind.emotional_sounds_manager import get_voice_modifiers
-from mind.emotional_sounds_manager import EmotionalSoundsManager
-from helpers.passive_sounds_manager import PassiveSoundsManager
+from audio_output.emotional_sounds_manager import get_voice_modifiers
+from audio_output.emotional_sounds_manager import EmotionalSoundsManager
+from audio_output.passive_sounds_manager import PassiveSoundsManager
 from helpers.global_config import SPEECH_MODEL_PATH, SPEECH_MODEL_NAME
 
 

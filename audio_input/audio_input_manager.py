@@ -4,7 +4,7 @@ from vosk import Model, KaldiRecognizer
 import asyncio
 import numpy as np
 import websockets
-from helpers.passive_sounds_manager import PassiveSoundsManager
+from audio_output.passive_sounds_manager import PassiveSoundsManager
 from helpers.general_utilities_manager import GeneralUtilitiesManager
 from helpers.global_config import LED_INDICATOR, SOUND_ASSETS_PATH
 

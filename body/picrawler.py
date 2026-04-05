@@ -1,4 +1,6 @@
-from .robot_hat import Robot, utils
+from .robot_hat.robot import Robot
+from .robot_hat import utils
+
 import time
 import math
 

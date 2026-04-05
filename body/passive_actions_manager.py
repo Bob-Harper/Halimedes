@@ -1,7 +1,7 @@
 import random
 from body.picrawler_extended import PicrawlerExtended
-from helpers.passive_sounds_manager import PassiveSoundsManager
-from helpers.response_manager import Response_Manager
+from audio_output.passive_sounds_manager import PassiveSoundsManager
+from audio_output.response_manager import Response_Manager
 import asyncio
 
 
@@ -75,6 +75,27 @@ class PassiveActionsManager:
             await asyncio.sleep(1)  # Short delay before choosing again
             
     async def actions_thinking_loop_single(self):
+        """Perform a single thinking action with categorized weighting."""
+        # Pick a category based on weights
+        category = random.choices(
+            list(self.actions_by_category.keys()),
+            weights=list(self.category_weights.values()),
+            k=1
+        )[0]
+        # Pick a random action from the chosen category
+        action_function = random.choice(self.actions_by_category[category])  #  Unpack the tuple
+
+        # Execute the action
+        await asyncio.to_thread(action_function)  #  Now it's actually calling a function
+
+        # Short pause between actions
+        await asyncio.sleep(1.0)
+
+    async def idle_tick(self):
+        """Perform no actions."""
+        await asyncio.sleep(1.0)
+
+    async def perform_idle_behavior(self):
         """Perform a single thinking action with categorized weighting."""
         # Pick a category based on weights
         category = random.choices(
