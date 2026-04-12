@@ -1,6 +1,6 @@
 import requests
 import asyncio
-import json
+from typing import Dict, Any
 
 
 class LLMClientHandler:
@@ -16,27 +16,49 @@ class LLMClientHandler:
     def __init__(self, server_host: str):
         self.server_host = server_host.rstrip("/")
 
-    async def send_message_async(self, payload: dict) -> dict:
+    async def send_message_async(self, payload: dict, retries: int = 2) -> Dict[str, Any]:
         """
         Send a JSON payload to the unified server and return JSON.
+        Includes:
+        - timeout
+        - retries
+        - safe fallback
         """
-        try:
-            response = await asyncio.to_thread(
-                requests.post,
-                f"{self.server_host}/api/unified",
-                json=payload,
-                timeout=10
-            )
+        url = f"{self.server_host}/api/unified"
 
-            response.raise_for_status()
-            return response.json()
+        for attempt in range(retries + 1):
+            try:
+                response = await asyncio.to_thread(
+                    requests.post,
+                    url,
+                    json=payload,
+                    timeout=10
+                )
 
-        except Exception as e:
-            print(f"[UnifiedServer] Error: {e}")
-            return {
-                "intent": "observe",
-                "speech": {"utterances": []},
-                "nonverbal": {},
-                "memory": {},
-                "world_state": {}
-            }
+                response.raise_for_status()
+
+                # Validate JSON
+                try:
+                    data = response.json()
+                    if isinstance(data, dict):
+                        return data
+                    else:
+                        raise ValueError("Server returned non-dict JSON")
+
+                except Exception as json_err:
+                    print(f"[UnifiedServer] Invalid JSON: {json_err}")
+
+            except Exception as e:
+                print(f"[UnifiedServer] Attempt {attempt+1}/{retries+1} failed: {e}")
+
+            # Retry delay (simple linear backoff)
+            await asyncio.sleep(0.2 * (attempt + 1))
+
+        # FINAL FALLBACK — never crash the robot
+        return {
+            "intent": "observe",
+            "speech": {"utterances": []},
+            "nonverbal": {},
+            "memory": {},
+            "world_state": {}
+        }

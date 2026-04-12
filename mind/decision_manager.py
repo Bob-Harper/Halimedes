@@ -4,20 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any, Dict, List, Optional, Mapping
+from helpers.modular_code import safe_float 
 
-
-def safe_float(value: Any) -> float | None:
-    """
-    Convert value to float if possible, otherwise return None.
-    Use this before numeric comparisons to avoid 'None < number' errors.
-    """
-    if value is None:
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-    
 
 # ====== ENUMS / BASIC TYPES ===================================================
 
@@ -31,21 +19,6 @@ class IntentType(Enum):
     IDLE = auto()
     INTERNAL = auto()
         
-@dataclass
-class Perception:
-    """Pi-side perception snapshot for this tick."""
-    user_text: Optional[str] = None
-    user_emotion: Optional[str] = None
-    speaker: Optional[str] = None
-    audio_direction: Optional[str] = None  # e.g. "left", "right", "front"
-    faces: List[Dict[str, Any]] = field(default_factory=list)
-    objects: List[Dict[str, Any]] = field(default_factory=list)
-    qr_codes: List[Dict[str, Any]] = field(default_factory=list)
-    battery_level: Optional[float] = None
-    posture: Optional[str] = None
-    last_action: Optional[str] = None
-
-
 @dataclass
 class ServerIntent:
     """Unified server response (semantic, not motor)."""
