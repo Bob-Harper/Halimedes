@@ -5,12 +5,11 @@ import os
 # Explicitly clear any previously cached env variables
 os.environ.clear()
 from helpers.global_config import UNIFIED_API_GATEWAY
-import time
 
 from mind.world_state_manager import WorldStateManager
 from mind.internal_state_manager import InternalStateManager
 from mind.perception_manager import PerceptionManager
-from mind.decision_manager import DecisionManager, Perception
+from mind.decision_manager import DecisionManager
 from mind.server_intent_parser import parse_server_intent
 from dsl.behavior_plan_to_dsl import behavior_plan_to_dsl
 
@@ -96,30 +95,43 @@ async def main():
 
         # 2. PERCEPTION SNAPSHOT ----------------------------------------------
         speaker = voiceprint_manager.recognize_speaker(raw_audio)
-        user_emotion = emotion_categorizer.analyze_text_emotion(spoken_text)
-
+        detected_emotion = emotion_categorizer.analyze_text_emotion(spoken_text)
+        battery = None  # Placeholder for battery level
+        direction = None # Placeholder for audio direction 
+        last_action = None # Placeholder for last executed action
+        faces = [] # Placeholder for detected faces
+        objects = [] # Placeholder for detected objects
+        qr_codes = [] # Placeholder for detected QR codes
         perception.update(
             user_text=spoken_text,
-            user_emotion=user_emotion,
-            speaker=speaker
+            user_emotion=detected_emotion,
+            speaker=speaker,
+            battery_level=battery,
+            audio_direction=direction,
+            last_action=last_action,
+            faces=faces,
+            objects=objects,
+            qr_codes=qr_codes,
         )
 
-
         # 3. SEND TO UNIFIED SERVER -------------------------------------------
-        server_payload = {
+        payload = {
             "world_state": world_state.snapshot(),
             "internal_state": internal_state.snapshot(),
-            "perception": perception.snapshot()
+            "perception": perception.snapshot(),
         }
 
-        server_json = await unified_server.send_message_async(server_payload)
-
+        # 4. PARSE SERVER RESPONSE --------------------------------------------
+        try:
+            server_json = await unified_server.send_message_async(payload)
+            server_intent = parse_server_intent(server_json)
+        except Exception as e:
+            print(f"[Server Error] {e}")
+            server_intent = {"intent": "observe"}  # safe fallback
+            
         # Ensure perception is reset for next loop 
         # (important for fields that may not be overwritten by server response)    
         perception.reset()
-
-        # 4. PARSE SERVER RESPONSE --------------------------------------------
-        server_intent = parse_server_intent(server_json)
 
         # 5. DECISION LAYER ----------------------------------------------------
         behavior_plan = decision_manager.decide(
