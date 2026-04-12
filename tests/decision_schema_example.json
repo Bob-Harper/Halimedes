@@ -1,0 +1,77 @@
+{
+    "intent": "converse | act | ignore | observe | command | explore | idle | internal",
+    "speech": {
+        "utterances": [
+            {
+                "text": "string",
+                "emotion": "string",
+                "style": "string",
+                "priority": "low | normal | high"
+            }
+        ]
+    },
+    "nonverbal": {
+        "gaze": [
+            {
+                "mode": "left | right | up | down | center | wander | track",
+                "target": "speaker | object_id | coordinate | null",
+                "when": "start | during | after_speech | custom",
+                "duration": "float (seconds)"
+            }
+        ],
+        "expression": [
+            {
+                "mood": "neutral | happy | sad | angry | surprised | focused | skeptical | custom",
+                "intensity": "0.0 - 1.0",
+                "when": "start | during | after_speech | custom"
+            }
+        ],
+        "actions": [
+            {
+                "category": "subtle | expressive | full-body | locomotion | gesture | custom",
+                "name": "optional specific action name",
+                "parameters": {
+                    "any": "thing"
+                },
+                "when": "start | during | after_speech | custom"
+            }
+        ],
+        "sounds": [
+            {
+                "category": "laugh | anticipation | surprise | sadness | fear | anger | custom",
+                "when": "start | during | after_speech | custom"
+            }
+        ]
+    },
+    "memory": {
+        "write": [
+            {
+                "key": "string",
+                "value": "any JSON value",
+                "confidence": "0.0 - 1.0"
+            }
+        ],
+        "delete": [
+            {
+                "key": "string"
+            }
+        ]
+    },
+    "world_state": {
+        "update": [
+            {
+                "entity": "person | object | location | event | custom",
+                "id": "string",
+                "attributes": {
+                    "any": "thing"
+                }
+            }
+        ]
+    },
+    "meta": {
+        "priority": "low | normal | high | critical",
+        "should_interrupt": false,
+        "turn_id": "string",
+        "timestamp": "ISO8601"
+    }
+}

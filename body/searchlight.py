@@ -1,8 +1,7 @@
-from body.robot_hat.pwm import PWM
-from body.robot_hat.pin import Pin
+from utils.pwm import PWM
+from utils.pin import Pin
 import time
 # Import RGB_LED and PWM class
-from body.robot_hat import RGB_LED, PWM
 
 class Searchlight:
     """Minimal driver using MotorPort2 (PWM12, GPIO24) only."""

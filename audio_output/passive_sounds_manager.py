@@ -1,4 +1,4 @@
-from robot_hat import Music
+from audio_output.music import Music
 import asyncio
 import random
 import os

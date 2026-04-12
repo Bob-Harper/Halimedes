@@ -3,7 +3,7 @@ import asyncio
 from body.picrawler_extended import PicrawlerExtended
 import subprocess
 from helpers.general_utilities_manager import GeneralUtilitiesManager
-from helpers.passive_actions_manager import PassiveActionsManager
+from body.passive_actions_manager import PassiveActionsManager
 from audio_output.passive_sounds_manager import PassiveSoundsManager
 from audio_output.response_manager import Response_Manager
 from helpers.weather_handler import WeatherHandler

@@ -20,8 +20,8 @@ from dsl.macro_player import MacroPlayer, TagToDSL
 from audio_input.audio_input_manager import AudioInputManager
 from audio_input.verbal_commands import CommandManager
 from audio_input.voice_recognition_manager import VoiceRecognitionManager
-from mind.decision_manager import DecisionManager, Intent
-from mind.emotional_sounds_manager import EmotionalSoundsManager
+from mind.decision_manager import DecisionManager
+from audio_output.emotional_sounds_manager import EmotionalSoundsManager
 from mind.emotions_manager import EmotionCategorizer
 from audio_output.response_manager import Response_Manager
 from helpers.weather_command_manager import WeatherCommandManager

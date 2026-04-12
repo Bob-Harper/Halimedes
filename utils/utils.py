@@ -2,7 +2,8 @@
 import time
 import os
 import re
-from .pin import Pin
+import subprocess
+from utils.pin import Pin
 
 
 def set_volume(value):
@@ -19,19 +20,19 @@ def set_volume(value):
 
 def run_command(cmd):
     """
-    Run command and return status and output
-
-    :param cmd: command to run
-    :type cmd: str
-    :return: status, output
-    :rtype: tuple
+    Run a shell command and return (status, output)
     """
-    import subprocess
-    p = subprocess.Popen(
-        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    result = p.stdout.read().decode('utf-8')
-    status = p.poll()
-    return status, result
+    try:
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            capture_output=True,
+            text=True
+        )
+        return result.returncode, result.stdout + result.stderr
+    except Exception as e:
+        return -1, str(e)
+
 
 
 def is_installed(cmd):
@@ -116,7 +117,7 @@ def get_battery_voltage():
     :return: battery voltage(V)
     :rtype: float
     """
-    from ..body.adc import ADC
+    from utils.adc import ADC
     adc = ADC("A4")
     raw_voltage = adc.read_voltage()
     voltage = raw_voltage * 3
