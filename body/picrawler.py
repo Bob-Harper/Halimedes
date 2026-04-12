@@ -1,5 +1,5 @@
-from .robot_hat.robot import Robot
-from .robot_hat import utils
+from utils.robot import Robot
+from utils import utils
 
 import time
 import math
@@ -123,26 +123,26 @@ class Picrawler(Robot):
         # print('output: %s'%[alpha,beta,gamma])
         return limit_flag,[alpha,beta,gamma]
 
-    def do_action(self, action_name, count, speed, **kwargs):
+    def do_action(self, motion_name, step, speed, **kwargs):
         try:
-            for _ in range(count):  # times
+            for _ in range(step):  # times
                 self.move_list.stand_position = self.stand_position
-                if action_name in ["forward", "backward", "turn left", "turn right", "turn left angle", "turn right angle"]:
+                if motion_name in ["forward", "backward", "turn left", "turn right", "turn left angle", "turn right angle"]:
                     self.stand_position = (self.stand_position + 1) & 1  # Fixed toggle
-                if action_name in ['turn left angle', 'turn right angle']:
+                if motion_name in ['turn left angle', 'turn right angle']:
                     angle = kwargs.get('angle', 0)  # Use provided angle; default to 0 if not set
                     # Call the method directly (note: removed @property so methods accept an angle)
-                    action = self.move_list.__getattribute__(action_name.replace(" ", "_"))(angle)
+                    action = self.move_list.__getattribute__(motion_name.replace(" ", "_"))(angle)
                     for _step in action:
                         self.do_step(_step, speed=speed)
                 else:
-                    action = self.move_list[action_name]
+                    action = self.move_list[motion_name]
                     for _step in action:  # spyder motion
                         self.do_step(_step, speed=speed)
         except AttributeError:
             try:
-                for _ in range(count):
-                    action_add = self.move_list_add[action_name]
+                for _ in range(step):
+                    action_add = self.move_list_add[motion_name]
                     for _step in action_add:
                         self.do_step(_step, speed=speed)
             except KeyError:
