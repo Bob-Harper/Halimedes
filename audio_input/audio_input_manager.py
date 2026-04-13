@@ -1,162 +1,86 @@
-import json
 import sounddevice as sd
-from vosk import Model, KaldiRecognizer
-import asyncio
 import numpy as np
-import websockets
-from audio_output.passive_sounds_manager import PassiveSoundsManager
-from helpers.general_utilities_manager import GeneralUtilitiesManager
-from helpers.global_config import LED_INDICATOR, SOUND_ASSETS_PATH
+import asyncio
 
 
 class AudioInputManager:
-    def __init__(self, picrawler_instance, silence_threshold=700, silence_duration=2.0, sample_rate=44100):
+    """
+    PURE AUDIO CAPTURE LAYER
+    ------------------------
+    - Records microphone audio until silence is detected.
+    - Returns raw audio as a 1D int16 numpy array.
+    - Does NOT perform transcription.
+    - Does NOT talk to Vosk.
+    - Does NOT talk to unified server.
+    - Does NOT handle LED or sound indicators.
+    """
+
+    def __init__(
+        self,
+        picrawler_instance,
+        sample_rate=44100,
+        input_device_index=1,
+        silence_threshold=700,
+        silence_duration=2.0,
+        block_duration=1.0,
+    ):
         self.picrawler_instance = picrawler_instance
-        # Force sounddevice to use the correct microphone!
-        # (input device index, output device index)
-        sd.default.device = (1, None)    # type: ignore 
-        self.sound_manager = PassiveSoundsManager()
-        self.general_utils = GeneralUtilitiesManager(picrawler_instance)
+        self.sample_rate = sample_rate
         self.silence_threshold = silence_threshold
         self.silence_duration = silence_duration
-        self.sample_rate = sample_rate
-        self.listening_led = LED_INDICATOR  # Use the shared LED
+        self.block_duration = block_duration
 
-    async def recognize_speech_vosk(self, server_url="ws://192.168.0.123:2700", return_audio=False):
+        # Force sounddevice to use the correct microphone.
+        # Pylance/InsertCheckerHere doesn't recognize this as valid, but it is hardware accurate and will run.
+        sd.default.device = (input_device_index, None) # type: ignore
+
+
+    # ------------------------------------------------------------------
+    # PUBLIC API
+    # ------------------------------------------------------------------
+    async def capture_audio(self):
         """
-        Records audio until silence is detected and processes it using either:
-        - The Vosk server (default path)
-        - The small Vosk model locally (fallback path if the server is truly unavailable).
-        Returns the transcript and optionally the raw audio.
+        Record audio until silence is detected.
+        Returns:
+            raw_audio (np.ndarray[int16]) — 1D array of audio samples
         """
-        # Turn on Indicators for Active Listening.
-        await self.sound_manager.play_sound_indicator(SOUND_ASSETS_PATH/"excited/n-talk3.wav", 10)
-        led_task = asyncio.create_task(self._led_blip())
+        audio_array = await asyncio.to_thread(
+            self._record_until_silence
+        )
+        return np.ravel(audio_array)
 
-        audio_array = await asyncio.to_thread(self.record_until_silence)
-        audio_array = np.ravel(audio_array)
-        audio_bytes = audio_array.tobytes()
-
-        # Turn off Indicators for Active Listening.
-        led_task.cancel()
-        try:
-            await led_task
-        except asyncio.CancelledError:
-            pass
-        await self.sound_manager.play_sound_indicator(SOUND_ASSETS_PATH/"excited/n-talk1.wav", 10)
-        self.listening_led.off()
-        transcript = "Fallback message: transcription failure"
-        try:
-            # Try processing via the Vosk server
-            transcript = await self.process_audio_with_transcriber(
-                self.transcribe_via_server, audio_bytes, server_url
-            )
-        except websockets.exceptions.ConnectionClosedOK:
-            # If the server closed normally (1000 OK), just return the transcript
-            return transcript, audio_array if return_audio else transcript
-
-        except Exception as e:
-            print(f"Unexpected server error, switching to fallback: {e}")
-            # If there was an actual error, process locally
-            transcript = await self.process_audio_with_transcriber(
-                self.transcribe_via_fallback, audio_bytes
-            )
-            
-        # Remove "the" at the start of the transcript if present
-        if transcript.lower().startswith("the "):
-            transcript = transcript[4:]  # Trim the first occurrence of "the" + space
-        
-        if return_audio:
-            return transcript, audio_array
-        return transcript
-
-    @staticmethod
-    async def process_audio_with_transcriber(transcriber, audio_bytes, *transcriber_args):
+    # ------------------------------------------------------------------
+    # INTERNAL AUDIO CAPTURE LOGIC
+    # ------------------------------------------------------------------
+    def _record_until_silence(self):
         """
-        Shared logic for chunking audio and collecting the transcript.
-        Handles server closure properly.
-        """
-        chunk_size = 4000
-        final_text_parts = []
-
-        try:
-            async for chunk_result in transcriber(audio_bytes, chunk_size, *transcriber_args):
-                if "text" in chunk_result and chunk_result["text"].strip():
-                    final_text_parts.append(chunk_result["text"].strip())
-        except websockets.exceptions.ConnectionClosedOK:
-            # Handle graceful connection closure without crashing
-            pass
-        except Exception as e:
-            print(f"Unexpected error in transcriber: {e}")
-
-        # Final combined transcript
-        final_text = " ".join(final_text_parts).strip()
-        return final_text or "No transcript available"
-
-    @staticmethod
-    async def transcribe_via_server(audio_bytes, chunk_size, server_url):
-        """
-        Sends audio to the Vosk server chunk-by-chunk.
-        """
-        async with websockets.connect(server_url) as ws:
-
-            for i in range(0, len(audio_bytes), chunk_size):
-                await ws.send(audio_bytes[i:i + chunk_size])
-            await ws.send('{"eof" : 1}')
-
-            while True:
-                try:
-                    message = await asyncio.wait_for(ws.recv(), timeout=5)
-                    yield json.loads(message)
-                except asyncio.TimeoutError:
-                    break
-
-    @staticmethod
-    async def transcribe_via_fallback(audio_bytes, chunk_size):
-        """
-        Transcribes audio locally using the small Vosk model.
-        """
-        model_path = "/home/msutt/hal/vosk_models/vosk-model-small-en-us-0.15"
-        model = Model(model_path)
-        recognizer = KaldiRecognizer(model)
-
-        for i in range(0, len(audio_bytes), chunk_size):
-            chunk = audio_bytes[i:i + chunk_size]
-            if recognizer.AcceptWaveform(chunk):
-                yield json.loads(recognizer.Result())
-
-    @staticmethod
-    def record_until_silence(sample_rate=44100, block_duration=1.0, silence_threshold=700, silence_duration=2.0):
-        """
-        Records audio until silence is detected for at least `silence_duration` seconds.
+        Blocking call — runs inside a thread via asyncio.to_thread().
         """
         blocks = []
         silence_time = 0.0
-        block_samples = int(sample_rate * block_duration)
+        block_samples = int(self.sample_rate * self.block_duration)
         has_spoken = False
 
         while True:
-            audio_block = sd.rec(block_samples, samplerate=sample_rate, channels=1, dtype='int16')
+            audio_block = sd.rec(
+                block_samples,
+                samplerate=self.sample_rate,
+                channels=1,
+                dtype='int16'
+            )
             sd.wait()
+
             blocks.append(audio_block)
             amplitude = np.abs(audio_block).mean()
 
-            if amplitude < silence_threshold:
+            if amplitude < self.silence_threshold:
                 if has_spoken:
-                    silence_time += block_duration
+                    silence_time += self.block_duration
             else:
                 has_spoken = True
-                silence_time = 0.0  # Reset silence timer on sound
+                silence_time = 0.0
 
-            if has_spoken and silence_time >= silence_duration:
+            if has_spoken and silence_time >= self.silence_duration:
                 break
 
         return np.concatenate(blocks, axis=0)
-
-    async def _led_blip(self):
-        """Blinks the LED every 2 seconds while listening."""
-        while True:
-            self.listening_led.on()
-            await asyncio.sleep(0.1)
-            self.listening_led.off()
-            await asyncio.sleep(1.9)

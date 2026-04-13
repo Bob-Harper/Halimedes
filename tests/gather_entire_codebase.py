@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 from pathlib import Path
+from datetime import datetime
 
 # ---------------------------------------------------------
 # CONFIG: Directories to scan (non-recursive)
@@ -25,7 +26,7 @@ OUTPUT_FILE = "/home/msutt/hal/hal_code_dump.txt"
 # ---------------------------------------------------------
 # FILE EXTENSIONS TO INCLUDE
 # ---------------------------------------------------------
-EXTENSIONS = {".py"}
+EXTENSIONS = {".py", ".txt"}
 
 # ---------------------------------------------------------
 # SCRIPT
@@ -75,11 +76,16 @@ def collect_files():
 
     # Write everything to the output file
     try:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        output_lines.insert(0, f"CODE DUMP GENERATED: {timestamp}\n")
+
         with open(output_path, "w", encoding="utf-8") as out:
             out.write("\n".join(output_lines))
+
         print(f"\nDone! Output written to: {output_path}")
     except Exception as e:
         print(f"Failed to write output file: {e}")
+
 
 if __name__ == "__main__":
     collect_files()

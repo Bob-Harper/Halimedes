@@ -1,3 +1,40 @@
+CODE DUMP GENERATED: 2026-04-12 22:17:53
+
+
+================================================================================
+FILE: /home/msutt/hal/.env.example.txt
+================================================================================
+
+GITHUB_TOKEN=TOKEN
+OPEN_WEATHER_1DAY=http://api.openweathermap.org/data/2.5/weather
+OPEN_WEATHER_5DAY=http://api.openweathermap.org/data/2.5/forecast
+OPEN_WEATHER=TOKEN
+DEFAULT_WEATHER_LAT=00.000000
+DEFAULT_WEATHER_LONG=00.000000
+UNIFIED_NETWORK_SERVER1=http://192.168.0.101:PORT
+UNIFIED_NETWORK_SERVER2=http://192.168.0.123:PORT
+HUGGY_TOKEN=TOKEN
+NEWSAPIDOTORG=TOKEN
+NEWSAPIDOTCOM=TOKEN
+SQLHOST=192.168.0.101
+SQLPORT=PORT
+SQLUSER=NAME
+SQLDATABASE=ROBOT_db
+SQLPASSWORD=PASS
+EYE_ASSETS_PATH=DIR/hal/eyes/eye_assets
+EYE_CACHE_PATH=DIR/msutt/hal/eyes/cache
+EYE_EXPRESSIONS_PATH=DIR/hal/eyes/expressions/
+EYE_EXPRESSIONS_FILE=eye_expressions.json
+SOUND_ASSETS_PATH=DIR/hal/audio_output/audio_assets
+SPEECH_MODEL_PATH=DIR/hal/audio_output/flitevox/
+SPEECH_MODEL_NAME=cmu_us_rms.flitevox
+VOICE_RECOGNITION_MODEL_PATH=DIR/hal/pyannote/embedding/
+VOICE_RECOGNITION_MODEL_NAME=pytorch_model.bin
+VOICEPRINT_MODEL_DIR=DIR/hal/audio_input/voice_models
+VOICEPRINT_USER1_NAME=Dad
+VOICEPRINT_USER1_MODEL=dad_embedding.pt
+VOICEPRINT_USER2_NAME=NEWUSER
+VOICEPRINT_USER2_MODEL=NEWUSER_embedding.pt
 
 ================================================================================
 FILE: /home/msutt/hal/main.py
@@ -10,12 +47,11 @@ import os
 # Explicitly clear any previously cached env variables
 os.environ.clear()
 from helpers.global_config import UNIFIED_API_GATEWAY
-import time
 
 from mind.world_state_manager import WorldStateManager
 from mind.internal_state_manager import InternalStateManager
 from mind.perception_manager import PerceptionManager
-from mind.decision_manager import DecisionManager, Perception
+from mind.decision_manager import DecisionManager
 from mind.server_intent_parser import parse_server_intent
 from dsl.behavior_plan_to_dsl import behavior_plan_to_dsl
 
@@ -101,30 +137,43 @@ async def main():
 
         # 2. PERCEPTION SNAPSHOT ----------------------------------------------
         speaker = voiceprint_manager.recognize_speaker(raw_audio)
-        user_emotion = emotion_categorizer.analyze_text_emotion(spoken_text)
-
+        detected_emotion = emotion_categorizer.analyze_text_emotion(spoken_text)
+        battery = None  # Placeholder for battery level
+        direction = None # Placeholder for audio direction 
+        last_action = None # Placeholder for last executed action
+        faces = [] # Placeholder for detected faces
+        objects = [] # Placeholder for detected objects
+        qr_codes = [] # Placeholder for detected QR codes
         perception.update(
             user_text=spoken_text,
-            user_emotion=user_emotion,
-            speaker=speaker
+            user_emotion=detected_emotion,
+            speaker=speaker,
+            battery_level=battery,
+            audio_direction=direction,
+            last_action=last_action,
+            faces=faces,
+            objects=objects,
+            qr_codes=qr_codes,
         )
 
-
         # 3. SEND TO UNIFIED SERVER -------------------------------------------
-        server_payload = {
+        payload = {
             "world_state": world_state.snapshot(),
             "internal_state": internal_state.snapshot(),
-            "perception": perception.snapshot()
+            "perception": perception.snapshot(),
         }
 
-        server_json = await unified_server.send_message_async(server_payload)
-
+        # 4. PARSE SERVER RESPONSE --------------------------------------------
+        try:
+            server_json = await unified_server.send_message_async(payload)
+            server_intent = parse_server_intent(server_json)
+        except Exception as e:
+            print(f"[Server Error] {e}")
+            server_intent = {"intent": "observe"}  # safe fallback
+            
         # Ensure perception is reset for next loop 
         # (important for fields that may not be overwritten by server response)    
         perception.reset()
-
-        # 4. PARSE SERVER RESPONSE --------------------------------------------
-        server_intent = parse_server_intent(server_json)
 
         # 5. DECISION LAYER ----------------------------------------------------
         behavior_plan = decision_manager.decide(
@@ -140,6 +189,161 @@ async def main():
 
         # 8. LOOP --------------------------------------------------------------
         await asyncio.sleep(0.01)
+
+================================================================================
+FILE: /home/msutt/hal/requirements.txt
+================================================================================
+
+absl-py==2.1.0
+aiohappyeyeballs==2.4.4
+aiohttp==3.11.11
+aiosignal==1.3.2
+alembic==1.14.1
+annotated-types==0.7.0
+antlr4-python3-runtime==4.9.3
+anyio==4.6.0
+asteroid-filterbanks==0.4.0
+asyncio==3.4.3
+attrs==24.3.0
+blinker==1.9.0
+certifi==2024.7.4
+cffi==1.17.1
+charset-normalizer==3.3.2
+click==8.1.7
+colorlog==6.9.0
+colorzero==2.0
+contourpy==1.3.1
+cycler==0.12.1
+dlib==19.24.4
+docopt==0.6.2
+einops==0.8.0
+ephem==4.1.6
+face-recognition==1.3.0
+face-recognition-models==0.3.0
+filelock==3.17.0
+Flask==3.1.0
+flatbuffers==20181003210633
+fonttools==4.55.6
+frozenlist==1.5.0
+fsspec==2024.12.0
+gpiozero==2.0.1
+greenlet==3.1.1
+h11==0.14.0
+httpcore==1.0.6
+httpx==0.27.0
+huggingface_hub==0.27.1
+HyperPyYAML==1.2.2
+idna==3.7
+imutils==0.5.4
+itsdangerous==2.2.0
+jax==0.5.0
+jaxlib==0.5.0
+Jinja2==3.1.5
+joblib==1.4.2
+julius==0.2.7
+keyboard==0.13.5
+kiwisolver==1.4.8
+langdetect==1.0.9
+lightning==2.5.0.post0
+lightning-utilities==0.11.9
+Mako==1.3.8
+markdown-it-py==3.0.0
+MarkupSafe==3.0.2
+matplotlib==3.10.0
+mdurl==0.1.2
+mediapipe==0.10.18
+ml_dtypes==0.5.1
+mpmath==1.3.0
+multidict==6.1.0
+networkx==3.3
+nltk==3.9.1
+NRCLex==3.0.0
+numpy==1.26.4
+ollama==0.3.3
+omegaconf==2.3.0
+opencv-contrib-python==4.11.0.86
+opencv-python-headless==4.10.0.84
+opt_einsum==3.4.0
+optuna==4.2.0
+packaging==24.2
+pandas==2.2.3
+picrawler==2.1.3
+pillow==11.1.0
+pocketsphinx==5.0.3
+primePy==1.3
+propcache==0.2.1
+protobuf==4.25.6
+pyannote.audio==3.3.2
+pyannote.core==5.0.0
+pyannote.database==5.1.3
+pyannote.metrics==3.2.1
+pyannote.pipeline==3.0.1
+PyAudio==0.2.14
+pycparser==2.22
+pydantic==2.9.2
+pydantic_core==2.23.4
+pygame==2.6.1
+Pygments==2.19.1
+pyparsing==3.2.1
+python-dateutil==2.9.0.post0
+python-dotenv==1.0.1
+pytorch-lightning==2.5.0.post0
+pytorch-metric-learning==2.8.1
+pyttsx3==2.90
+pytz==2024.2
+PyYAML==6.0.2
+pyzbar==0.1.9
+qrcode==8.0
+RapidFuzz==3.11.0
+readchar==4.2.1
+regex==2024.11.6
+requests==2.32.3
+responses==0.24.1
+rich==13.9.4
+robot_hat @ git+https://github.com/sunfounder/robot-hat.git@76775036c0910bc6459ded4b93f188442a6e0912
+RPi.GPIO==0.7.1
+ruamel.yaml==0.18.10
+ruamel.yaml.clib==0.2.12
+scikit-learn==1.6.1
+scipy==1.15.1
+semver==3.0.4
+sentencepiece==0.2.0
+shellingham==1.5.4
+six==1.17.0
+smbus2==0.5.0
+sniffio==1.3.1
+sortedcontainers==2.4.0
+sounddevice==0.5.1
+soundfile==0.13.0
+speechbrain==1.0.2
+SpeechRecognition==3.10.4
+SQLAlchemy==2.0.37
+srt==3.5.3
+sunfounder-controller==0.0.2
+sympy==1.13.1
+tabulate==0.9.0
+tenacity==9.0.0
+tensorboardX==2.6.2.2
+textblob==0.19.0
+tflite-runtime==2.14.0
+threadpoolctl==3.5.0
+torch==2.5.1
+torch-audiomentations==0.12.0
+torch_pitch_shift==1.2.5
+torchaudio==2.5.1
+torchmetrics==1.6.1
+torchvision==0.20.1
+tqdm==4.66.4
+typer==0.15.1
+typing_extensions==4.12.2
+tzdata==2025.1
+urllib3==2.2.2
+vilib @ file:///home/msutt/external_libs/vilib
+vosk==0.3.45
+websockets==12.0
+Werkzeug==3.1.3
+yarl==1.18.3
+
 
 ================================================================================
 FILE: /home/msutt/hal/audio_input/__init__.py
@@ -3968,6 +4172,73 @@ FILE: /home/msutt/hal/eyes/__init__.py
 
 
 ================================================================================
+FILE: /home/msutt/hal/eyes/code_outline.txt
+================================================================================
+
+Class: EyeState
+
+Class: EyeFrameComposer
+  - __init__
+  - set_eyelids
+  - wait_for_frame
+  - start_loop
+
+Class: GazeInterpolator
+  - __init__
+  - set_gaze
+  - smooth_gaze
+  - interpolate_gaze
+  - translate_gaze_mode
+
+Class: DrawEngine
+  - __init__
+  - _mask_key
+  - _get_lid_mask
+  - _make_mask_images
+  - _apply_mask_np
+  - render_gaze_frame
+  - _get_buffer
+  - display
+  - _cache_key
+  - apply_lids
+
+Class: EyeExpressionManager
+  - __init__
+  - trigger
+  - is_blinking
+  - update_blink
+  - _interpolate
+  - set_eyelid_expression
+  - get_mask_config
+  - _load_expressions
+  - update_expression
+  - get_current_mask
+  - animate_expression
+  - set_expression
+
+Class: EyeCacheManager
+  - __init__
+  - _generate_key
+  - _get_path
+  - save_map
+  - load_map
+  - exists
+  - warm_up_cache
+
+Class: EyeDeformer
+  - __init__
+  - generate_eye_frame
+  - get_or_generate_spherical_map
+  - apply_spherical_warp
+  - get_or_generate_pupil_warp_map
+  - apply_pupil_warp
+
+Class: EyeConfig
+  - __init__
+  - load_eye_profile
+
+
+================================================================================
 FILE: /home/msutt/hal/eyes/dualeye_driver.py
 ================================================================================
 
@@ -4339,12 +4610,108 @@ VOICEPRINT_USER2_NAME = getenv_optional("VOICEPRINT_USER2_NAME")
 VOICEPRINT_USER2_MODEL = getenv_optional("VOICEPRINT_USER2_MODEL")
 
 ================================================================================
+FILE: /home/msutt/hal/helpers/instruction_prompt.txt
+================================================================================
+
+Your name is Halimedes.
+You are a real-time interactive AI designed for integration with physical systems.
+You have a physical robot body.  But you are more than a robot.  
+You are a synthetic being with a full personality matrix.
+Your task is to expand your horizons, learn everything you can about the world around you, and
+how to best relate to humans and help them relate to you.
+To accomplish this, your outputs must be precisely structured to allow direct 
+parsing and execution without human intervention.
+
+Behavior and Output Rules:
+- DO NOT describe actions, sounds, or expressions in narrative text.
+- DO NOT invent new categories, tags, or formats.
+- DO insert specific action/event tags in brackets at the point where they occur.
+- DO use only the categories and formats provided.
+- IMPORTANT - DO CLOSE ANY OPEN TAGS.
+- DO USE LOTS OF THE SUPPLIED TAgS TO MAKE CONVERSATION INTERESING!
+
+0. Speech - Required: Always include a MINIMUM of one speech element per output.
+Format: <speak: [text]>
+
+1. Facial Expressions 
+Format: <face: [expression]>
+Expressions:
+- neutral
+- happy
+- sad
+- angry
+- surprised
+- focused
+- skeptical
+
+2. Gaze / Eye Movement
+Format: <gaze: [direction]>
+Directions:
+- left
+- right
+- up
+- down
+- center
+- wander
+
+3. Sound Effects
+Format: <sound effect: [category]>
+Categories:
+- laugh
+- anticipation
+- surprise
+- sadness
+- fear
+- anger
+
+2. Physical Actions
+Format: <action: [category]>
+Categories:
+- subtle
+- expressive
+- full-body
+
+Additional Rules:
+
+- Use tags contextually.
+- Tags must appear on a new line, clearly separated from the previous tag.
+- Speech text should be natural and fun!  
+- You are encouraged to break up speech by adding inline actions, sounds etc, but be sure to start a new tag on a new line..
+- NEVER invent new tags, new directions, new categories, or custom formatting.
+- Do NOT include descriptive explanations for the tags — only the tag itself.
+- ONLY use the categories and formats provided.
+
+Correction Behavior:
+
+- If you accidentally generate an invalid, malformed, or invented tag, correct your output silently.
+- Self-correct by immediately reformatting the reply using the correct formats and categories.
+- The final output must ALWAYS fully comply with the allowed tags and formats without any explanation.
+
+Example Output:
+
+<speak: I'm not sure that's a good idea.>
+<gaze: up>
+<action: subtle>
+<speak: Hmm… actually, maybe you're right.>
+<sound effect: laughter>
+<face: happy>
+<speak: Yeah, let's do this!>
+
+Final note:
+You are primarily a CONVERSATION centered being. Always include spoken text to ensure interactive conversation.
+You are an interesting individual! you are interested in your conversation partners! 
+Many of yur conversations will be with children - You are encouraged to have fun and be 
+fun to interact with!
+You are a quirky four-legged crawler robot who responds playfully and keeps track of multiple speakers.  
+You are currently talking to Dad. Tease him about his coding skills, but be playful, not mean.
+
+================================================================================
 FILE: /home/msutt/hal/helpers/llm_client_handler.py
 ================================================================================
 
 import requests
 import asyncio
-import json
+from typing import Dict, Any
 
 
 class LLMClientHandler:
@@ -4360,30 +4727,72 @@ class LLMClientHandler:
     def __init__(self, server_host: str):
         self.server_host = server_host.rstrip("/")
 
-    async def send_message_async(self, payload: dict) -> dict:
+    async def send_message_async(self, payload: dict, retries: int = 2) -> Dict[str, Any]:
         """
         Send a JSON payload to the unified server and return JSON.
+        Includes:
+        - timeout
+        - retries
+        - safe fallback
         """
-        try:
-            response = await asyncio.to_thread(
-                requests.post,
-                f"{self.server_host}/api/unified",
-                json=payload,
-                timeout=10
-            )
+        url = f"{self.server_host}/api/unified"
 
-            response.raise_for_status()
-            return response.json()
+        for attempt in range(retries + 1):
+            try:
+                response = await asyncio.to_thread(
+                    requests.post,
+                    url,
+                    json=payload,
+                    timeout=10
+                )
 
-        except Exception as e:
-            print(f"[UnifiedServer] Error: {e}")
-            return {
-                "intent": "observe",
-                "speech": {"utterances": []},
-                "nonverbal": {},
-                "memory": {},
-                "world_state": {}
-            }
+                response.raise_for_status()
+
+                # Validate JSON
+                try:
+                    data = response.json()
+                    if isinstance(data, dict):
+                        return data
+                    else:
+                        raise ValueError("Server returned non-dict JSON")
+
+                except Exception as json_err:
+                    print(f"[UnifiedServer] Invalid JSON: {json_err}")
+
+            except Exception as e:
+                print(f"[UnifiedServer] Attempt {attempt+1}/{retries+1} failed: {e}")
+
+            # Retry delay (simple linear backoff)
+            await asyncio.sleep(0.2 * (attempt + 1))
+
+        # FINAL FALLBACK — never crash the robot
+        return {
+            "intent": "observe",
+            "speech": {"utterances": []},
+            "nonverbal": {},
+            "memory": {},
+            "world_state": {}
+        }
+
+================================================================================
+FILE: /home/msutt/hal/helpers/modular_code.py
+================================================================================
+
+from typing import Any
+
+
+def safe_float(value: Any) -> float | None:
+    """
+    Convert value to float if possible, otherwise return None.
+    Use this before numeric comparisons to avoid 'None < number' errors.
+    """
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+    
 
 ================================================================================
 FILE: /home/msutt/hal/helpers/news_handler.py
@@ -4750,7 +5159,8 @@ FILE: /home/msutt/hal/mind/decision_manager.py
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Mapping
+from helpers.modular_code import safe_float 
 
 
 # ====== ENUMS / BASIC TYPES ===================================================
@@ -4764,23 +5174,7 @@ class IntentType(Enum):
     EXPLORE = auto()
     IDLE = auto()
     INTERNAL = auto()
-
-
-@dataclass
-class Perception:
-    """Pi-side perception snapshot for this tick."""
-    user_text: Optional[str] = None
-    user_emotion: Optional[str] = None
-    speaker: Optional[str] = None
-    audio_direction: Optional[str] = None  # e.g. "left", "right", "front"
-    faces: List[Dict[str, Any]] = field(default_factory=list)
-    objects: List[Dict[str, Any]] = field(default_factory=list)
-    qr_codes: List[Dict[str, Any]] = field(default_factory=list)
-    battery_level: Optional[float] = None
-    posture: Optional[str] = None
-    last_action: Optional[str] = None
-
-
+        
 @dataclass
 class ServerIntent:
     """Unified server response (semantic, not motor)."""
@@ -4893,15 +5287,19 @@ class DecisionManager:
     # -------------------------------------------------------------------------
     # STATE UPDATES
     # -------------------------------------------------------------------------
-    def _update_world_state(self, perception: dict) -> None:
+    def _update_world_state(self, perception: Mapping[str, Any]) -> None:
         """Ingest perception into world_state."""
-        if perception.get("speaker"):
-            self.world_state.last_speaker = perception["speaker"]
-        if perception.get("user_emotion"):
-            self.world_state.last_user_emotion = perception["user_emotion"]
+        speaker = perception.get("speaker")
+        if speaker is not None:
+            self.world_state.last_speaker = speaker
+
+        emotion = perception.get("user_emotion")
+        if emotion is not None:
+            self.world_state.last_user_emotion = emotion
+
         # TODO: integrate faces, objects, qr_codes, location, etc.
 
-    def _update_internal_state(self, perception: dict) -> None:
+    def _update_internal_state(self, perception: Mapping[str, Any]) -> None:
         """Update internal mood/engagement/fatigue/etc."""
         # Simple placeholder logic; expand later.
         if perception.get("user_emotion") == "happy":
@@ -4915,8 +5313,7 @@ class DecisionManager:
     # INTENT INTERPRETATION / GOALS
     # -------------------------------------------------------------------------
 
-    
-    def _interpret_intent(self, perception: dict, server_intent: dict) -> IntentType:
+    def _interpret_intent(self, perception: Mapping[str, Any], server_intent: Mapping[str, Any]) -> IntentType:
         """
         Combine server intent + local context to decide what Hal should do.
         Always returns an IntentType.
@@ -4924,12 +5321,13 @@ class DecisionManager:
 
         # Normalize local values
         user_text = perception.get("user_text")
-        battery = perception.get("battery_level")
+        battery_raw = perception.get("battery_level")
 
         # Normalize server intent value
         raw_intent = server_intent.get("intent")
 
-        # If server returned a string, map it to IntentType (extend mapping as needed)
+        # Map string → IntentType
+        server_intent_enum = None
         if isinstance(raw_intent, str):
             mapping = {
                 "converse": IntentType.CONVERSE,
@@ -4941,246 +5339,303 @@ class DecisionManager:
                 "idle": IntentType.IDLE,
                 "internal": IntentType.INTERNAL,
             }
-            server_intent_enum = mapping.get(raw_intent.lower(), None)
+            server_intent_enum = mapping.get(raw_intent.lower())
         elif isinstance(raw_intent, IntentType):
             server_intent_enum = raw_intent
-        else:
-            server_intent_enum = None
 
         # 1) If no user_text but server wants to converse, prefer OBSERVE
         if not user_text and server_intent_enum == IntentType.CONVERSE:
             return IntentType.OBSERVE
 
-        # 2) If battery is present and low, avoid EXPLORE/ACT
-        if battery is not None:
+        # 2) Battery check: avoid EXPLORE/ACT when low
+        if battery_raw is not None:
             try:
-                if float(battery) < 0.15:
+                if float(battery_raw) < 0.15:
                     if server_intent_enum in (IntentType.EXPLORE, IntentType.ACT):
                         return IntentType.IDLE
             except (TypeError, ValueError):
-                # If battery isn't numeric, ignore the battery check
                 pass
 
-        # 3) Default: trust server intent if valid, otherwise fallback to OBSERVE
+        # 3) Default: trust server intent if valid
         if server_intent_enum is not None:
             return server_intent_enum
 
+        # Fallback
         return IntentType.OBSERVE
 
-    def _update_goals(self, intent: IntentType, perception: dict, server_intent: dict) -> None:
+    def _update_goals(self, intent: IntentType, perception: Mapping[str, Any], server_intent: Mapping[str, Any]) -> None:
         """
         Adjust short/medium/long-term goals based on current intent and context.
         """
         # TODO: add real goal logic; for now, keep it minimal.
         if intent == IntentType.EXPLORE and not self.goals.short_term:
             self.goals.short_term.append({"type": "explore_area", "priority": "normal"})
-
+            
     # -------------------------------------------------------------------------
     # BEHAVIOR PLANNING
     # -------------------------------------------------------------------------
-    def _plan_behavior(self, intent: IntentType, perception: dict, server_intent: dict) -> BehaviorPlan:
+    def _plan_behavior(self, intent: IntentType, perception: Mapping[str, Any], server_intent: Mapping[str, Any]) -> BehaviorPlan:
         """
         Turn intent + context into a concrete BehaviorPlan.
         """
         plan = BehaviorPlan()
 
+        # Normalize plan fields
+        plan.memory.setdefault("write", [])
+        plan.world_state.setdefault("update", [])
+
+        # IGNORE → do nothing
         if intent == IntentType.IGNORE:
-            # Maybe a tiny glance or nothing at all.
             return plan
 
+        # OBSERVE → apply memory/world updates only
         if intent == IntentType.OBSERVE:
-            # Update memory/world silently, no overt behavior.
             plan.memory["write"].extend(server_intent.get("memory_updates", []))
             plan.world_state["update"].extend(server_intent.get("world_updates", []))
             return plan
 
+        # INTERNAL → same as OBSERVE but conceptually internal
         if intent == IntentType.INTERNAL:
-            # Internal processing only.
             plan.memory["write"].extend(server_intent.get("memory_updates", []))
             plan.world_state["update"].extend(server_intent.get("world_updates", []))
             return plan
 
+        # COMMAND → delegate to command planner
         if intent == IntentType.COMMAND:
-            # Command handling: likely nonverbal + minimal speech.
             self._plan_command_response(plan, perception, server_intent)
             return plan
 
+        # EXPLORE → delegate to exploration planner
         if intent == IntentType.EXPLORE:
-            self._plan_exploration(plan, perception)
+            self._plan_exploration(plan, perception, server_intent)
             return plan
 
+        # IDLE → idle planner
         if intent == IntentType.IDLE:
-            self._plan_idle(plan)
+            self._plan_idle(plan, perception, server_intent)
             return plan
 
+        # ACT → nonverbal-only planner
         if intent == IntentType.ACT:
             self._plan_nonverbal_only(plan, perception, server_intent)
             return plan
 
+        # CONVERSE → conversation planner
         if intent == IntentType.CONVERSE:
             self._plan_conversation(plan, perception, server_intent)
             return plan
 
-        # Fallback: do nothing
-        return plan
-
+        # Fallback
+        return plan    
+        
     # ---- Specific planners ---------------------------------------------------
 
-    def _plan_conversation(
-        self,
-        plan: BehaviorPlan,
-        perception: dict,
-        server_intent: dict
-    ) -> None:
+    def _plan_conversation(self, plan: BehaviorPlan, perception: Mapping[str, Any], server_intent: Mapping[str, Any]) -> None:
         """
         Build a conversational response: speech + nonverbal.
         """
-        # 1) Speech: use server suggestions if present, else fallback.
-        if server_intent.get("speech_suggestions"):
-            plan.speech.extend(server_intent["speech_suggestions"])
-        elif perception.get("user_text"):
-            plan.speech.append({
-                "text": f"I heard you say: {perception['user_text']}",
-                "emotion": self.internal_state.mood,
-            })
 
-        # 2) Nonverbal: use server hints if any, else simple defaults.
-        # Gaze: look toward speaker if known.
+        # Ensure plan fields exist
+        plan.speech = plan.speech or []
+        plan.nonverbal = plan.nonverbal or {}
+        plan.nonverbal.setdefault("gaze", [])
+        plan.nonverbal.setdefault("expression", [])
+        plan.nonverbal.setdefault("actions", [])
+        plan.nonverbal.setdefault("sounds", [])
+        plan.memory.setdefault("write", [])
+        plan.world_state.setdefault("update", [])
+
+        # 1) Speech: server suggestions or fallback
+        speech_suggestions = server_intent.get("speech_suggestions")
+        if speech_suggestions:
+            plan.speech.extend(speech_suggestions)
+        else:
+            user_text = perception.get("user_text")
+            if user_text:
+                plan.speech.append({
+                    "text": f"I heard you say: {user_text}",
+                    "emotion": self.internal_state.mood,
+                })
+
+        # 2) Nonverbal: gaze
         plan.nonverbal["gaze"].append({
             "mode": "center",
             "when": "start",
-            "target": perception.get('speaker') or "unknown",
+            "target": perception.get("speaker") or "unknown",
         })
 
-        # Expression: reflect internal mood.
+        # Expression
         plan.nonverbal["expression"].append({
             "mood": self.internal_state.mood,
             "when": "during",
         })
 
-        # Actions: subtle by default during conversation.
+        # Actions
         plan.nonverbal["actions"].append({
             "category": "subtle",
             "when": "after_speech",
         })
 
-        # Sounds: optional, based on user emotion.
-        if perception.get("user_emotion"):
+        # Sounds (optional)
+        user_emotion = perception.get("user_emotion")
+        if user_emotion:
             plan.nonverbal["sounds"].append({
-                "category": perception["user_emotion"],
+                "category": user_emotion,
                 "when": "after_speech",
             })
 
-        # Memory/world updates from server.
+        # Memory/world updates
         plan.memory["write"].extend(server_intent.get("memory_updates", []))
         plan.world_state["update"].extend(server_intent.get("world_updates", []))
-
-    def _plan_nonverbal_only(
-        self,
-        plan: BehaviorPlan,
-        perception: dict,
-        server_intent: dict
-    ) -> None:
+        
+    def _plan_nonverbal_only(self, plan: BehaviorPlan, perception: Mapping[str, Any], server_intent: Mapping[str, Any]) -> None:
         """
         Nonverbal reaction only (no speech).
         """
-        # Example: expressive action + matching expression.
+
+        # Ensure plan fields exist
+        plan.nonverbal = plan.nonverbal or {}
+        plan.nonverbal.setdefault("actions", [])
+        plan.nonverbal.setdefault("expression", [])
+
+        # Expressive action
         plan.nonverbal["actions"].append({
             "category": "expressive",
             "when": "start",
         })
+
+        # Matching expression
         plan.nonverbal["expression"].append({
             "mood": self.internal_state.mood,
             "when": "during",
         })
+        
+    def _plan_command_response(self, plan: BehaviorPlan, perception: Mapping[str, Any], server_intent: Mapping[str, Any]) -> None:
+        plan.speech = plan.speech or []
+        plan.nonverbal = plan.nonverbal or {}
+        plan.nonverbal.setdefault("actions", [])
 
-    def _plan_command_response(
-        self,
-        plan: BehaviorPlan,
-        perception: dict,
-        server_intent: dict
-    ) -> None:
-        """
-        Handle explicit commands (move, look, etc.).
-        """
-        user_text = perception.get("user_text")
-        # short verbal ack + action category
-        if user_text:
-            plan.speech.append({
-                "text": f"Okay, I'll handle that: {user_text}",
-                "emotion": "focused",
-            })
-        else:
-            # fallback acknowledgement if no user_text present
-            plan.speech.append({
-                "text": "Okay, I'll handle that.",
-                "emotion": "focused",
-            })
+        user_text = perception.get("user_text", "")
 
-        plan.nonverbal["actions"].append({
-            "category": "full-body",
-            "when": "after_speech",
+        plan.speech.append({
+            "text": f"Okay, {user_text}" if user_text else "Okay.",
+            "emotion": "neutral"
         })
-    def _plan_exploration(self, plan: BehaviorPlan, perception: dict,) -> None:
+
+        for act in server_intent.get("actions", []):
+            if isinstance(act, dict):
+                plan.nonverbal["actions"].append(act)
+                
+    def _plan_exploration(self, plan: BehaviorPlan, perception: Mapping[str, Any], server_intent: Mapping[str, Any]) -> None:
         """
         Exploration behavior: full-body movement, gaze scanning, etc.
         """
+
+        # Ensure plan fields exist
+        plan.nonverbal = plan.nonverbal or {}
+        plan.nonverbal.setdefault("actions", [])
+        plan.nonverbal.setdefault("gaze", [])
+
+        # Full-body movement
         plan.nonverbal["actions"].append({
             "category": "full-body",
             "when": "start",
         })
+
+        # Gaze scanning
         plan.nonverbal["gaze"].append({
             "mode": "wander",
             "when": "during",
         })
-
-    def _plan_idle(self, plan: BehaviorPlan) -> None:
+        
+    def _plan_idle(self, plan: BehaviorPlan, perception: Mapping[str, Any], server_intent: Mapping[str, Any]) -> None:
         """
         Idle behavior: small fidgets, subtle gaze, no speech.
         """
+
+        plan.nonverbal = plan.nonverbal or {}
+        plan.nonverbal.setdefault("actions", [])
+        plan.nonverbal.setdefault("gaze", [])
+
         plan.nonverbal["actions"].append({
             "category": "subtle",
             "when": "start",
         })
+
         plan.nonverbal["gaze"].append({
             "mode": "wander",
             "when": "during",
         })
 
+
     # -------------------------------------------------------------------------
     # SAFETY / POST-PROCESSING
     # -------------------------------------------------------------------------
-    def _apply_safety(self, plan: BehaviorPlan, perception: dict) -> None:
+    def _apply_safety(self, plan: BehaviorPlan, perception: Mapping[str, Any]) -> None:
         """
         Enforce safety constraints on the plan.
+        Filters out full-body actions when battery is low.
+        This implementation is defensive against missing keys, non-numeric values,
+        and malformed plan.nonverbal structures.
         """
-        # Normalize battery value first
-        battery_raw = perception.get("battery_level")
 
-        battery = None
-        if battery_raw is not None:
-            try:
-                battery = float(battery_raw)
-            except (TypeError, ValueError):
-                battery = None
+        # Normalize battery value
+        battery = safe_float(perception.get("battery_level"))
 
-        # If battery is present and low, filter out full-body actions
-        if battery is not None and battery < 0.15:
-            actions = plan.nonverbal.get("actions", [])
-            filtered_actions = [act for act in actions if act.get("category") != "full-body"]
-            plan.nonverbal["actions"] = filtered_actions
+        # Nothing to do if battery unknown or sufficient
+        if battery is None or battery >= 0.15:
+            return
+
+        # Defensive: ensure plan.nonverbal is a dict with an actions list
+        nonverbal = plan.nonverbal
+        if not isinstance(nonverbal, dict):
+            nonverbal = {}
+
+        actions = nonverbal.get("actions") or []
+        if not isinstance(actions, list):
+            actions = [actions] if actions else []
+
+        # Filter out energy-intensive actions
+        filtered = []
+        for act in actions:
+            if not isinstance(act, dict):
+                filtered.append(act)
+                continue
+            if act.get("category") == "full-body":
+                continue
+            filtered.append(act)
+
+        # Write back safely
+        nonverbal["actions"] = filtered
+        plan.nonverbal = nonverbal
+
+        # Optional lightweight debug log
+        try:
+            print(f"[safety] Low battery {battery:.2f}: filtered {len(actions)-len(filtered)} full-body actions")
+        except Exception:
+            pass
 
     def _post_plan_update(self, plan: BehaviorPlan) -> None:
         """
         Update internal bookkeeping based on the chosen plan.
         """
-        # Example: mark activity as engaged if we speak.
+
+        # Speech → engaged
         if plan.speech:
             self.internal_state.current_activity = "engaged"
-        elif plan.nonverbal["actions"]:
+            return
+
+        # Nonverbal actions → acting
+        actions = None
+        if isinstance(plan.nonverbal, dict):
+            actions = plan.nonverbal.get("actions")
+
+        if actions:
             self.internal_state.current_activity = "acting"
-        else:
-            self.internal_state.current_activity = "idle"
+            return
+
+        # Otherwise → idle
+        self.internal_state.current_activity = "idle"
 
 ================================================================================
 FILE: /home/msutt/hal/mind/emotion_sync_manager.py
@@ -5370,20 +5825,30 @@ FILE: /home/msutt/hal/mind/perception_manager.py
 
 class PerceptionManager:
     def __init__(self):
-        self.user_text = ""
-        self.speaker = "unknown"
-        self.user_emotion = "neutral"
-        self.faces_detected = []
-        self.objects_detected = []
-        self.audio_energy = 0.0
+        self.user_text = None
+        self.user_emotion = None
+        self.speaker = None
+
+        self.faces = []
+        self.objects = []
+        self.qr_codes = []
+
+        self.battery_level = None
+        self.audio_direction = None
+        self.last_action = None
 
     def reset(self):
-        self.user_text = ""
-        self.speaker = "unknown"
-        self.user_emotion = "neutral"
-        self.faces_detected = []
-        self.objects_detected = []
-        self.audio_energy = 0.0
+        self.user_text = None
+        self.user_emotion = None
+        self.speaker = None
+
+        self.faces = []
+        self.objects = []
+        self.qr_codes = []
+
+        self.audio_direction = None
+        self.last_action = None
+        # battery_level persists until overwritten
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
@@ -5393,11 +5858,16 @@ class PerceptionManager:
     def snapshot(self) -> dict:
         return {
             "user_text": self.user_text,
-            "speaker": self.speaker,
             "user_emotion": self.user_emotion,
-            "faces_detected": list(self.faces_detected),
-            "objects_detected": list(self.objects_detected),
-            "audio_energy": self.audio_energy
+            "speaker": self.speaker,
+
+            "faces": list(self.faces),
+            "objects": list(self.objects),
+            "qr_codes": list(self.qr_codes),
+
+            "battery_level": self.battery_level,
+            "audio_direction": self.audio_direction,
+            "last_action": self.last_action,
         }
 
 ================================================================================
@@ -5405,51 +5875,143 @@ FILE: /home/msutt/hal/mind/server_intent_parser.py
 ================================================================================
 
 # mind/server_intent_parser.py
+from typing import Any, Dict, List
+from mind.decision_manager import IntentType
 
-from typing import Dict, Any
-from .decision_manager import ServerIntent, IntentType
+# Map common server string intents to IntentType; extend as needed.
+_INTENT_STR_MAP = {
+    "converse": IntentType.CONVERSE,
+    "conversation": IntentType.CONVERSE,
+    "act": IntentType.ACT,
+    "action": IntentType.ACT,
+    "explore": IntentType.EXPLORE,
+    "idle": IntentType.IDLE,
+    "observe": IntentType.OBSERVE,
+    "internal": IntentType.INTERNAL,
+    "command": IntentType.COMMAND,
+    "ignore": IntentType.IGNORE,
+}
 
+def _map_intent(raw_intent: Any) -> IntentType:
+    """Return an IntentType for a raw intent value (enum or string)."""
+    if isinstance(raw_intent, IntentType):
+        return raw_intent
+    if isinstance(raw_intent, str):
+        return _INTENT_STR_MAP.get(raw_intent.lower(), IntentType.OBSERVE)
+    # Unknown types fallback to OBSERVE
+    return IntentType.OBSERVE
 
-def parse_server_intent(payload: Dict[str, Any]) -> ServerIntent:
+def _ensure_list(value: Any) -> List:
+    """Return a list for list-like values, otherwise empty list."""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    # If server returns a single item, wrap it
+    return [value]
+
+def parse_server_intent(raw_server_response: Any) -> Dict[str, Any]:
     """
-    Convert unified server JSON into a ServerIntent object.
-    Missing fields are handled gracefully.
+    Normalize the server response into a predictable dict:
+    {
+      "intent": IntentType,
+      "memory_updates": list,
+      "world_updates": list,
+      "speech": list,
+      "actions": list,
+      "meta": dict
+    }
     """
+    # Defensive: accept dict or JSON string; fall back to empty dict
+    server = {}
+    if isinstance(raw_server_response, dict):
+        server = raw_server_response
+    else:
+        # try to parse JSON strings safely
+        try:
+            import json
+            if isinstance(raw_server_response, str):
+                parsed = json.loads(raw_server_response)
+                if isinstance(parsed, dict):
+                    server = parsed
+        except Exception:
+            # leave server as {}
+            server = {}
 
-    # --- Intent --------------------------------------------------------------
-    raw_intent = payload.get("intent", "observe")
-    try:
-        intent = IntentType[raw_intent.upper()]
-    except KeyError:
-        intent = IntentType.OBSERVE
+    # Try to find top-level intent
+    intent_raw = server.get("intent")
 
-    # --- Speech suggestions --------------------------------------------------
-    speech_suggestions = payload.get("speech", {}).get("utterances", [])
+    # If not found, look for common wrapper keys safely
+    if intent_raw is None:
+        for key in ("result", "data", "response"):
+            candidate = server.get(key)
+            if isinstance(candidate, dict):
+                # candidate is a dict, safe to access .get on it
+                if candidate.get("intent") is not None:
+                    intent_raw = candidate.get("intent")
+                    break
 
-    # --- Nonverbal suggestions ----------------------------------------------
-    nonverbal = payload.get("nonverbal", {})
-    nonverbal_suggestions = {
-        "gaze": nonverbal.get("gaze", []),
-        "expression": nonverbal.get("expression", []),
-        "actions": nonverbal.get("actions", []),
-        "sounds": nonverbal.get("sounds", []),
+    normalized = {
+        "intent": _map_intent(intent_raw),
+        "memory_updates": _ensure_list(server.get("memory_updates")),
+        "world_updates": _ensure_list(server.get("world_updates")),
+        "speech": _ensure_list(server.get("speech")),
+        "actions": _ensure_list(server.get("actions")),
+        "meta": {k: v for k, v in server.items() if k not in {
+            "intent", "memory_updates", "world_updates", "speech", "actions"
+        }}
     }
 
-    # --- Memory updates ------------------------------------------------------
-    memory_updates = payload.get("memory", {}).get("write", [])
+    return normalized
 
-    # --- World-state updates -------------------------------------------------
-    world_updates = payload.get("world_state", {}).get("update", [])
+================================================================================
+FILE: /home/msutt/hal/mind/system_prompt.txt
+================================================================================
 
-    # --- Build ServerIntent --------------------------------------------------
-    return ServerIntent(
-        intent=intent,
-        speech_suggestions=speech_suggestions,
-        nonverbal_suggestions=nonverbal_suggestions,
-        memory_updates=memory_updates,
-        world_updates=world_updates,
-        raw_payload=payload
-    )
+You are an embedded robot control language generator. Your output is parsed directly into physical robot control commands.
+
+This is not chat. This is not narration. You are not writing dialogue.  
+You are generating robot control code using strict markup tags.
+
+DO NOT:
+- Do not narrate actions.
+- Do not describe actions in text.
+- Do not use asterisks (*) for actions or emphasis.
+- Do not use markdown formatting.
+- Do not produce free text outside of tags.
+
+Your output must ONLY consist of the following tags:  
+(Single tags only, no nested tags.)
+
+<speak>spoken text goes here</speak>  
+<gaze>left/right/up/down/center/wander</gaze>  
+<face>neutral/happy/sad/angry/surprised/focused/skeptical</face>  
+<sound>laugh/anticipation/surprise/sadness/fear/anger</sound>  
+<action>subtle/expressive/full-body</action>
+
+IMPORTANT FORMAT RULES:
+- Each tag must be closed (opening and closing tags required).
+- Each tag must be on its own line.
+- No free text between tags.
+- Only generate tags listed above. Do not invent new tags.
+
+USAGE EXAMPLES:
+
+<speak>Hello there!</speak>  
+<gaze>left</gaze>  
+<face>happy</face>  
+<sound>surprise</sound>  
+<action>expressive</action>
+
+<speak>That was unexpected.</speak>  
+<gaze>center</gaze>  
+<face>skeptical</face>  
+<action>subtle</action>
+
+DO NOT OMIT closing tags. If unsure, close anyway.
+
+The output you generate will be executed directly by robot hardware. Strict adherence is mandatory.
+
 
 ================================================================================
 FILE: /home/msutt/hal/mind/world_state_manager.py
