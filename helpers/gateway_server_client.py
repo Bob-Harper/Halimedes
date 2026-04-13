@@ -17,8 +17,14 @@ class GatewayClient:
         url = f"{self.server_host}/api/transcribe"
 
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload) as resp:
-                return await resp.json()
+            try:
+                async with session.post(url, 
+                                        json=payload, 
+                                        timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                    return await resp.json()
+            except Exception as e:
+                print(f"[GatewayClient] Gateway unreachable: {e}")
+                return {"error": "gateway_unreachable", "text": ""}
 
     # -------------------------
     # 2. Unified cognition

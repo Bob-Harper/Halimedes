@@ -2,7 +2,6 @@ import subprocess
 import asyncio
 from audio_output.emotional_sounds_manager import get_voice_modifiers
 from audio_output.emotional_sounds_manager import EmotionalSoundsManager
-from audio_output.passive_sounds_manager import PassiveSoundsManager
 from helpers.global_config import SPEECH_MODEL_PATH, SPEECH_MODEL_NAME
 
 
@@ -16,31 +15,6 @@ class Response_Manager:
         # Ensure the voice file exists
         if not self.voice_path.exists():
             raise FileNotFoundError(f"Voice model not found at {self.voice_path}. Please check the path.")
-        # Ensure the voice file is a .flitevox file
-        if not self.voice_path.suffix == ".flitevox":
-            raise ValueError(f"Voice model must be a .flitevox file. Found: {self.voice_path.suffix}")
-        # Ensure the voice file is not empty
-        if self.voice_path.stat().st_size == 0:
-            raise ValueError(f"Voice model file is empty: {self.voice_path}. Please check the file.")
-        # Ensure the voice file is not a directory
-        if self.voice_path.is_dir():
-            raise ValueError(f"Voice model path is a directory: {self.voice_path}. Please check the path.")
-        # Ensure the voice file is not a symlink
-        if self.voice_path.is_symlink():
-            raise ValueError(f"Voice model path is a symlink: {self.voice_path}. Please check the path.")
-        # Ensure the voice file is not a socket
-        if self.voice_path.is_socket():
-            raise ValueError(f"Voice model path is a socket: {self.voice_path}. Please check the path.")
-        # Ensure the voice file is not a FIFO
-        if self.voice_path.is_fifo():
-            raise ValueError(f"Voice model path is a FIFO: {self.voice_path}. Please check the path.")
-        # Ensure the voice file is not corrupted
-        try:
-            with open(self.voice_path, 'rb') as f:
-                f.read(1)
-        except Exception as e:  # Handle any file read errors
-            raise ValueError(f"Voice model file is corrupted: {self.voice_path}. Error: {e}")
-        # Jordan, if you are reading this, phone me immediately, I don't care what time it is.  Call me now.
         
         # Baseline values to create Hal's signature voice
         self.baseline_pitch = 50
@@ -51,7 +25,6 @@ class Response_Manager:
         """
 
         self.emotion_handler = EmotionalSoundsManager()
-        self.sound_manager = PassiveSoundsManager()
         self.eye_animator = eye_animator
         # Store actions_manager once (global for this class)
         if actions_manager:

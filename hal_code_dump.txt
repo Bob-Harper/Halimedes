@@ -1,4 +1,4 @@
-CODE DUMP GENERATED: 2026-04-12 22:17:53
+CODE DUMP GENERATED: 2026-04-13 00:46:15
 
 
 ================================================================================
@@ -47,6 +47,7 @@ import os
 # Explicitly clear any previously cached env variables
 os.environ.clear()
 from helpers.global_config import UNIFIED_API_GATEWAY
+server_host = UNIFIED_API_GATEWAY
 
 from mind.world_state_manager import WorldStateManager
 from mind.internal_state_manager import InternalStateManager
@@ -67,17 +68,10 @@ from body.searchlight import Searchlight
 from dsl.channels import GazeChannel, ExpressionChannel, SpeechChannel, ActionChannel, SoundChannel
 from dsl.macro_player import MacroPlayer
 from audio_input.audio_input_manager import AudioInputManager
-from audio_input.verbal_commands import CommandManager
-from audio_input.voice_recognition_manager import VoiceRecognitionManager
 from mind.decision_manager import DecisionManager
 from audio_output.emotional_sounds_manager import EmotionalSoundsManager
-from mind.emotions_manager import EmotionCategorizer
 from audio_output.response_manager import Response_Manager
-from helpers.weather_command_manager import WeatherCommandManager
-from helpers.llm_client_handler import LLMClientHandler
-from body.passive_actions_manager import PassiveActionsManager
-from helpers.general_utilities_manager import GeneralUtilitiesManager
-from helpers.news_handler import NewsHandler
+from helpers.gateway_server_client import GatewayClient
 from eyes.EyeConfig import EyeConfig
 from eyes.EyeExpressionManager import EyeExpressionManager
 from eyes.EyeFrameComposer import EyeFrameComposer
@@ -86,6 +80,9 @@ from eyes.EyeGazeInterpolator import GazeInterpolator
 # Hardware singletons
 picrawler_instance = Picrawler()
 searchlight = Searchlight()
+
+# Actions (Picrawler is now the action manager)
+actions_manager = picrawler_instance
 
 # Eyes
 eye_profile = EyeConfig.load_eye_profile("whitegold01")
@@ -98,9 +95,9 @@ gaze_interpolator.setup(composer)
 expression_manager.setup(composer)
 
 # Action + sound managers (must exist before MacroPlayer)
-actions_manager = PassiveActionsManager(picrawler_instance)
 emotion_sound_manager = EmotionalSoundsManager()
 response_manager = Response_Manager(picrawler_instance, actions_manager)
+
 # MacroPlayer
 macro_player = MacroPlayer(
     gaze=GazeChannel(gaze_interpolator),
@@ -109,8 +106,7 @@ macro_player = MacroPlayer(
     action=ActionChannel(actions_manager),
     sound=SoundChannel(emotion_sound_manager.play_sound)
 )
-server_host = UNIFIED_API_GATEWAY
-unified_server = LLMClientHandler(server_host)
+unified_server = GatewayClient(server_host)
 world_state = WorldStateManager()
 internal_state = InternalStateManager()
 perception = PerceptionManager()
@@ -120,52 +116,50 @@ async def main():
     # --- Initialize subsystems ------------------------------------------------
     decision_manager = DecisionManager()
     audio_input = AudioInputManager(picrawler_instance)
-    voiceprint_manager = VoiceRecognitionManager()
-    emotion_categorizer = EmotionCategorizer()
-    unified_server = LLMClientHandler(server_host)
 
     print("[Hal] Ready. Entering main loop.")
 
     # --- Main Loop -----------------------------------------------------------
     while True:
 
-        # 1. AUDIO INPUT ------------------------------------------------------
-        spoken_text, raw_audio = await audio_input.recognize_speech_vosk(return_audio=True)
+        # AUDIO INPUT ------------------------------------------------------
+        raw_audio = await audio_input.capture_audio()
+
+        if raw_audio is None or len(raw_audio) == 0:
+            continue
+
+        # TRANSCRIPTION (UNIFIED SERVER) -----------------------------------
+        transcription = await unified_server.transcribe_audio(raw_audio)
+
+        spoken_text = transcription.get("text", "")
+        speaker = transcription.get("speaker", "Unknown")
+        detected_emotion = transcription.get("emotion", "neutral")
 
         if not spoken_text:
             continue
 
-        # 2. PERCEPTION SNAPSHOT ----------------------------------------------
-        speaker = voiceprint_manager.recognize_speaker(raw_audio)
-        detected_emotion = emotion_categorizer.analyze_text_emotion(spoken_text)
-        battery = None  # Placeholder for battery level
-        direction = None # Placeholder for audio direction 
-        last_action = None # Placeholder for last executed action
-        faces = [] # Placeholder for detected faces
-        objects = [] # Placeholder for detected objects
-        qr_codes = [] # Placeholder for detected QR codes
+        # PERCEPTION SNAPSHOT ----------------------------------------------
         perception.update(
             user_text=spoken_text,
             user_emotion=detected_emotion,
             speaker=speaker,
-            battery_level=battery,
-            audio_direction=direction,
-            last_action=last_action,
-            faces=faces,
-            objects=objects,
-            qr_codes=qr_codes,
+            battery_level=None,
+            audio_direction=None,
+            last_action=None,
+            faces=[],
+            objects=[],
+            qr_codes=[],
         )
 
-        # 3. SEND TO UNIFIED SERVER -------------------------------------------
+        # SEND TO UNIFIED SERVER (COGNITION) -------------------------------
         payload = {
             "world_state": world_state.snapshot(),
             "internal_state": internal_state.snapshot(),
             "perception": perception.snapshot(),
         }
-
-        # 4. PARSE SERVER RESPONSE --------------------------------------------
+        # PARSE SERVER RESPONSE --------------------------------------------
         try:
-            server_json = await unified_server.send_message_async(payload)
+            server_json = await unified_server.send_perception(payload)
             server_intent = parse_server_intent(server_json)
         except Exception as e:
             print(f"[Server Error] {e}")
@@ -175,19 +169,19 @@ async def main():
         # (important for fields that may not be overwritten by server response)    
         perception.reset()
 
-        # 5. DECISION LAYER ----------------------------------------------------
+        # DECISION LAYER ----------------------------------------------------
         behavior_plan = decision_manager.decide(
             perception.snapshot(),
             server_intent
         )
-        # 6. PLAN → DSL --------------------------------------------------------
+        # PLAN → DSL --------------------------------------------------------
         dsl_script = behavior_plan_to_dsl(behavior_plan)
 
-        # 7. EXECUTE -----------------------------------------------------------
+        # EXECUTE -----------------------------------------------------------
         if dsl_script.strip():
             await macro_player.run(dsl_script)
 
-        # 8. LOOP --------------------------------------------------------------
+        # LOOP --------------------------------------------------------------
         await asyncio.sleep(0.01)
 
 ================================================================================
@@ -355,168 +349,92 @@ FILE: /home/msutt/hal/audio_input/__init__.py
 FILE: /home/msutt/hal/audio_input/audio_input_manager.py
 ================================================================================
 
-import json
 import sounddevice as sd
-from vosk import Model, KaldiRecognizer
-import asyncio
 import numpy as np
-import websockets
-from audio_output.passive_sounds_manager import PassiveSoundsManager
-from helpers.general_utilities_manager import GeneralUtilitiesManager
-from helpers.global_config import LED_INDICATOR, SOUND_ASSETS_PATH
+import asyncio
 
 
 class AudioInputManager:
-    def __init__(self, picrawler_instance, silence_threshold=700, silence_duration=2.0, sample_rate=44100):
+    """
+    PURE AUDIO CAPTURE LAYER
+    ------------------------
+    - Records microphone audio until silence is detected.
+    - Returns raw audio as a 1D int16 numpy array.
+    - Does NOT perform transcription.
+    - Does NOT talk to Vosk.
+    - Does NOT talk to unified server.
+    - Does NOT handle LED or sound indicators.
+    """
+
+    def __init__(
+        self,
+        picrawler_instance,
+        sample_rate=44100,
+        input_device_index=1,
+        silence_threshold=700,
+        silence_duration=2.0,
+        block_duration=1.0,
+    ):
         self.picrawler_instance = picrawler_instance
-        # Force sounddevice to use the correct microphone!
-        # (input device index, output device index)
-        sd.default.device = (1, None)    # type: ignore 
-        self.sound_manager = PassiveSoundsManager()
-        self.general_utils = GeneralUtilitiesManager(picrawler_instance)
+        self.sample_rate = sample_rate
         self.silence_threshold = silence_threshold
         self.silence_duration = silence_duration
-        self.sample_rate = sample_rate
-        self.listening_led = LED_INDICATOR  # Use the shared LED
+        self.block_duration = block_duration
 
-    async def recognize_speech_vosk(self, server_url="ws://192.168.0.123:2700", return_audio=False):
+        # Force sounddevice to use the correct microphone.
+        # Pylance/InsertCheckerHere doesn't recognize this as valid, but it is hardware accurate and will run.
+        sd.default.device = (input_device_index, None) # type: ignore
+
+
+    # ------------------------------------------------------------------
+    # PUBLIC API
+    # ------------------------------------------------------------------
+    async def capture_audio(self):
         """
-        Records audio until silence is detected and processes it using either:
-        - The Vosk server (default path)
-        - The small Vosk model locally (fallback path if the server is truly unavailable).
-        Returns the transcript and optionally the raw audio.
+        Record audio until silence is detected.
+        Returns:
+            raw_audio (np.ndarray[int16]) — 1D array of audio samples
         """
-        # Turn on Indicators for Active Listening.
-        await self.sound_manager.play_sound_indicator(SOUND_ASSETS_PATH/"excited/n-talk3.wav", 10)
-        led_task = asyncio.create_task(self._led_blip())
+        audio_array = await asyncio.to_thread(
+            self._record_until_silence
+        )
+        return np.ravel(audio_array)
 
-        audio_array = await asyncio.to_thread(self.record_until_silence)
-        audio_array = np.ravel(audio_array)
-        audio_bytes = audio_array.tobytes()
-
-        # Turn off Indicators for Active Listening.
-        led_task.cancel()
-        try:
-            await led_task
-        except asyncio.CancelledError:
-            pass
-        await self.sound_manager.play_sound_indicator(SOUND_ASSETS_PATH/"excited/n-talk1.wav", 10)
-        self.listening_led.off()
-        transcript = "Fallback message: transcription failure"
-        try:
-            # Try processing via the Vosk server
-            transcript = await self.process_audio_with_transcriber(
-                self.transcribe_via_server, audio_bytes, server_url
-            )
-        except websockets.exceptions.ConnectionClosedOK:
-            # If the server closed normally (1000 OK), just return the transcript
-            return transcript, audio_array if return_audio else transcript
-
-        except Exception as e:
-            print(f"Unexpected server error, switching to fallback: {e}")
-            # If there was an actual error, process locally
-            transcript = await self.process_audio_with_transcriber(
-                self.transcribe_via_fallback, audio_bytes
-            )
-            
-        # Remove "the" at the start of the transcript if present
-        if transcript.lower().startswith("the "):
-            transcript = transcript[4:]  # Trim the first occurrence of "the" + space
-        
-        if return_audio:
-            return transcript, audio_array
-        return transcript
-
-    @staticmethod
-    async def process_audio_with_transcriber(transcriber, audio_bytes, *transcriber_args):
+    # ------------------------------------------------------------------
+    # INTERNAL AUDIO CAPTURE LOGIC
+    # ------------------------------------------------------------------
+    def _record_until_silence(self):
         """
-        Shared logic for chunking audio and collecting the transcript.
-        Handles server closure properly.
-        """
-        chunk_size = 4000
-        final_text_parts = []
-
-        try:
-            async for chunk_result in transcriber(audio_bytes, chunk_size, *transcriber_args):
-                if "text" in chunk_result and chunk_result["text"].strip():
-                    final_text_parts.append(chunk_result["text"].strip())
-        except websockets.exceptions.ConnectionClosedOK:
-            # Handle graceful connection closure without crashing
-            pass
-        except Exception as e:
-            print(f"Unexpected error in transcriber: {e}")
-
-        # Final combined transcript
-        final_text = " ".join(final_text_parts).strip()
-        return final_text or "No transcript available"
-
-    @staticmethod
-    async def transcribe_via_server(audio_bytes, chunk_size, server_url):
-        """
-        Sends audio to the Vosk server chunk-by-chunk.
-        """
-        async with websockets.connect(server_url) as ws:
-
-            for i in range(0, len(audio_bytes), chunk_size):
-                await ws.send(audio_bytes[i:i + chunk_size])
-            await ws.send('{"eof" : 1}')
-
-            while True:
-                try:
-                    message = await asyncio.wait_for(ws.recv(), timeout=5)
-                    yield json.loads(message)
-                except asyncio.TimeoutError:
-                    break
-
-    @staticmethod
-    async def transcribe_via_fallback(audio_bytes, chunk_size):
-        """
-        Transcribes audio locally using the small Vosk model.
-        """
-        model_path = "/home/msutt/hal/vosk_models/vosk-model-small-en-us-0.15"
-        model = Model(model_path)
-        recognizer = KaldiRecognizer(model)
-
-        for i in range(0, len(audio_bytes), chunk_size):
-            chunk = audio_bytes[i:i + chunk_size]
-            if recognizer.AcceptWaveform(chunk):
-                yield json.loads(recognizer.Result())
-
-    @staticmethod
-    def record_until_silence(sample_rate=44100, block_duration=1.0, silence_threshold=700, silence_duration=2.0):
-        """
-        Records audio until silence is detected for at least `silence_duration` seconds.
+        Blocking call — runs inside a thread via asyncio.to_thread().
         """
         blocks = []
         silence_time = 0.0
-        block_samples = int(sample_rate * block_duration)
+        block_samples = int(self.sample_rate * self.block_duration)
         has_spoken = False
 
         while True:
-            audio_block = sd.rec(block_samples, samplerate=sample_rate, channels=1, dtype='int16')
+            audio_block = sd.rec(
+                block_samples,
+                samplerate=self.sample_rate,
+                channels=1,
+                dtype='int16'
+            )
             sd.wait()
+
             blocks.append(audio_block)
             amplitude = np.abs(audio_block).mean()
 
-            if amplitude < silence_threshold:
+            if amplitude < self.silence_threshold:
                 if has_spoken:
-                    silence_time += block_duration
+                    silence_time += self.block_duration
             else:
                 has_spoken = True
-                silence_time = 0.0  # Reset silence timer on sound
+                silence_time = 0.0
 
-            if has_spoken and silence_time >= silence_duration:
+            if has_spoken and silence_time >= self.silence_duration:
                 break
 
         return np.concatenate(blocks, axis=0)
-
-    async def _led_blip(self):
-        """Blinks the LED every 2 seconds while listening."""
-        while True:
-            self.listening_led.on()
-            await asyncio.sleep(0.1)
-            self.listening_led.off()
-            await asyncio.sleep(1.9)
 
 ================================================================================
 FILE: /home/msutt/hal/audio_input/create_voice_recognition_model.py
@@ -586,208 +504,6 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-================================================================================
-FILE: /home/msutt/hal/audio_input/verbal_commands.py
-================================================================================
-
-from rapidfuzz import fuzz
-import asyncio
-from body.picrawler_extended import PicrawlerExtended
-import subprocess
-from helpers.general_utilities_manager import GeneralUtilitiesManager
-from body.passive_actions_manager import PassiveActionsManager
-from audio_output.passive_sounds_manager import PassiveSoundsManager
-from audio_output.response_manager import Response_Manager
-from helpers.weather_handler import WeatherHandler
-from helpers.weather_command_manager import WeatherCommandManager
-from helpers.news_handler import NewsHandler
-import signal
-import sys
-
-
-# Shutdown signal handler
-def handle_shutdown_signal(_signal_number, _frame):
-    print("Shutdown signal received. Exiting gracefully...")
-    sys.exit(0)
-
-
-# Attach the signal handler to system termination signals
-signal.signal(signal.SIGTERM, handle_shutdown_signal)
-signal.signal(signal.SIGINT, handle_shutdown_signal)
-
-
-class CommandManager:
-    def __init__(self, llm_client, picrawler_instance):
-        self.picrawler_instance = picrawler_instance
-        self.llm_client = llm_client
-        self.weather_helper = WeatherHandler()
-        self.newmovements = PicrawlerExtended(self.picrawler_instance)
-        self.passive_manager = PassiveActionsManager(self.picrawler_instance)
-        self.passive_sound = PassiveSoundsManager()
-        self.weather_commands = WeatherCommandManager(llm_client, self.passive_manager, self.passive_sound, picrawler_instance)
-        self.response_manager = Response_Manager(self.picrawler_instance)
-        self.general_utils = GeneralUtilitiesManager(self.picrawler_instance)
-        self.news_api = NewsHandler(self.picrawler_instance)
-
-    async def handle_command(self, spoken_text):
-        command = self.match_command(spoken_text)  # Check if input matches a known command
-        if command:
-            should_exit = await self.command_map[command]["function"](spoken_text)
-            return True, should_exit  # Return that a command was detected, and whether to exit
-        return False, False  # No command detected, don't exit
-
-    @property
-    def command_map(self):
-        return {
-            "shutdown": {
-                "function": self.command_shutdown,
-                "phrases": ["shutdown", "power off", "turn off"],
-            },
-            "quit": {
-                "function": self.command_exit_chat,
-                "phrases": ["quit", "exit chat", "we’re done", "stop talking"],
-            },
-            "help": {
-                "function": self.command_help,
-                "phrases": ["help", "what can you do", "commands"],
-            },
-            "battery": {
-                "function": self.command_battery,
-                "phrases": ["battery", "check battery status", "power level"],
-            },
-            "weather": {
-                "function": self.weather_commands.command_get_weather,
-                "phrases": ["weather", "current weather", "what's the weather"],
-            },
-            "forecast": {
-                "function": self.weather_commands.command_get_forecast,
-                "phrases": ["forecast", "what's the forecast", "weather tomorrow", "what’s tomorrow’s weather"],
-            },
-            "news": {
-                "function": self.command_get_news,
-                "phrases": ["news", "check the news", "tell me the news", "what's new today"]
-            },
-            "movement": {
-                "function": self.command_test_all_actions,
-                "phrases": ["movement test", "test all actions", "show me what you can do"],
-            },
-        }
-    
-    def match_command(self, input_text):
-        """
-        Match the input text to a command using fuzzy logic and conversational mappings.
-        Returns the command name if matched, otherwise None.
-        """
-        threshold = 70  # Minimum similarity score to accept
-        best_match = None
-        best_score = 0
-
-        # Loop through commands and match against associated phrases
-        for command_name, command_data in self.command_map.items():
-            for phrase in command_data["phrases"]:
-                match_score = fuzz.ratio(input_text.lower(), phrase.lower())
-                if match_score > best_score and match_score >= threshold:
-                    best_score = match_score
-                    best_match = command_name
-
-        if best_match:
-            return best_match
-        return None
-    
-    async def command_shutdown(self, spoken_text):
-        """Shutdown the robot."""
-        await self.response_manager.speak_with_flite(f"Verbal Command Detected: {spoken_text}. Please stand by.")
-        system_prompt = 'You are Halimeedees, a quirky alien robot exploring Earth. Do not use asterisks or actions. No more chat for you, It is time to shut down and rest now.  Goodnight.'
-        response_text = await self.llm_client.send_message_async(spoken_text)
-        # Small delay to ensure the message is heard before the shutdown
-        await asyncio.sleep(1)
-        await self.passive_manager.shutdown_speech_actions(response_text)        
-        await asyncio.to_thread(subprocess.run, ["sudo", "shutdown", "-h", "now"])        
-        return True  # Signal to break the loop
-    
-    async def command_exit_chat(self, spoken_text):
-        """Exit chat mode but remain powered."""
-        await self.response_manager.speak_with_flite(f"Verbal Command Detected: {spoken_text}. Please stand by.")
-
-        system_prompt = (
-            "You are Halimeedees, a quirky alien robot exploring Earth. "
-            "Do not use asterisks or actions. The time of the chatting is over, "
-            "the time of doing something else has begun. Goodbye."
-        )
-
-        response_text = await self.llm_client.send_message_async(system_prompt)
-        #  Speech FIRST, THEN sit down (no concurrency issues)
-        await self.passive_manager.shutdown_speech_actions(response_text)
-
-        #  Small delay to allow actions to visibly complete before exiting
-        await asyncio.sleep(1)
-
-        return True  #  Signal main loop to exit
-
-    async def command_help(self, spoken_text):
-        """Provide verbal help."""
-        help_text = (
-            f"I heard you say {spoken_text}. "
-            "Here are the available commands at this time. "
-            "To have me power down, say shut down. "
-            "To end chat but leave me powered up, say end chat. "
-            "To check my battery, say battery. "
-            "To get today's weather, say weather. "
-            "To get this week's weather, say forecast. "
-            "To get today's news, say news. "
-            "To test all actions, say movement test. "
-            "To hear me repeat these instructions, say help."
-        )
-
-        await self.response_manager.speak_with_flite(help_text)
-        return False  # Signal to go back to listening
-
-    
-    async def command_battery(self, spoken_text):
-        """Provide verbal battery status check."""
-        await self.response_manager.speak_with_flite(f"I heard you say {spoken_text}. Acknowledged, I will check battery status now.")
-        await self.general_utils.announce_battery_status()
-        return False  # Signal to go back to listening
-
-    async def command_get_news(self, *_):
-        """
-        Fetch the latest headlines from each news category and speak them aloud.
-        Only the spoken articles are added to conversation history.
-        """
-        spoken_articles = {}
-        
-        # Fetch one headline from each category
-        for category in self.news_api.rss_feeds.keys():
-            article = await self.news_api.fetch_news(category)
-            if article:
-                # Build the spoken text combining title and summary
-                spoken_articles[category] = f"{article['title']} ({article['description']})"
-        
-        if not spoken_articles:
-            await self.response_manager.speak_with_flite("I checked, but there are no new headlines right now.")
-            return
-        
-        # Play the weather/news intro sound
-        await self.passive_sound.play_weather_intro_sound()
-        
-        # Speak and add each headline individually to conversation history
-        for category, article_text in spoken_articles.items():
-            spoken_line = f"{category.capitalize()} news: {article_text}"
-            await self.response_manager.speak_with_flite(spoken_line)
-            self.llm_client.conversation_history.append({
-                "role": "system", 
-                "content": spoken_line
-            })
-
-    async def command_test_all_actions(self, spoken_text):
-        """Test all available actions."""
-        await self.response_manager.speak_with_flite(f"I heard you say {spoken_text}. Initiating action test.")
-        await self.passive_manager.test_all_actions()
-        await self.response_manager.speak_with_flite("Action test complete.")
-
-        return False
-    
 
 ================================================================================
 FILE: /home/msutt/hal/audio_input/voice_recognition_manager.py
@@ -1363,121 +1079,6 @@ class Music(_Basic_class):
 
 
 ================================================================================
-FILE: /home/msutt/hal/audio_output/passive_sounds_manager.py
-================================================================================
-
-from audio_output.music import Music
-import asyncio
-import random
-import os
-from helpers.global_config import SOUND_ASSETS_PATH
-
-class PassiveSoundsManager:
-    def __init__(self):
-        self.music = Music() 
-        self.sounds_dir = SOUND_ASSETS_PATH
-
-    async def sounds_thinking_loop_single(self):
-        """Play a single sound dynamically using declared supported file types."""
-        thinking_emotion = "positive"
-        sounds_positive = os.path.join(self.sounds_dir,thinking_emotion)
-        supported_extensions = {".wav"}
-
-        # Get a list of all supported sound files in the directory
-        try:
-            passive_sounds = [
-                os.path.join(sounds_positive, file)
-                for file in os.listdir(sounds_positive)
-                if any(file.lower().endswith(ext) for ext in supported_extensions)
-            ]
-        except FileNotFoundError:
-            print(f"Error: Directory '{sounds_positive}' not found.")
-            return
-        except Exception as e:
-            print(f"Error: {e}")
-            return
-
-        if not passive_sounds:
-            print(f"No supported sound files found in '{sounds_positive}'.")
-            return
-
-        # Randomly select a sound file
-        sound_file = random.choice(passive_sounds)
-
-        # Use asyncio.to_thread to call the synchronous method
-        await asyncio.to_thread(self.music.sound_play, sound_file, 75)
-
-        # Optional: Add a short delay to simulate processing time
-        await asyncio.sleep(1.5)
-
-
-    async def play_emotion_sound(self, emotion):
-        """Play a sound corresponding to the given emotion."""
-        supported_extensions = {".wav"}
-        
-        # Determine the directory for the given emotion
-        sounds_dir = os.path.join(self.sounds_dir, emotion)
-        try:
-            # Collect all sound files in the emotion directory
-            emotion_sounds = [
-                os.path.join(sounds_dir, file)
-                for file in os.listdir(sounds_dir)
-                if any(file.lower().endswith(ext) for ext in supported_extensions)
-            ]
-
-            if not emotion_sounds:
-                print(f"No sound files found for emotion '{emotion}'.")
-                return
-
-            # Randomly select a sound file
-            sound_file = random.choice(emotion_sounds)
-            # Play the sound using the robot hat Music API
-            await asyncio.to_thread(self.music.sound_play, sound_file, 75)
-        
-        except FileNotFoundError:
-            print(f"Error: Directory '{sounds_dir}' not found.")
-        except Exception as e:
-            print(f"Error: {e}")
-
-
-    async def play_weather_intro_sound(self):
-        """Play a random weather intro sound once."""
-        play_announcement = "announcement"
-        sounds_announcement = os.path.join(self.sounds_dir,play_announcement)
-        supported_extensions = {".wav"}
-        try:
-            weather_intro_sounds = [
-                os.path.join(sounds_announcement, file)
-                for file in os.listdir(sounds_announcement)
-                if any(file.lower().endswith(ext) for ext in supported_extensions)
-            ]
-        except FileNotFoundError:
-            print(f"Error: Directory '{sounds_announcement}' not found.")
-            return
-        except Exception as e:
-            print(f"Error: {e}")
-            return
-
-        if not weather_intro_sounds:
-            print(f"No supported weather intro sounds found in '{sounds_announcement}'.")
-            return
-
-        # Select and play a random sound
-        sound_file = random.choice(weather_intro_sounds)
-        await asyncio.to_thread(self.music.sound_play, sound_file, 75)
-
-    async def play_sound_indicator(self, sound_file, volume=50):
-        """
-        Plays a sound to indicate a state (e.g., now listening, done listening).
-        Uses the robot hat's music.sound_play for playback.
-        """
-        try:
-            await asyncio.to_thread(self.music.sound_play, sound_file, volume)
-        except Exception as e:
-            print(f"Error playing sound: {e}")
-
-
-================================================================================
 FILE: /home/msutt/hal/audio_output/response_manager.py
 ================================================================================
 
@@ -1716,163 +1317,6 @@ class LocomotionManager:
     async def explore(self):
         # Placeholder for autonomous wandering
         pass
-
-================================================================================
-FILE: /home/msutt/hal/body/passive_actions_manager.py
-================================================================================
-
-import random
-from body.picrawler_extended import PicrawlerExtended
-from audio_output.passive_sounds_manager import PassiveSoundsManager
-from audio_output.response_manager import Response_Manager
-import asyncio
-
-
-class PassiveActionsManager:
-    def __init__(self, picrawler_instance):
-        self.crawler = picrawler_instance
-        self.passive_sound = PassiveSoundsManager()
-        self.newmovements = PicrawlerExtended(self.crawler)
-        self.response_manager = Response_Manager(self.crawler, self)
-        self.actions_by_category = {
-            "subtle": [
-                ("Tap Front Right", self.newmovements.tap_front_right),
-                ("Tap Front Left", self.newmovements.tap_front_left),
-                ("Tap Rear Right", self.newmovements.tap_rear_right),
-                ("Tap Rear Left", self.newmovements.tap_rear_left),
-                ("Tap All Legs", self.newmovements.tap_all_legs),
-                ("Stand Tall", self.newmovements.stand_tall),
-                ("Look Left", lambda: [self.crawler.do_step(step, self.speed) for step in self.crawler.move_list["look_left"]]),
-                ("Look Right", lambda: [self.crawler.do_step(step, self.speed) for step in self.crawler.move_list["look_right"]]),
-                ("Sit", lambda: [self.crawler.do_step(step, self.speed) for step in self.crawler.move_list["sit"]]),
-                ("Stand", lambda: [self.crawler.do_step(step, self.speed) for step in self.crawler.move_list["stand"]]),
-                ("Look Up", lambda: [self.crawler.do_step(step, self.speed) for step in self.crawler.move_list["look_up"]]),
-                ("Look Down", lambda: [self.crawler.do_step(step, self.speed) for step in self.crawler.move_list["look_down"]]),
-                ("Wave", lambda: [self.crawler.do_step(step, self.speed) for step in self.crawler.move_list["wave"]]),
-            ],
-            "expressive": [
-                # ("Wiggle", lambda: asyncio.create_task(self.newmovements.run_wiggle_for_seconds(3))),
-                ("Pushup", lambda: self.newmovements.pushup(count=2, speed=self.speed)),
-                ("Twist", lambda: self.newmovements.twist(speed=self.speed)),
-                ("Handwork", lambda: self.newmovements.handwork(speed=self.speed)),
-            ],
-            "full-body": [
-                ("Turn Left Then Forward", lambda: [
-                    self.crawler.do_action("turn left angle", 1, self.speed, angle=30),
-                    self.crawler.do_action("turn right angle", 1, self.speed, angle=30)
-                ]),
-                ("Turn Right Then Forward", lambda: [
-                    self.crawler.do_action("turn right angle", 1, self.speed, angle=30),
-                    self.crawler.do_action("turn left angle", 1, self.speed, angle=30)
-                ]),
-                ("Step Forward Then Back", lambda: [
-                    self.crawler.do_action("forward", 1, self.speed),
-                    self.crawler.do_action("backward", 1, self.speed)
-                ]),
-                ("Step Back Then Forward", lambda: [
-                    self.crawler.do_action("backward", 1, self.speed),
-                    self.crawler.do_action("forward", 1, self.speed)
-                ]),
-            ],
-        }
-
-        self.category_weights = {
-            "subtle": 0.50,  # Small movements (50%)
-            "expressive": 0.35,  # Bigger gestures (35%)
-            "full-body": 0.15,  # Turning/walking (15%)
-        }
-
-        self.speed = 85  # Default movement speed
-
-    async def handle_passive_actions(self, stop_event):
-        """Alternate between sounds and actions while waiting for LLM response."""
-        while not stop_event.is_set():
-            # Weighted random choice: % sound, % action
-            choice = random.choices(["sound", "action"], weights=[70, 30], k=1)[0]  # Set to Only Sounds for Debugging
-
-            if choice == "sound":
-                await self.passive_sound.sounds_thinking_loop_single()  # Play one sound
-            else:
-                await self.actions_thinking_loop_single()  # Perform one action
-
-            await asyncio.sleep(1)  # Short delay before choosing again
-            
-    async def actions_thinking_loop_single(self):
-        """Perform a single thinking action with categorized weighting."""
-        # Pick a category based on weights
-        category = random.choices(
-            list(self.actions_by_category.keys()),
-            weights=list(self.category_weights.values()),
-            k=1
-        )[0]
-        # Pick a random action from the chosen category
-        action_function = random.choice(self.actions_by_category[category])  #  Unpack the tuple
-
-        # Execute the action
-        await asyncio.to_thread(action_function)  #  Now it's actually calling a function
-
-        # Short pause between actions
-        await asyncio.sleep(1.0)
-
-    async def idle_tick(self):
-        """Perform no actions."""
-        await asyncio.sleep(1.0)
-
-    async def perform_idle_behavior(self):
-        """Perform a single thinking action with categorized weighting."""
-        # Pick a category based on weights
-        category = random.choices(
-            list(self.actions_by_category.keys()),
-            weights=list(self.category_weights.values()),
-            k=1
-        )[0]
-        # Pick a random action from the chosen category
-        action_function = random.choice(self.actions_by_category[category])  #  Unpack the tuple
-
-        # Execute the action
-        await asyncio.to_thread(action_function)  #  Now it's actually calling a function
-
-        # Short pause between actions
-        await asyncio.sleep(1.0)
-
-
-    async def startup_speech_actions(self, words):
-        speak_task = asyncio.create_task(self.response_manager.speak_with_flite(words, emotion="anticipation"))
-        wiggle_task = asyncio.create_task(self.newmovements.wiggle())
-
-        # Ensure tasks run concurrently, but stop wiggle when speech ends
-        await asyncio.gather(speak_task)  # Wait for speech task only
-        wiggle_task.cancel()  # Stop wiggle after speech ends
-        try:
-            await wiggle_task
-        except asyncio.CancelledError:
-            pass
-
-    async def shutdown_speech_actions(self, words):
-        """Speak shutdown message, then sit down after speech completes."""
-        await self.response_manager.speak_with_flite(words)  #  Speech finishes first
-        await asyncio.to_thread(self.newmovements.sit_down)  #  THEN movement starts
-
-    async def test_all_actions(self):
-        """Test all actions in a sequence, announcing each before execution."""
-        for category, actions in self.actions_by_category.items():
-            for action_name, action in actions:
-                await self.response_manager.speak_with_flite(f"Testing action: {action_name}")
-                
-                try:
-                    if isinstance(action, list):
-                        for step in action:
-                            await asyncio.to_thread(step)
-                    else:
-                        await asyncio.to_thread(action)  # Execute movement
-                    
-                except Exception as e:
-                    print(f"Error executing {action_name}: {e}")
-                    await self.response_manager.speak_with_flite(f"Error executing {action_name}. Moving on.")
-                
-                await asyncio.sleep(1.0)  # Small delay between actions
-        await self.response_manager.speak_with_flite("All actions tested successfully.")
-
 
 ================================================================================
 FILE: /home/msutt/hal/body/picrawler.py
@@ -4429,117 +3873,70 @@ FILE: /home/msutt/hal/helpers/__init__.py
 
 
 ================================================================================
-FILE: /home/msutt/hal/helpers/db_connection_handler.py
+FILE: /home/msutt/hal/helpers/gateway_server_client.py
 ================================================================================
 
-import aiomysql
-import asyncio
-import os
-from dotenv import load_dotenv
+import aiohttp
+import base64
+import numpy as np
 
-# Load environment variables
-load_dotenv()
+class GatewayClient:
+    def __init__(self, server_host: str):
+        self.server_host = server_host.rstrip("/")
 
+    # -------------------------
+    # 1. Transcription
+    # -------------------------
+    async def transcribe_audio(self, raw_audio: np.ndarray):
+        audio_bytes = raw_audio.tobytes()
+        audio_b64 = base64.b64encode(audio_bytes).decode("ascii")
 
-class DbConnectionHandler:
-    def __init__(self):
-        self.pool = None
+        payload = {"audio_b64": audio_b64}
+        url = f"{self.server_host}/api/transcribe"
 
-    async def init_db(self):
-        """Initialize a connection pool."""
-        if not self.pool:
-            self.pool = await aiomysql.create_pool(
-                host=os.getenv("SQLHOST"),
-                port=int(os.getenv("SQLPORT", 3306)),  # Default MySQL port
-                user=os.getenv("SQLUSER"),
-                password=os.getenv("SQLPASSWORD"),
-                db=os.getenv("SQLDATABASE"),
-                loop=asyncio.get_event_loop(),
-                autocommit=True
-            )
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload) as resp:
+                return await resp.json()
 
-    async def close_db(self):
-        """Close the connection pool."""
-        if self.pool:
-            self.pool.close()
-            await self.pool.wait_closed()
+    # -------------------------
+    # 2. Unified cognition
+    # -------------------------
+    async def send_perception(self, payload: dict):
+        url = f"{self.server_host}/api/unified"
 
-    async def fetch_prompt(self, speaker_name):
-        """Fetch the appropriate prompt for a recognized speaker."""
-        if not self.pool:
-            await self.init_db()
-            if not self.pool:
-                raise RuntimeError("Database pool failed to initialize.")
-    
-        async with self.pool.acquire() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute("SELECT prompt_template FROM custom_prompts WHERE name = %s", (speaker_name,))
-                result = await cursor.fetchone()
-                return result[0] if result else None  # Return the prompt or None
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload) as resp:
+                return await resp.json()    
+            
+    # -------------------------
+    # 3. Speaker ID (future)
+    # -------------------------
+    async def identify_speaker(self, raw_audio: np.ndarray):
+        # placeholder for future endpoint
+        pass
 
+    # -------------------------
+    # 4. Face Recognition (future)
+    # -------------------------
+    async def recognize_face(self, image_bytes: bytes):
+        # placeholder for future endpoint
+        pass
 
-================================================================================
-FILE: /home/msutt/hal/helpers/general_utilities_manager.py
-================================================================================
+    # -------------------------
+    # 5. Emotion Analysis (future)
+    # -------------------------
+    async def analyze_emotion(self, raw_audio: np.ndarray):
+        # placeholder for future endpoint
+        pass
 
-import asyncio
-import aiofiles
-from utils.utils import get_battery_voltage
-from audio_output.response_manager import Response_Manager
+    # -------------------------
+    # 6. Memory Operations (future)
+    # -------------------------
+    async def store_memory(self, text: str, tags: list):
+        pass
 
-
-class GeneralUtilitiesManager:
-    def __init__(self, picrawler_instance):
-        self.picrawler_instance = picrawler_instance
-        self.response_manager = Response_Manager(self.picrawler_instance)
-
-    # --- Battery Management ---
-    async def get_battery_status(self, max_retries=3, retry_delay=2):
-        """Get the battery voltage with retries and classify the status."""
-        voltage = 0 
-        for attempt in range(max_retries):
-            await self.response_manager.speak_with_flite(f"Battery Check {attempt + 1}.")
-            voltage = get_battery_voltage()
-            if voltage > 0:
-                break
-            await asyncio.sleep(retry_delay)
-
-        if voltage <= 0:  # Still 0 after retries
-            voltage = 0
-            status = "Unknown"
-        else:
-            if voltage > 7.6:
-                status = "Full"
-            elif 7.15 <= voltage <= 7.6:
-                status = "Medium"
-            elif 6.9 <= voltage < 7.15:
-                status = "Low"
-            else:
-                status = "Critical"
-
-        return voltage, status
-
-    async def announce_battery_status(self):
-        """Announce the current battery voltage and status."""
-        voltage, status = await self.get_battery_status()
-        await self.response_manager.speak_with_flite(f"My battery is currently at {voltage:.2f} volts. Status: {status}.")
-        if status == "Low":
-            await self.response_manager.speak_with_flite("Please monitor power levels closely and consider power pack recharge.")
-        elif status == "Critical": 
-            await self.response_manager.speak_with_flite("Warning! Immediate power pack recharge recommended, imminent shutdown possibility.")
-        elif status == "Unknown":  
-            await self.response_manager.speak_with_flite("Battery not detected. Proceed with caution, recheck battery status regularly.")
-
-    # not currently used, re-enable and update to create database memories
-    @staticmethod
-    async def log_response_to_file(response_text, log_file="hal_responses.log"):
-        """Logs the response text asynchronously to a file."""
-        try:
-            async with aiofiles.open(log_file, 'a') as file:
-                await file.write(response_text + "\n\n")
-        except Exception as e:
-            print(f"Error writing to log file: {e}")
-
+    async def query_memory(self, query: str):
+        pass
 
 ================================================================================
 FILE: /home/msutt/hal/helpers/global_config.py
@@ -4608,6 +4005,23 @@ VOICEPRINT_USER1_NAME = getenv_required("VOICEPRINT_USER1_NAME")
 VOICEPRINT_USER1_MODEL = getenv_required("VOICEPRINT_USER1_MODEL")
 VOICEPRINT_USER2_NAME = getenv_optional("VOICEPRINT_USER2_NAME")
 VOICEPRINT_USER2_MODEL = getenv_optional("VOICEPRINT_USER2_MODEL")
+
+================================================================================
+FILE: /home/msutt/hal/helpers/indicators_manager.py
+================================================================================
+
+from helpers.global_config import LED_INDICATOR, SOUND_ASSETS_PATH 
+import asyncio
+
+
+
+async def _led_blip(self):
+    """Blinks the LED every 2 seconds while listening."""
+    while True:
+        self.listening_led.on()
+        await asyncio.sleep(0.1)
+        self.listening_led.off()
+        await asyncio.sleep(1.9)
 
 ================================================================================
 FILE: /home/msutt/hal/helpers/instruction_prompt.txt
@@ -4706,75 +4120,6 @@ You are a quirky four-legged crawler robot who responds playfully and keeps trac
 You are currently talking to Dad. Tease him about his coding skills, but be playful, not mean.
 
 ================================================================================
-FILE: /home/msutt/hal/helpers/llm_client_handler.py
-================================================================================
-
-import requests
-import asyncio
-from typing import Dict, Any
-
-
-class LLMClientHandler:
-    """
-    Unified Server Client
-    - Sends dict payloads
-    - Receives dict responses
-    - No chat history
-    - No system prompts
-    - No personalities
-    """
-
-    def __init__(self, server_host: str):
-        self.server_host = server_host.rstrip("/")
-
-    async def send_message_async(self, payload: dict, retries: int = 2) -> Dict[str, Any]:
-        """
-        Send a JSON payload to the unified server and return JSON.
-        Includes:
-        - timeout
-        - retries
-        - safe fallback
-        """
-        url = f"{self.server_host}/api/unified"
-
-        for attempt in range(retries + 1):
-            try:
-                response = await asyncio.to_thread(
-                    requests.post,
-                    url,
-                    json=payload,
-                    timeout=10
-                )
-
-                response.raise_for_status()
-
-                # Validate JSON
-                try:
-                    data = response.json()
-                    if isinstance(data, dict):
-                        return data
-                    else:
-                        raise ValueError("Server returned non-dict JSON")
-
-                except Exception as json_err:
-                    print(f"[UnifiedServer] Invalid JSON: {json_err}")
-
-            except Exception as e:
-                print(f"[UnifiedServer] Attempt {attempt+1}/{retries+1} failed: {e}")
-
-            # Retry delay (simple linear backoff)
-            await asyncio.sleep(0.2 * (attempt + 1))
-
-        # FINAL FALLBACK — never crash the robot
-        return {
-            "intent": "observe",
-            "speech": {"utterances": []},
-            "nonverbal": {},
-            "memory": {},
-            "world_state": {}
-        }
-
-================================================================================
 FILE: /home/msutt/hal/helpers/modular_code.py
 ================================================================================
 
@@ -4793,362 +4138,6 @@ def safe_float(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
     
-
-================================================================================
-FILE: /home/msutt/hal/helpers/news_handler.py
-================================================================================
-
-import aiohttp
-import feedparser
-import asyncio
-from datetime import datetime
-from audio_output.response_manager import Response_Manager  
-import random
-from bs4 import BeautifulSoup
-
-
-class NewsHandler():
-    def __init__(self, picrawler_instance):
-        self.picrawler_instance = picrawler_instance
-        self.response_manager = Response_Manager(picrawler_instance)
-
-        # RSS Feeds categorized (1 source per category)
-        self.rss_feeds = {
-            "nature": "https://www.natureconservancy.ca/system/rss/channel.jsp?feedID=464872245",
-            "tech": "https://www.cbc.ca/webfeed/rss/rss-technology",
-        }
-
-    async def fetch_news(self, category):
-        """Fetches a random news headline from a category's RSS feed."""
-        feed_url = self.rss_feeds.get(category)
-        if not feed_url:
-            return None  # No feed available for this category
-        
-        articles = await self.fetch_news_feed(feed_url)
-
-        if not articles:
-            return None  # No articles found
-
-        # Choose a random article from the list
-        selected_article = random.choice(articles)
-        return selected_article
-
-    async def fetch_news_feed(self, url, timeout=5):
-        """Fetches and parses an RSS feed with a timeout and User-Agent."""
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
-        }
-        client_timeout = aiohttp.ClientTimeout(total=timeout)
-        try:
-            async with aiohttp.ClientSession(headers=headers) as session:
-                async with session.get(url, timeout=client_timeout) as response:
-                    if response.status == 200:
-                        data = await response.text()
-                        feed = feedparser.parse(data)
-                        articles = []
-                        for entry in feed.entries:
-                            # Prefer 'summary' if available, otherwise 'description'
-                            summary = self.extract_text(getattr(entry, 'summary', getattr(entry, 'description', '')))
-                            title = self.extract_text(entry.title)
-                            articles.append({"title": title, "description": summary})
-                        return articles
-                    else:
-                        print(f"Failed to fetch RSS feed: {url} (Status Code: {response.status})")
-                        return []
-        except asyncio.TimeoutError:
-            print(f"Timeout: RSS feed {url} took too long to respond.")
-        except aiohttp.ClientError as e:
-            print(f"Network error while fetching RSS feed {url}: {str(e)}")
-        
-        return []
-
-    async def startup_fetch_news(self, llm_client):
-        """Fetches and returns one random headline from the available news categories."""
-        articles = []
-        for category in self.rss_feeds.keys():
-            article = await self.fetch_news(category)
-            if article:
-                articles.append(article)  # article is a dict with 'title' and 'description'
-            else:
-                print(f"No article added for category {category}")
-        
-        if articles:
-            # Choose one random article from the list
-            selected_article = random.choice(articles)
-            # Add only the chosen article's title to conversation history
-            llm_client.conversation_history.append({
-                "role": "system", 
-                "content": selected_article["title"]
-            })
-            await self.response_manager.speak_with_flite("News connection established. Headlines have been preeloaded.")
-            return selected_article["title"]
-        else:
-            await self.response_manager.speak_with_flite("Unable to retrieve news at this time.")
-            return None
-
-    
-    @staticmethod
-    def current_datetime():
-        """Returns the current date and time as a formatted string."""
-        return datetime.now().strftime("%A, %B %d, %Y. The time is %I:%M %p.")
-
-    @staticmethod
-    def extract_text(content):
-        """Extract plain text from a string that might contain HTML."""
-        if content:
-            return BeautifulSoup(content, "html.parser").get_text(separator=" ", strip=True)
-        return ""
-
-================================================================================
-FILE: /home/msutt/hal/helpers/weather_command_manager.py
-================================================================================
-
-from audio_output.response_manager import Response_Manager
-from helpers.weather_handler import WeatherHandler
-import asyncio
-
-
-class WeatherCommandManager:
-    def __init__(self, llm_client, passive_manager, passive_sound, picrawler_instance):
-        self.llm_client = llm_client
-        self.picrawler_instance = picrawler_instance
-        self.passive_manager = passive_manager
-        self.passive_sound = passive_sound
-        self.weather_helper = WeatherHandler()
-        self.response_manager = Response_Manager(self.picrawler_instance)
-
-    async def startup_fetch_forecast(self):
-        # Fetch the 5-day weather forecast
-        weather_forecast = await self.weather_helper.fetch_forecast()
-        if not weather_forecast:
-            await self.response_manager.speak_with_flite("Checking weather satellite connection. Status: Offline.")
-            return
-        await self.response_manager.speak_with_flite("Checking weather satellite connection. Status: Online.")
-        # Add history for LLM
-        self.llm_client.conversation_history.extend([
-            {"role": "system", "content": f"If the conversation is weather related, here is the most recent 5-day forecast: {weather_forecast}."}
-        ])
-        
-    async def command_get_weather(self, spoken_text):
-        """Provide today's weather."""
-        await self.response_manager.speak_with_flite("You want to check the weather? Okay, I'll stick my head out the window and look around.")
-
-        # Fetch the current weather
-        current_weather = await self.weather_helper.fetch_weather()
-        if not current_weather:
-            await self.response_manager.speak_with_flite("Sorry, I couldn't retrieve the weather. Maybe I need a new antenna.")
-            return
-
-        # Start passive actions
-        stop_event = asyncio.Event()
-        thinking_task = asyncio.create_task(self.passive_manager.handle_passive_actions(stop_event))
-
-        # Generate LLM system prompt and response
-        system_prompt = (
-            f"You are Halimeedees, a quirky four-legged crawler robot. "
-            f"Here is the weather data for today: {current_weather}. "
-            f"Deliver an amusing and informative update, blending curiosity and wit. "
-        )
-        response_text = await self.llm_client.send_message_async(system_prompt, spoken_text)
-        # Ensure passive actions are stopped
-        stop_event.set()
-        await thinking_task  # Wait for passive actions to stop
-        # Play the weather intro sound
-        await self.passive_sound.play_weather_intro_sound()
-        # Speak the response
-        await self.response_manager.speak_with_flite(response_text)
-
-        # Add history for LLM
-        self.llm_client.conversation_history.extend([
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": spoken_text},
-            {"role": "assistant", "content": response_text},
-        ])
-        return False  # Signal to go back to listening
-
-    async def command_get_forecast(self, spoken_text):
-        """Provide a 5-day weather forecast."""
-        await self.response_manager.speak_with_flite("You think I can predict the weather? Oh Boy, I'll check my crystal ball. Just kidding, I'll use a satellite.")
-
-        # Fetch the 5-day weather forecast
-        weather_forecast = await self.weather_helper.fetch_forecast()
-        if not weather_forecast:
-            await self.response_manager.speak_with_flite("Sorry, I couldn't retrieve the forecast. No satellites available to hijack.")
-            return
-
-        # Start passive actions
-        stop_event = asyncio.Event()
-        thinking_task = asyncio.create_task(self.passive_manager.handle_passive_actions(stop_event))
-
-        # Generate LLM system prompt and response
-        system_prompt = (
-            f"You are Halimeedees, a quirky four-legged crawler robot of unknown origin. "
-            f"Here is the weather data for the next five days: {weather_forecast}. "
-            f"Craft a fun and engaging response that highlights trends, keeps it concise but interesting. "
-            f"Numbers are okay but focus on the big picture!"
-        )
-        response_text = await self.llm_client.send_message_async(system_prompt, spoken_text)
-        # Ensure passive actions are stopped
-        stop_event.set()
-        await thinking_task  # Wait for passive actions to stop
-        # Play the weather intro sound
-        await self.passive_sound.play_weather_intro_sound()
-        # Speak the response
-        await self.response_manager.speak_with_flite(response_text)
-        # Add history for LLM
-        self.llm_client.conversation_history.extend([
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": spoken_text},
-            {"role": "assistant", "content": response_text},
-        ])
-        return False  # Signal to go back to listening
-
-
-================================================================================
-FILE: /home/msutt/hal/helpers/weather_handler.py
-================================================================================
-
-import requests
-import datetime
-from collections import defaultdict
-from helpers.global_config import (
-    OPEN_WEATHER_1DAY, OPEN_WEATHER_5DAY, OPEN_WEATHER,
-    DEFAULT_WEATHER_LAT, DEFAULT_WEATHER_LONG, SOUND_ASSETS_PATH
-)
-params = {
-    "lat": DEFAULT_WEATHER_LAT,
-    "lon": DEFAULT_WEATHER_LONG,
-    "appid": OPEN_WEATHER,
-    "units": "metric"
-}
-
-class WeatherHandler:
-    def __init__(self):
-        self.weather_intro_dir = SOUND_ASSETS_PATH/"weather"
-
-    @staticmethod
-    def get_wind_speed_description(speed):
-        if speed < 1:
-            return "Calm"
-        elif speed < 5:
-            return "Light breeze"
-        elif speed < 11:
-            return "Gentle breeze"
-        elif speed < 19:
-            return "Moderate wind"
-        elif speed < 28:
-            return "Fresh breeze"
-        elif speed < 38:
-            return "Strong wind"
-        elif speed < 49:
-            return "Gale"
-        elif speed < 61:
-            return "Strong gale"
-        elif speed < 74:
-            return "Storm"
-        else:
-            return "Hurricane-force winds"
-
-    @staticmethod
-    def get_wind_direction(degrees):
-        cardinal_directions = ["North", "Northeast", "East", "Southeast", "South", "Southwest", "West", "Northwest"]
-        index = round(degrees / 45) % 8
-        return cardinal_directions[index]
-
-    @staticmethod
-    def get_cloud_description(cloud_percentage):
-        if cloud_percentage <= 10:
-            return "No clouds"
-        elif cloud_percentage <= 25:
-            return "Mostly clear"
-        elif cloud_percentage <= 50:
-            return "Partly cloudy"
-        elif cloud_percentage <= 75:
-            return "Mostly cloudy"
-        else:
-            return "Overcast"
-
-    async def fetch_weather(self):
-        """Fetch and format current weather data."""
-        if OPEN_WEATHER_1DAY is None :
-            raise ValueError("OPEN_WEATHER_1DAY must be set in environment")
-
-        try:
-
-            response = requests.get(OPEN_WEATHER_1DAY, params=params, timeout=10)
-
-            response.raise_for_status()
-            data = response.json()
-
-            # Format weather data
-            location_name = data.get("name", "Unknown location")
-            weather_desc = data["weather"][0]["description"].capitalize()
-            temp = round(data["main"]["temp"])
-            feels_like = round(data["main"]["feels_like"])
-            clouds = self.get_cloud_description(data["clouds"]["all"])
-            wind_speed = self.get_wind_speed_description(data["wind"]["speed"])
-            wind_direction = self.get_wind_direction(data["wind"]["deg"])
-
-            return (
-                f"Weather in {location_name}: {weather_desc}. "
-                f"Cloudiness: {clouds}. "
-                f"Temperature: {temp} degrees, (feels like {feels_like} degrees). "
-                f"Wind: {wind_speed} from {wind_direction}."
-            )
-
-        except requests.RequestException as e:
-            print(f"Weather API error: {e}")
-            return "Sorry, I couldn't fetch the current weather."
-
-    async def fetch_forecast(self):
-        """Fetch and format a detailed 5-day forecast."""
-        if OPEN_WEATHER_5DAY is None :
-            raise ValueError("OPEN_WEATHER_5DAY must be set in environment")
-        try:
-
-            response = requests.get(OPEN_WEATHER_5DAY, params=params, timeout=10)
-            response.raise_for_status()
-            data = response.json()
-
-            # Group data by day
-            forecast_list = data["list"]
-            daily_data = defaultdict(list)
-
-            for entry in forecast_list:
-                date = entry["dt_txt"].split(" ")[0]
-                daily_data[date].append(entry)
-
-            # Summarize each day
-            all_days_summary = []
-            for date, entries in daily_data.items():
-                # Convert date string to a datetime object
-                day_name = datetime.datetime.strptime(date, "%Y-%m-%d").strftime("%A")
-
-                # Extract temperature and weather info
-                temps = [entry["main"]["temp"] for entry in entries]
-                descriptions = [entry["weather"][0]["description"].capitalize() for entry in entries]
-                high_temp = max(temps)
-                low_temp = min(temps)
-                common_weather = max(set(descriptions), key=descriptions.count)
-
-                all_days_summary.append({
-                    "day": day_name,  # Use day name instead of date
-                    "high_temp": round(high_temp),
-                    "low_temp": round(low_temp),
-                    "description": common_weather,
-                })
-
-            # Format the summary for all days
-            forecast_summary = ", ".join([
-                f"{day['day']}: High {day['high_temp']} degrees, Low {day['low_temp']} degrees. {day['description']}."
-                for day in all_days_summary
-            ])
-
-            return forecast_summary
-
-        except requests.RequestException as e:
-            print(f"Forecast API error: {e}")
-            return "Sorry, I couldn't fetch the weather forecast."
 
 ================================================================================
 FILE: /home/msutt/hal/mind/decision_manager.py
