@@ -1,7 +1,7 @@
 # dsl/behavior_plan_to_dsl.py
 
 from typing import List
-from mind.decision_manager import BehaviorPlan
+from cortex.decision_manager import BehaviorPlan
 
 
 def behavior_plan_to_dsl(plan: BehaviorPlan) -> str:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from utils.basic import _Basic_class
-from utils.utils import is_installed, run_command
+from crawler_utils.basic import _Basic_class
+from crawler_utils.utils import is_installed, run_command
 from distutils.spawn import find_executable
 import os
 import re

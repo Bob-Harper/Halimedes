@@ -8,14 +8,9 @@ from datetime import datetime
 # ---------------------------------------------------------
 DIRECTORIES = [
     "/home/msutt/hal",
-    "/home/msutt/hal/audio_input",
-    "/home/msutt/hal/audio_output",
     "/home/msutt/hal/body",
-    "/home/msutt/hal/dsl",
-    "/home/msutt/hal/eyes",
     "/home/msutt/hal/helpers",
-    "/home/msutt/hal/mind",
-    "/home/msutt/hal/vision",
+    "/home/msutt/hal/cortex",
 ]
 
 # ---------------------------------------------------------

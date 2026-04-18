@@ -1,5 +1,5 @@
-from utils.robot import Robot
-from utils import utils
+from crawler_utils.robot import Robot
+from crawler_utils import utils
 
 import time
 import math

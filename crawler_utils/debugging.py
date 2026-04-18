@@ -34,7 +34,7 @@ def trace_async_calls(func):
 """
 Implementation example:
 =============================
-from utils.debugging import trace_calls, trace_async_calls
+from crawler_utils.debugging import trace_calls, trace_async_calls
 
 @trace_calls
 def some_function(values):

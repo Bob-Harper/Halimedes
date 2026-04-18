@@ -3,7 +3,7 @@ import time
 import os
 import re
 import subprocess
-from utils.pin import Pin
+from crawler_utils.pin import Pin
 
 
 def set_volume(value):
@@ -117,7 +117,7 @@ def get_battery_voltage():
     :return: battery voltage(V)
     :rtype: float
     """
-    from utils.adc import ADC
+    from crawler_utils.adc import ADC
     adc = ADC("A4")
     raw_voltage = adc.read_voltage()
     voltage = raw_voltage * 3

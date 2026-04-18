@@ -1,6 +1,6 @@
 # mind/server_intent_parser.py
 from typing import Any, Dict, List
-from mind.decision_manager import IntentType
+from cortex.decision_manager import IntentType
 
 # Map common server string intents to IntentType; extend as needed.
 _INTENT_STR_MAP = {
