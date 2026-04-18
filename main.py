@@ -1,4 +1,4 @@
-from utils.utils import reset_mcu
+from crawler_utils.utils import reset_mcu
 import asyncio
 import warnings
 warnings.simplefilter('ignore')
@@ -16,17 +16,17 @@ from body.picrawler import Picrawler
 picrawler_instance = Picrawler()
 # We now have a single instance of Picrawler to pass to other classes that require it.
 
-from mind.world_state_manager import WorldStateManager
-from mind.internal_state_manager import InternalStateManager
-from mind.perception_manager import PerceptionManager
-from mind.decision_manager import DecisionManager
-from mind.server_intent_parser import parse_server_intent
+from cortex.world_state_manager import WorldStateManager
+from cortex.internal_state_manager import InternalStateManager
+from cortex.perception_manager import PerceptionManager
+from cortex.decision_manager import DecisionManager
+from cortex.server_intent_parser import parse_server_intent
 from dsl.behavior_plan_to_dsl import behavior_plan_to_dsl
 from body.searchlight import Searchlight
 from dsl.channels import GazeChannel, ExpressionChannel, SpeechChannel, ActionChannel, SoundChannel
 from dsl.macro_player import MacroPlayer
 from audio_input.audio_input_manager import AudioInputManager
-from mind.decision_manager import DecisionManager
+from cortex.decision_manager import DecisionManager
 from audio_output.emotional_sounds_manager import EmotionalSoundsManager
 from audio_output.response_manager import Response_Manager
 from helpers.gateway_server_client import GatewayClient
