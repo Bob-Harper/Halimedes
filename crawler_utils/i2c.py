@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from .basic import _Basic_class
-from .utils import run_command
+from crawler_utils.basic import _Basic_class
+from crawler_utils.utils import run_command
 from smbus2 import SMBus
 import multiprocessing
 
@@ -28,7 +28,7 @@ class I2C(_Basic_class):
 
     # i2c_lock = multiprocessing.Value('i', 0)
 
-    def __init__(self, address=None, bus=1, *args, **kwargs):
+    def __init__(self, address: int | list[int], bus: int = 1, *args, **kwargs):
         """
         Initialize the I2C bus
 
@@ -40,6 +40,9 @@ class I2C(_Basic_class):
         super().__init__(*args, **kwargs)
         self._bus = bus
         self._smbus = SMBus(self._bus)
+
+        self.address: int
+
         if isinstance(address, list):
             connected_devices = self.scan()
             for _addr in address:
@@ -50,7 +53,8 @@ class I2C(_Basic_class):
                 self.address = address[0]
         else:
             self.address = address
-
+        if self.address is None:
+            raise ValueError("I2C address cannot be None")
         # print(f'address: 0x{self.address:02X}')
 
     @_retry_wrapper

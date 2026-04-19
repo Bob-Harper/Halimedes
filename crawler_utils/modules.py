@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-from .pin import Pin
-from .pwm import PWM
-from .adc import ADC
-from .i2c import I2C
+from crawler_utils.pin import Pin
+from crawler_utils.pwm import PWM
+from crawler_utils.adc import ADC
+from crawler_utils.i2c import I2C
 import time
-from .basic import _Basic_class
+from crawler_utils.basic import _Basic_class
 from typing import Union, List, Tuple, Optional
 
 class Ultrasonic():
@@ -33,6 +33,7 @@ class Ultrasonic():
         pulse_end = 0
         pulse_start = 0
         timeout_start = time.time()
+        assert self.echo.gpio is not None
         while self.echo.gpio.value == 0:
             pulse_start = time.time()
             if pulse_start - timeout_start > self.timeout:
@@ -78,7 +79,9 @@ class ADXL345(I2C):
         super().__init__(address=address, bus=bus, *args, **kwargs)
         self.address = address
 
-    def read(self, axis: int = None) -> Union[float, List[float]]:
+
+    def read(self, axis: Optional[int] = None) -> Union[float, List[float]]:  # type: ignore[override]
+
         """
         Read an axis from ADXL345
 
@@ -153,6 +156,10 @@ class RGB_LED():
         self.common = common
 
     def color(self, color: Union[str, Tuple[int, int, int], List[int], int]):
+        if not isinstance(color, (str, int, tuple, list)):
+            raise TypeError("color must be str, int, tuple or list")
+
+        r = g = b = 0
         """
         Write color to RGB LED
 
@@ -226,7 +233,7 @@ class Buzzer():
             raise TypeError("freq is not supported for active buzzer")
         self.buzzer.freq(freq)
 
-    def play(self, freq: float, duration: float = None):
+    def play(self, freq: float, duration: Optional[float] = None):
         """
         Play freq
 
@@ -258,7 +265,7 @@ class Grayscale_Module(object):
 
     REFERENCE_DEFAULT = [1000]*3
 
-    def __init__(self, pin0: ADC, pin1: ADC, pin2: ADC, reference: int = None):
+    def __init__(self, pin0: ADC, pin1: ADC, pin2: ADC, reference: Optional[int] = None):
         """
         Initialize Grayscale Module
 
@@ -277,7 +284,7 @@ class Grayscale_Module(object):
                 raise TypeError(f"pin{i} must be robot_hat.ADC")
         self._reference = self.REFERENCE_DEFAULT
 
-    def reference(self, ref: list = None) -> list:
+    def reference(self, ref: Optional[List[int]] = None) -> List[int]:
         """
         Get Set reference value
 
@@ -293,7 +300,7 @@ class Grayscale_Module(object):
                 raise TypeError("ref parameter must be 1*3 list.")
         return self._reference
 
-    def read_status(self, datas: list = None) -> list:
+    def read_status(self, datas: Optional[List[int]] = None) -> List[int]:
         """
         Read line status
 
@@ -308,7 +315,7 @@ class Grayscale_Module(object):
             datas = self.read()
         return [0 if data > self._reference[i] else 1 for i, data in enumerate(datas)]
 
-    def read(self, channel: int = None) -> list:
+    def read(self, channel: Optional[int] = None) -> List[int]:
         """
         read a channel or all datas
 

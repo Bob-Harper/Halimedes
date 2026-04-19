@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
-from ..utils.basic import _Basic_class
-from ..utils.pwm import PWM
-from ..utils.pin import Pin
-from ..utils.filedb import fileDB
+from crawler_utils.basic import _Basic_class
+from crawler_utils.pwm import PWM
+from crawler_utils.pin import Pin
+from crawler_utils.filedb import fileDB
 import os
 
-# user and User home directory
-User = os.popen('echo ${SUDO_USER:-$LOGNAME}').readline().strip()
-UserHome = os.popen('getent passwd %s | cut -d: -f 6' %
-                    User).readline().strip()
-config_file = '%s/.config/robot-hat/robot-hat.conf' % UserHome
+config_file = os.path.expanduser("~/hal/data/robot-hat.conf")
 
 
 class Motor():
@@ -79,7 +75,7 @@ class Motors(_Basic_class):
         """
         super().__init__(*args, **kwargs)
 
-        self.db = fileDB(db=db, mode='774', owner=User)
+        self.db = fileDB(db=db)
         self.left_id = int(self.db.get("left", default_value=0))
         self.right_id = int(self.db.get("right", default_value=0))
         left_reversed = bool(self.db.get(

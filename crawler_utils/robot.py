@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
-from .basic import _Basic_class
-from .pwm import PWM
-from .servo import Servo
+from crawler_utils.basic import _Basic_class
+from crawler_utils.pwm import PWM
+from crawler_utils.servo import Servo
 import time
-from .filedb import fileDB
+from crawler_utils.filedb import fileDB
 import os
+from typing import Optional, Sequence
 
-# user and User home directory
-User = os.popen('echo ${SUDO_USER:-$LOGNAME}').readline().strip()
-UserHome = os.popen('getent passwd %s | cut -d: -f 6' %
-                    User).readline().strip()
-config_file = '%s/.config/robot-hat/robot-hat.conf' % UserHome
+config_file = os.path.expanduser("~/hal/data/robot-hat.conf")
 
 
 class Robot(_Basic_class):
@@ -63,12 +60,12 @@ class Robot(_Basic_class):
 
         self.offset_value_name = f"{self.name}_servo_offset_list"
         # offset
-        self.db = fileDB(db=db, mode='774', owner=User)
-        temp = self.db.get(self.offset_value_name,
-                           default_value=str(self.new_list(0)))
-        temp = [float(i.strip()) for i in temp.strip("[]").split(",")]
-        self.offset = temp
-
+        self.db = fileDB(db=db)
+        raw = self.db.get(self.offset_value_name,
+                        default_value=str(self.new_list(0)))
+        temp_str = str(raw)
+        temp = [float(i.strip()) for i in temp_str.strip("[]").split(",") if i.strip()]
+        self.offset: list[float] = temp
         # parameter init
         self.servo_positions = self.new_list(0)
         self.origin_positions = self.new_list(0)
@@ -76,11 +73,12 @@ class Robot(_Basic_class):
         self.direction = self.new_list(1)
 
         # servo init
-        if None == init_angles:
-            init_angles = [0]*self.pin_num
-        elif len(init_angles) != self.pin_num:
-            raise ValueError('init angels numbers do not match pin numbers ')
-
+        if init_angles is None:
+            init_angles = [0] * self.pin_num
+        else:
+            if len(init_angles) != self.pin_num:
+                raise ValueError('init angles numbers do not match pin numbers ')
+            
         if init_order == None:
             init_order = range(self.pin_num)
 
@@ -242,7 +240,7 @@ class Robot(_Basic_class):
         offset_list = [min(max(offset, -20), 20) for offset in offset_list]
         temp = str(offset_list)
         self.db.set(self.offset_value_name, temp)
-        self.offset = offset_list
+        self.offset: list[float] = [float(x) for x in temp.strip("[]").split(",") if x.strip()]
 
     def calibration(self):
         """Move all servos to home position"""

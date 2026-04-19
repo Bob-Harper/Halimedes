@@ -32,15 +32,10 @@ from multiprocessing import Process, Manager
 from .utils import *
 
 # user and user home directory
-# =================================================================
-user = os.popen("echo ${SUDO_USER:-$(who -m | awk '{ print $1 }')}").readline().strip()
-user_home = os.popen(f'getent passwd {user} | cut -d: -f 6').readline().strip()
-# print(f"user: {user}")
-# print(f"user_home: {user_home}")
+user_home = os.path.expanduser("~")
+DEFAULLT_PICTURES_PATH = f"{user_home}/Pictures/vilib/"
+DEFAULLT_VIDEOS_PATH = f"{user_home}/Videos/vilib/"
 
-# Default path for pictures and videos
-DEFAULLT_PICTURES_PATH = '%s/Pictures/vilib/'%user_home
-DEFAULLT_VIDEOS_PATH = '%s/Videos/vilib/'%user_home
 
 # utils
 # =================================================================

@@ -6,17 +6,12 @@ import subprocess
 from crawler_utils.pin import Pin
 
 
-def set_volume(value):
-    """
-    Set volume
-
-    :param value: volume(0~100)
-    :type value: int
-    """
-    value = min(100, max(0, value))
-    cmd = "sudo amixer -M sset 'PCM' %d%%" % value
-    os.system(cmd)
-
+def set_volume(value: int):
+    value = max(0, min(100, value))
+    subprocess.run(
+        ["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{value}%"],
+        check=False
+    )
 
 def run_command(cmd):
     """

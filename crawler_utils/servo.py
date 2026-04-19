@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from .pwm import PWM
-from .utils import mapping
+from crawler_utils.pwm import PWM
+from crawler_utils.utils import mapping
 
 
 class Servo(PWM):

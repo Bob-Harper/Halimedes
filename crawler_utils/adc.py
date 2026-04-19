@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from ..utils.i2c import I2C
+from crawler_utils.i2c import I2C
 
 
 class ADC(I2C):
@@ -36,22 +36,24 @@ class ADC(I2C):
         # Convert to Register value
         self.chn = chn | 0x10
 
-    def read(self):
+    def read(self, length: int = 2):
         """
         Read the ADC value
 
+        :param length: number of bytes to read (ignored, always 2 for ADC)
         :return: ADC value(0-4095)
         :rtype: int
         """
         # Write register address
         self.write([self.chn, 0, 0])
-        # Read values
+        # Read values (always 2 bytes for this ADC)
         msb, lsb = super().read(2)
 
         # Combine MSB and LSB
         value = (msb << 8) + lsb
         self._debug(f"Read value: {value}")
         return value
+
 
     def read_voltage(self):
         """

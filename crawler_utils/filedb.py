@@ -12,6 +12,7 @@
 '''
 import os
 from time import sleep
+from typing import Optional, Union
 
 
 class fileDB(object):
@@ -19,7 +20,7 @@ class fileDB(object):
 
     A file based database, read and write arguements in the specific file.
     """
-	def __init__(self, db:str, mode:str=None, owner:str=None):  
+	def __init__(self, db: str, mode: Optional[str] = None, owner: Optional[str] = None):  
 		'''
 		Init the db_file is a file to save the datas.
 		
@@ -39,7 +40,7 @@ class fileDB(object):
 			raise ValueError('db: Missing file path parameter.')
 
 
-	def file_check_create(self, file_path:str, mode:str=None, owner:str=None):
+	def file_check_create(self, file_path: str, mode: Optional[str] = None, owner: Optional[str] = None):
 		"""
 		Check if file is existed, otherwise create one.
 		
@@ -68,14 +69,21 @@ class fileDB(object):
 				with open(file_path, 'w') as f:
 					f.write("# robot-hat config and calibration value of robots\n\n")
 
-			if mode != None:
-				os.popen('sudo chmod %s %s'%(mode, file_path))
-			if owner != None:
-				os.popen('sudo chown -R %s:%s %s'%(owner, owner, file_path.rsplit('/',1)[0]))		
+			if mode is not None:
+				os.chmod(file_path, int(mode, 8))
+
+			if owner is not None:
+				try:
+					import pwd, grp
+					uid = pwd.getpwnam(owner).pw_uid
+					gid = grp.getgrnam(owner).gr_gid
+					os.chown(file_path, uid, gid)
+				except Exception:
+					pass
 		except Exception as e:
 			raise(e) 
 	
-	def get(self, name, default_value=None):
+	def get(self, name: str, default_value: Union[str, int] = 0) -> Union[str, int]:
 		"""
 		Get value with data's name
 		
@@ -92,6 +100,7 @@ class fileDB(object):
 			conf.close()
 			file_len=len(lines)-1
 			flag = False
+			value = default_value
 			# Find the arguement and set the value
 			for i in range(file_len):
 				if lines[i][0] != '#':
@@ -100,15 +109,16 @@ class fileDB(object):
 						flag = True
 			if flag:
 				return value
-			else:
-				return default_value
+
+			return 0
+
 		except FileNotFoundError:
 			conf = open(self.db,'w')
 			conf.write("")
 			conf.close()
-			return default_value
+			return 0
 		except :
-			return default_value
+			return 0
 	
 	def set(self, name, value):
 		"""
