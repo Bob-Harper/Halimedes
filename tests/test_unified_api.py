@@ -1,33 +1,27 @@
 import aiohttp
 import asyncio
 import json
-from pathlib import Path
-prompt_file = Path("/home/msutt/hal/mind/system_prompt.txt")
 
-GATEWAY_URL = "http://192.168.0.123:9000/api/unified"
+GATEWAY_URL = "http://192.168.0.123:9000/api/inference"
 
 async def main():
-    # This simulates what Hal would send after transcription
-    if prompt_file.exists():
-        with open(prompt_file, "r", encoding="utf-8") as f:
-            system_prompt = f.read()
-    else:    
-        system_prompt = "[ERROR: System prompt file not found]"
-    # Keep the /nothink during testing until the reasoining flag is fully implemented        
-    user_input = "/nothink You are ROBOT1.0.  You are in diagnostics mode.  Please test all systems and sensors you detect as connected, and present a status report. List each detected system and sensor by name and function. Include any systems you are aware of that apper to be offline or unable to access."
-
+    user_input = """
+You are ROBOT1.0. You are in diagnostics mode.
+Update all fields for components, services, systems, and sensor data you have access to.
+No field should left blank.
+If an element is unresponsive, indicate that in the relevant field.  
+All JSON elements must be updated to currently known state and include valid values.
+    """
     payload = {
         "perception": {
-            "system_prompt": system_prompt,
             "user_text": user_input,
-            "world_state": "",
-            "behavior_state": "",
-            "perception_summary": "",
-            "last_intent": "conversation",
             "speaker": "Bob",
-            "emotion": "happy",
-            "reasoning_required": "False",
-        }
+            "user_emotion": "happy"
+        },
+        "world_state": {},
+        "memory": {},
+        "behavior_state": {},
+        "last_intent": "conversation"
     }
 
     print("[Test] Sending unified perception snapshot:")
