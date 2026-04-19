@@ -1,15 +1,40 @@
-import random
-import time
-# import stuff
-# NOT USED YET.  EXAMPLE PLACEHOLDER
-# emotional_sounds_manager.py for examples and ideas on how to implement.
+# cortex/initiative_manager.py
 
 class InitiativeManager:
+    """
+    Determines whether Hal should initiate a behavior on his own.
+    Produces a suggested IntentType or None.
+    """
+
     def __init__(self):
-        self.last_interaction = time.time()
+        self.idle_threshold = 50      # ticks
+        self.explore_threshold = 200  # ticks
 
-    def register_interaction(self):
-        self.last_interaction = time.time()
+    def suggest(self, context: dict, internal_state) -> str | None:
+        """
+        Returns one of:
+            "idle"
+            "explore"
+            "greet"
+            None  (no initiative)
+        """
 
-    def should_initiate_action(self):
-        return (time.time() - self.last_interaction) > random.randint(300, 600)  # 5-10 minutes idle
+        # ------------------------------------------------------------
+        # USER PRESENCE → greet
+        # ------------------------------------------------------------
+        if context.get("user_present") and internal_state.current_activity == "idle":
+            return "greet"
+
+        # ------------------------------------------------------------
+        # LONG IDLE → idle animation
+        # ------------------------------------------------------------
+        if context.get("idle_ticks", 0) > self.idle_threshold:
+            return "idle"
+
+        # ------------------------------------------------------------
+        # VERY LONG IDLE → explore
+        # ------------------------------------------------------------
+        if context.get("idle_ticks", 0) > self.explore_threshold:
+            return "explore"
+
+        return None

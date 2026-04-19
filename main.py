@@ -16,17 +16,17 @@ from body.picrawler import Picrawler
 picrawler_instance = Picrawler()
 # We now have a single instance of Picrawler to pass to other classes that require it.
 
+from cortex.decision_manager import DecisionManager
 from cortex.world_state_manager import WorldStateManager
 from cortex.internal_state_manager import InternalStateManager
 from cortex.perception_manager import PerceptionManager
-from cortex.decision_manager import DecisionManager
+from cortex.context_builder import ContextBuilder
+from cortex.initiative_manager import InitiativeManager
+from cortex.action_executor import ActionExecutor
+from cortex.cognition_loop import CognitionLoop
 from cortex.server_intent_parser import parse_server_intent
-from dsl.behavior_plan_to_dsl import behavior_plan_to_dsl
 from body.searchlight import Searchlight
-from dsl.channels import GazeChannel, ExpressionChannel, SpeechChannel, ActionChannel, SoundChannel
-from dsl.macro_player import MacroPlayer
 from audio_input.audio_input_manager import AudioInputManager
-from cortex.decision_manager import DecisionManager
 from audio_output.emotional_sounds_manager import EmotionalSoundsManager
 from audio_output.response_manager import Response_Manager
 from helpers.gateway_server_client import GatewayClient
@@ -54,28 +54,32 @@ expression_manager.setup(composer)
 # Action + sound managers (must exist before MacroPlayer)
 emotion_sound_manager = EmotionalSoundsManager()
 response_manager = Response_Manager(picrawler_instance, actions_manager)
+audio_input = AudioInputManager(picrawler_instance)
 
-# MacroPlayer
-macro_player = MacroPlayer(
-    gaze=GazeChannel(gaze_interpolator),
-    expression=ExpressionChannel(expression_manager),
-    speech=SpeechChannel(response_manager),
-    action=ActionChannel(actions_manager),
-    sound=SoundChannel(emotion_sound_manager.play_sound)
-)
 unified_server = GatewayClient(server_host)
 world_state = WorldStateManager()
 internal_state = InternalStateManager()
 perception = PerceptionManager()
+decision_manager = DecisionManager()
+context_builder = ContextBuilder()
+initiative_manager = InitiativeManager()
+action_executor = ActionExecutor(
+    motors=actions_manager,
+    eyes=expression_manager,
+    searchlight=searchlight,
+    audio=response_manager
+)
 
+cortex = CognitionLoop(
+    perception_manager=perception,
+    context_builder=context_builder,
+    initiative_manager=initiative_manager,
+    decision_manager=decision_manager,
+    action_executor=action_executor,
+    tick_rate=0.1
+)
 async def main():
 
-    print("[Init] Starting subsystem initialization…")
-
-    decision_manager = DecisionManager()
-    audio_input = AudioInputManager(picrawler_instance)
-
-    print("[Init] Subsystems ready.")
     print("[Hal] Ready. Entering main loop.")
 
     while True:
@@ -135,22 +139,8 @@ async def main():
         perception.reset()
 
         # DECISION LAYER ---------------------------------------------------
-        behavior_plan = decision_manager.decide(
-            perception.snapshot(),
-            server_intent
-        )
-
-        print(f"[Decision] Behavior plan: {behavior_plan}")
-
-        # PLAN → DSL -------------------------------------------------------
-        dsl_script = behavior_plan_to_dsl(behavior_plan)
-        print(f"[DSL] Script generated: '{dsl_script.strip()}'")
-
-        # EXECUTE ----------------------------------------------------------
-        if dsl_script.strip():
-            print("[Action] Executing DSL script…")
-            await macro_player.run(dsl_script)
-
+        cortex.tick(server_intent)
+        print(f"[Decision] Executed plan for intent '{server_intent.get('intent')}'")
         # LOOP --------------------------------------------------------------
         await asyncio.sleep(0.01)
 

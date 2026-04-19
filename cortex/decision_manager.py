@@ -1,10 +1,12 @@
-# mind/decision_manager.py
+# cortex/decision_manager.py
 
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any, Dict, List, Optional, Mapping
 from helpers.modular_code import safe_float 
+from cortex.behavior_manager import BehaviorManager
+from cortex.behavior_plan import BehaviorPlan
 
 
 # ====== ENUMS / BASIC TYPES ===================================================
@@ -29,32 +31,6 @@ class ServerIntent:
     world_updates: List[Dict[str, Any]] = field(default_factory=list)
     raw_payload: Dict[str, Any] = field(default_factory=dict)  # full JSON if needed
 
-
-@dataclass
-class BehaviorPlan:
-    """What the body should actually do this tick."""
-    # Speech: list of utterances with optional emotion
-    speech: List[Dict[str, Any]] = field(default_factory=list)
-
-    # Nonverbal: gaze, expressions, actions, sounds
-    nonverbal: Dict[str, List[Dict[str, Any]]] = field(default_factory=lambda: {
-        "gaze": [],
-        "expression": [],
-        "actions": [],
-        "sounds": [],
-    })
-
-    # Memory / world-state updates
-    memory: Dict[str, List[Dict[str, Any]]] = field(default_factory=lambda: {
-        "write": [],
-    })
-    world_state: Dict[str, List[Dict[str, Any]]] = field(default_factory=lambda: {
-        "update": [],
-    })
-
-    # Meta
-    priority: str = "normal"          # "low" | "normal" | "high"
-    should_interrupt: bool = False    # can this preempt current behavior?
 
 
 # ====== INTERNAL STATE MANAGERS ===============================================
@@ -99,6 +75,7 @@ class DecisionManager:
         self.world_state = WorldState()
         self.internal_state = InternalState()
         self.goals = Goals()
+        self.behaviors = BehaviorManager()
 
     # -------------------------------------------------------------------------
     # PUBLIC ENTRYPOINT
@@ -170,6 +147,15 @@ class DecisionManager:
         # Normalize server intent value
         raw_intent = server_intent.get("intent")
 
+        initiative = perception.get("initiative")
+        if initiative:
+            if initiative == "greet":
+                return IntentType.CONVERSE
+            if initiative == "idle":
+                return IntentType.IDLE
+            if initiative == "explore":
+                return IntentType.EXPLORE
+            
         # Map string → IntentType
         server_intent_enum = None
         if isinstance(raw_intent, str):
@@ -227,6 +213,11 @@ class DecisionManager:
         # Normalize plan fields
         plan.memory.setdefault("write", [])
         plan.world_state.setdefault("update", [])
+
+        shortcut = server_intent.get("behavior")
+        if shortcut:
+            template = self.behaviors.build_behavior(shortcut, mood=self.internal_state.mood)
+            return template
 
         # IGNORE → do nothing
         if intent == IntentType.IGNORE:
