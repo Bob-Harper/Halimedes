@@ -26,7 +26,7 @@ from cortex.action_executor import ActionExecutor
 from cortex.cognition_loop import CognitionLoop
 from cortex.server_intent_parser import parse_server_intent
 from body.searchlight import Searchlight
-from audio_input.audio_input_manager import AudioInputManager
+from audio_input.audio_input_manager import AudioInputManager, pcm_to_wav_bytes
 from audio_output.emotional_sounds_manager import EmotionalSoundsManager
 from audio_output.response_manager import Response_Manager
 from helpers.gateway_server_client import GatewayClient
@@ -85,15 +85,28 @@ async def main():
     while True:
 
         # AUDIO INPUT ------------------------------------------------------
-        raw_audio = await audio_input.capture_audio()
-        if raw_audio is None or len(raw_audio) == 0:
+        pcm_audio = await audio_input.capture_audio()
+        if pcm_audio is None or len(pcm_audio) == 0:
             continue
 
-        print(f"[Audio] Captured {len(raw_audio)} bytes")
+        # --- AUDIO SAFETY CAP --------------------------------------------
+        MAX_AUDIO_BYTES = 5_000_000  # ~5 MB cap
+        truncated = False
+
+        # pcm_audio is int16 → 2 bytes per sample
+        if pcm_audio.nbytes > MAX_AUDIO_BYTES:
+            print(f"[Audio] Oversized capture ({pcm_audio.nbytes} bytes). Truncating.")
+            max_samples = MAX_AUDIO_BYTES // 2
+            pcm_audio = pcm_audio[:max_samples]
+            truncated = True
+
+        print(f"[Audio] Captured {pcm_audio.nbytes} bytes")
+
 
         # TRANSCRIPTION ----------------------------------------------------
-        transcription = await unified_server.transcribe_audio(raw_audio)
-
+        wav_bytes = pcm_to_wav_bytes(pcm_audio, audio_input.sample_rate)
+        transcription = await unified_server.transcribe_audio(wav_bytes)
+        print(f"[Transcription RAW] {transcription}")
         spoken_text = transcription.get("text", "")
         speaker = transcription.get("speaker", "Unknown")
         detected_emotion = transcription.get("emotion", "neutral")
@@ -111,6 +124,7 @@ async def main():
             battery_level=None,
             audio_direction=None,
             last_action=None,
+            truncated=truncated,
             faces=[],
             objects=[],
             qr_codes=[],
@@ -144,13 +158,23 @@ async def main():
         # LOOP --------------------------------------------------------------
         await asyncio.sleep(0.01)
 
+async def graceful_shutdown():
+
+    print("[Shutdown] Resetting MCU...")
+    from crawler_utils.utils import reset_mcu
+    reset_mcu()
+
+    print("[Shutdown] Done.")
+
+
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        reset_mcu()
+        print("[Shutdown] KeyboardInterrupt received.")
+        asyncio.run(graceful_shutdown())
     except Exception as e:
-        print("Crash:", e)
-        reset_mcu()
+        print(f"[Shutdown] Fatal error: {e}")
+        asyncio.run(graceful_shutdown())
         raise
 

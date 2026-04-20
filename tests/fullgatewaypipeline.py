@@ -5,7 +5,7 @@ import json
 import os
 
 TRANSCRIBE_URL = "http://192.168.0.123:9000/api/transcribe"
-UNIFIED_URL    = "http://192.168.0.123:9000/api/unified"
+UNIFIED_URL    = "http://192.168.0.123:9000/api/inference"
 
 AUDIO_FILE = "/home/msutt/Music/Recording.m4a"   # change if needed
 
@@ -55,7 +55,7 @@ async def main():
     }
 
     # -----------------------------
-    # 4. Send to /api/unified
+    # 4. Send to /api/inference
     # -----------------------------
     async with aiohttp.ClientSession() as session:
         print(f"[Test] Sending unified snapshot to {UNIFIED_URL}")

@@ -9,8 +9,7 @@ class GatewayClient:
     # -------------------------
     # 1. Transcription
     # -------------------------
-    async def transcribe_audio(self, raw_audio: np.ndarray):
-        audio_bytes = raw_audio.tobytes()
+    async def transcribe_audio(self, audio_bytes: bytes):
         audio_b64 = base64.b64encode(audio_bytes).decode("ascii")
 
         payload = {"audio_b64": audio_b64}
@@ -30,7 +29,7 @@ class GatewayClient:
     # 2. Unified cognition
     # -------------------------
     async def send_perception(self, payload: dict):
-        url = f"{self.server_host}/api/unified"
+        url = f"{self.server_host}/api/inference"
 
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload) as resp:

@@ -1,7 +1,8 @@
 import sounddevice as sd
 import numpy as np
 import asyncio
-
+import io
+import wave
 
 class AudioInputManager:
     """
@@ -14,7 +15,6 @@ class AudioInputManager:
     - Does NOT talk to unified server.
     - Does NOT handle LED or sound indicators.
     """
-
     def __init__(
         self,
         picrawler_instance,
@@ -47,7 +47,7 @@ class AudioInputManager:
         audio_array = await asyncio.to_thread(
             self._record_until_silence
         )
-        return np.ravel(audio_array)
+        return audio_array.astype(np.int16).flatten().copy()
 
     # ------------------------------------------------------------------
     # INTERNAL AUDIO CAPTURE LOGIC
@@ -84,3 +84,13 @@ class AudioInputManager:
                 break
 
         return np.concatenate(blocks, axis=0)
+    
+
+def pcm_to_wav_bytes(raw_audio: np.ndarray, sample_rate: int) -> bytes:
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)  # int16 = 2 bytes
+        wf.setframerate(sample_rate)
+        wf.writeframes(raw_audio.tobytes())
+    return buffer.getvalue()
