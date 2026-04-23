@@ -3,17 +3,35 @@ import asyncio
 import base64
 import json
 import os
+import subprocess
+import tempfile
 
 GATEWAY_URL = "http://192.168.0.123:9000/api/transcribe"
-AUDIO_FILE = "/home/msutt/Music/ljspeech-vits.wav"   # change if needed
-
+# AUDIO_FILE = "/home/msutt/Music/ljspeech-vits.wav"   # change if needed /home/msutt/Music/Recording.m4a
+AUDIO_FILE = "/home/msutt/Music/Recording.m4a"
 async def main():
     if not os.path.exists(AUDIO_FILE):
         print(f"Audio file not found: {AUDIO_FILE}")
         return
 
     print(f"[Test] Loading audio: {AUDIO_FILE}")
-    audio_bytes = open(AUDIO_FILE, "rb").read()
+    # Convert to 16k WAV using ffmpeg
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_out:
+        out_path = tmp_out.name
+
+    subprocess.run([
+        "ffmpeg",
+        "-y",
+        "-i", AUDIO_FILE,
+        "-ac", "1",
+        "-ar", "16000",
+        "-sample_fmt", "s16",
+        out_path
+    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # Load the converted audio
+    audio_bytes = open(out_path, "rb").read()
+
     print(f"[Test] Loaded {len(audio_bytes)} bytes")
 
     # Hal sends base64 JSON

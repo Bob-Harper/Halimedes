@@ -26,7 +26,7 @@ from cortex.action_executor import ActionExecutor
 from cortex.cognition_loop import CognitionLoop
 from cortex.server_intent_parser import parse_server_intent
 from body.searchlight import Searchlight
-from audio_input.audio_input_manager import AudioInputManager, pcm_to_wav_bytes
+from audio_input.audio_input_manager import AudioInputManager
 from audio_output.emotional_sounds_manager import EmotionalSoundsManager
 from audio_output.response_manager import Response_Manager
 from helpers.gateway_server_client import GatewayClient
@@ -81,7 +81,7 @@ cortex = CognitionLoop(
 async def main():
 
     print("[Hal] Ready. Entering main loop.")
-
+    print("[Hal] Listening.")
     while True:
 
         # AUDIO INPUT ------------------------------------------------------
@@ -102,10 +102,10 @@ async def main():
 
         print(f"[Audio] Captured {pcm_audio.nbytes} bytes")
 
+        raw_bytes = pcm_audio.tobytes()
+        transcription = await unified_server.transcribe_audio(raw_bytes)
 
-        # TRANSCRIPTION ----------------------------------------------------
-        wav_bytes = pcm_to_wav_bytes(pcm_audio, audio_input.sample_rate)
-        transcription = await unified_server.transcribe_audio(wav_bytes)
+        # transcription = await unified_server.transcribe_audio(wav_bytes)
         print(f"[Transcription RAW] {transcription}")
         spoken_text = transcription.get("text", "")
         speaker = transcription.get("speaker", "Unknown")
@@ -156,12 +156,12 @@ async def main():
         cortex.tick(server_intent)
         print(f"[Decision] Executed plan for intent '{server_intent.get('intent')}'")
         # LOOP --------------------------------------------------------------
+        print("[Hal] Listening.")
         await asyncio.sleep(0.01)
 
 async def graceful_shutdown():
 
     print("[Shutdown] Resetting MCU...")
-    from crawler_utils.utils import reset_mcu
     reset_mcu()
 
     print("[Shutdown] Done.")
