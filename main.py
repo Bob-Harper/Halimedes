@@ -24,9 +24,12 @@ from cortex.context_builder import ContextBuilder
 from cortex.initiative_manager import InitiativeManager
 from cortex.action_executor import ActionExecutor
 from cortex.cognition_loop import CognitionLoop
+from cortex.emotions_manager import EmotionCategorizer
 from cortex.server_intent_parser import parse_server_intent
+from body.battery_status import get_battery_status
 from body.searchlight import Searchlight
 from audio_input.audio_input_manager import AudioInputManager
+from audio_input.voice_recognition_manager import VoiceRecognitionManager
 from audio_output.emotional_sounds_manager import EmotionalSoundsManager
 from audio_output.response_manager import Response_Manager
 from helpers.gateway_server_client import GatewayClient
@@ -53,9 +56,10 @@ expression_manager.setup(composer)
 
 # Action + sound managers (must exist before MacroPlayer)
 emotion_sound_manager = EmotionalSoundsManager()
+emotion_categorizer = EmotionCategorizer()
 response_manager = Response_Manager(picrawler_instance, actions_manager)
 audio_input = AudioInputManager(picrawler_instance)
-
+voice_recognition = VoiceRecognitionManager()
 unified_server = GatewayClient(server_host)
 world_state = WorldStateManager()
 internal_state = InternalStateManager()
@@ -78,6 +82,8 @@ cortex = CognitionLoop(
     action_executor=action_executor,
     tick_rate=0.1
 )
+
+
 async def main():
 
     print("[Hal] Ready. Entering main loop.")
@@ -102,26 +108,42 @@ async def main():
 
         print(f"[Audio] Captured {pcm_audio.nbytes} bytes")
 
+        recognized_speaker = voice_recognition.recognize_speaker(pcm_audio)
+
+        # Hal will attempt to determine if the detected speech requires a response
+        # call to stubbed voice analysis method will default boolean TRUE during testing
+        if audio_input.analyze_voice_input(pcm_audio, recognized_speaker):
+            print("[Voice Analysis] Positive response. Proceeding with cognition loop.")
+
+        if recognized_speaker != "Unknown":
+            print(f"[Speaker Recognition] Identified speaker: {recognized_speaker}")
+        else:
+            print("[Speaker Recognition] Speaker is Unknown.")  
+            
         raw_bytes = pcm_audio.tobytes()
         transcription = await unified_server.transcribe_audio(raw_bytes)
-
-        # transcription = await unified_server.transcribe_audio(wav_bytes)
         print(f"[Transcription RAW] {transcription}")
-        spoken_text = transcription.get("text", "")
-        speaker = transcription.get("speaker", "Unknown")
-        detected_emotion = transcription.get("emotion", "neutral")
 
-        print(f"[Transcription] text='{spoken_text}' speaker='{speaker}' emotion='{detected_emotion}'")
+        spoken_text = transcription.get("text", "")
+        detected_user_emotion = emotion_categorizer.analyze_text_emotion(spoken_text)
+
+        print(f"[Transcription] text='{spoken_text}' speaker='{recognized_speaker}' emotion='{detected_user_emotion}'")
 
         if not spoken_text:
             continue
 
+        battery_voltage, battery_status = get_battery_status()
+        battery_state = {
+            "voltage": battery_voltage,
+            "status": battery_status
+        }
+
         # PERCEPTION SNAPSHOT ----------------------------------------------
         perception.update(
             user_text=spoken_text,
-            user_emotion=detected_emotion,
-            speaker=speaker,
-            battery_level=None,
+            user_emotion=detected_user_emotion,
+            speaker=recognized_speaker,
+            battery_level=battery_state,
             audio_direction=None,
             last_action=None,
             truncated=truncated,
@@ -159,6 +181,7 @@ async def main():
         print("[Hal] Listening.")
         await asyncio.sleep(0.01)
 
+
 async def graceful_shutdown():
 
     print("[Shutdown] Resetting MCU...")
@@ -177,4 +200,3 @@ if __name__ == "__main__":
         print(f"[Shutdown] Fatal error: {e}")
         asyncio.run(graceful_shutdown())
         raise
-

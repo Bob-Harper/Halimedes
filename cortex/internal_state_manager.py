@@ -19,3 +19,4 @@ class InternalStateManager:
             "confidence": self.confidence,
             "emotion": self.emotion
         }
+    

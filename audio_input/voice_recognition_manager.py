@@ -1,6 +1,7 @@
 import os
 import torch
 import torchaudio
+import numpy as np
 from helpers.global_config import (
 # Voice recognition config 
 VOICE_RECOGNITION_MODEL_PATH,
@@ -43,7 +44,7 @@ class VoiceRecognitionManager:
             # Step 2: Extract the new embedding from waveform
             new_embedding = self.extract_embedding_from_waveform(waveform)
             
-            # Step 3: Perform the comparison as before
+            # Step 3: Perform the comparison
             best_speaker = "Unknown"
             best_score = -1.0
 
@@ -82,11 +83,11 @@ class VoiceRecognitionManager:
             # Load the audio file
             waveform, sample_rate = torchaudio.load(audio_path)
 
-            # Convert stereo to mono if necessary
+            # Ensure mono format
             if waveform.size(0) > 1:
                 waveform = torch.mean(waveform, dim=0, keepdim=True)
 
-            # Resample to 16 kHz if needed
+            # Ensure 16 kHz
             if sample_rate != 16000:
                 waveform = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)(waveform)
 
@@ -131,14 +132,32 @@ class VoiceRecognitionManager:
         with torch.no_grad():
             return self.model(waveform)
         
-    @staticmethod    
+    @staticmethod
     def convert_raw_to_waveform(raw_audio):
-        # Process the raw audio to extract waveform
-        waveform = torch.tensor(raw_audio, dtype=torch.float32).unsqueeze(0) / 32768.0  # Normalize [-1, 1]
-        if waveform.dim() == 2:
-            waveform = waveform.unsqueeze(1)  # Add batch dimension if needed
+        # Ensure NumPy array
+        if isinstance(raw_audio, bytes):
+            raise ValueError("raw_audio must be int16 array, not bytes")
 
-        # Resample audio to 16 kHz for voiceprint
-        waveform = torchaudio.transforms.Resample(orig_freq=44100, new_freq=16000)(waveform)
+        # Convert to numpy array if needed
+        if not isinstance(raw_audio, np.ndarray):
+            raw_audio = np.array(raw_audio, dtype=np.int16)
+
+        # Enforce dtype
+        if raw_audio.dtype != np.int16:
+            raw_audio = raw_audio.astype(np.int16)
+
+        # Enforce 1D
+        raw_audio = raw_audio.flatten()
+
+        # Convert to float32 tensor
+        waveform = torch.from_numpy(raw_audio.astype(np.float32)) / 32768.0
+
+        # Shape: [1, 1, samples]
+        waveform = waveform.unsqueeze(0).unsqueeze(0)
+
+        # Resample to 16k
+        resampler = torchaudio.transforms.Resample(orig_freq=44100, new_freq=16000)
+        waveform = resampler(waveform)
 
         return waveform
+

@@ -10,7 +10,6 @@ from cortex.behavior_plan import BehaviorPlan
 
 
 # ====== ENUMS / BASIC TYPES ===================================================
-
 class IntentType(Enum):
     CONVERSE = auto()
     ACT = auto()
@@ -21,6 +20,7 @@ class IntentType(Enum):
     IDLE = auto()
     INTERNAL = auto()
         
+
 @dataclass
 class ServerIntent:
     """Unified server response (semantic, not motor)."""
@@ -32,9 +32,7 @@ class ServerIntent:
     raw_payload: Dict[str, Any] = field(default_factory=dict)  # full JSON if needed
 
 
-
 # ====== INTERNAL STATE MANAGERS ===============================================
-
 @dataclass
 class WorldState:
     """Persistent model of the external world."""
@@ -65,7 +63,6 @@ class Goals:
 
 
 # ====== DECISION MANAGER ======================================================
-
 class DecisionManager:
     """
     Central brain: takes perception + server intent, produces a BehaviorPlan.
@@ -471,3 +468,4 @@ class DecisionManager:
 
         # Otherwise → idle
         self.internal_state.current_activity = "idle"
+        

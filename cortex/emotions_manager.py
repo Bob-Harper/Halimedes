@@ -1,8 +1,4 @@
 import random
-# import stuff
-# EmotionManager NOT USED YET.  EXAMPLE PLACEHOLDER
-# EmotionHandler used for CATEGORIZING tags and sound/action/expressions to valid choices
-# emotional_sounds_manager.py for examples and ideas on how to implement.
 import time
 from nltk.sentiment import SentimentIntensityAnalyzer
 from nrclex import NRCLex

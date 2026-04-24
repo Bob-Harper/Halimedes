@@ -19,3 +19,4 @@ class WorldStateManager:
             "time_of_day": self.time_of_day,
             "lighting": self.lighting
         }
+    

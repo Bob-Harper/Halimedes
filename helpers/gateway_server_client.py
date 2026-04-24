@@ -1,6 +1,5 @@
 import aiohttp
 import base64
-import numpy as np
 import subprocess
 import tempfile
 import time
@@ -34,26 +33,12 @@ class GatewayClient:
             "-ac", "1",                    # mono
             "-i", in_path,                 # input raw file
 
-            # --- DSP CLEANUP CHAIN --- following lines removed for test
-            # "-af",
-            # (
-            #     "highpass=f=180,"
-            #     "lowpass=f=7000,"
-            #     "agate=threshold=-40dB:ratio=10,"
-            #     "loudnorm=I=-16:TP=-1.5:LRA=11,"
-            #     "afftdn=nf=-50,"
-            #     "silenceremove=start_periods=1:start_duration=0.1:start_threshold=-40dB:"
-            #     "stop_periods=1:stop_duration=0.1:stop_threshold=-40dB,"
-            #     "aresample=resampler=soxr:precision=28"
-            # ),
-
             # --- OUTPUT FORMAT ---
             "-ac", "1",
             "-ar", "16000",                # final sample rate for Vosk
             "-sample_fmt", "s16",
             out_path
         ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
 
         # 3. Load converted WAV
         wav_bytes = open(out_path, "rb").read()
@@ -103,23 +88,9 @@ class GatewayClient:
                 return await resp.json()    
             
     # -------------------------
-    # 3. Speaker ID (future)
-    # -------------------------
-    async def identify_speaker(self, raw_audio: np.ndarray):
-        # placeholder for future endpoint
-        pass
-
-    # -------------------------
     # 4. Face Recognition (future)
     # -------------------------
     async def recognize_face(self, image_bytes: bytes):
-        # placeholder for future endpoint
-        pass
-
-    # -------------------------
-    # 5. Emotion Analysis (future)
-    # -------------------------
-    async def analyze_emotion(self, raw_audio: np.ndarray):
         # placeholder for future endpoint
         pass
 
@@ -131,3 +102,4 @@ class GatewayClient:
 
     async def query_memory(self, query: str):
         pass
+    

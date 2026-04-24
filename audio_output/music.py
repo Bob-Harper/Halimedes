@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from ..utils.basic import _Basic_class
+from crawler_utils.basic import _Basic_class
 import time
 import threading
 import pyaudio

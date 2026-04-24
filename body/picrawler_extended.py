@@ -1,7 +1,6 @@
 from time import sleep
 import asyncio
 # legs_list = ['right front', 'left front', 'left rear', 'right rear']
-# from classes.picrawler import Picrawler  # passing in so dont need to import right now
 
 class PicrawlerExtended():
     def __init__(self, crawler):
@@ -39,7 +38,6 @@ class PicrawlerExtended():
         self.picrawler.do_step(sit_down_steps, speed=1)
         sit_down_steps = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
         self.picrawler.do_step(sit_down_steps, speed=1)
-
 
     def sway_all_legs(self):  # legs_list = ['right front', 'left front', 'left rear', 'right rear']
         tap_front_right = [[45, 45, -44], [45, 45, -30], [45, 45, -30], [45, 45, -30]]
@@ -184,7 +182,6 @@ class PicrawlerExtended():
             await wiggle_task  # Ensure it actually stops cleanly
         except asyncio.CancelledError:
             pass  # Suppress expected cancellation error
-
 
     async def glance(self, direction="center", angle=30, speed=99):
         """

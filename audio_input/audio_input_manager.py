@@ -2,12 +2,11 @@ import sounddevice as sd
 import numpy as np
 import asyncio
 import webrtcvad
-import time
-import resampy  # pip install resampy
-import collections
-# DEBUG: dump the VAD‑gated audio exactly as captured
+import resampy
 import queue
 import collections
+import time
+
 
 class AudioInputManager:
     """
@@ -45,22 +44,17 @@ class AudioInputManager:
         self.hw_frame_samples = int(self.hw_sample_rate * self.frame_ms / 1000)
         self.vad_frame_samples = int(self.vad_sample_rate * self.frame_ms / 1000)
 
-
         sd.default.device = (input_device_index, None)  # type: ignore[arg-type]
 
     async def capture_audio(self):
         """Returns a full utterance as int16 numpy array at 16 kHz."""
         return await asyncio.to_thread(self._record_with_vad)
 
-
     def _record_with_vad(self):
-        import queue
-        import collections
-        import time
 
         q = queue.Queue()
 
-        def callback(indata, frames, time_info, status):
+        def callback(indata):
             q.put(indata.copy())
 
         # Match your working VAD config
@@ -85,7 +79,7 @@ class AudioInputManager:
                 # 1. Get 30ms at 44.1k from continuous stream
                 frame_44k = q.get()  # shape (hw_frame_samples, 1), int16
 
-                # 2. Resample to 48k for VAD (same as before)
+                # 2. Resample to 48k for VAD
                 frame_48k = resampy.resample(
                     frame_44k.flatten().astype(np.float32),
                     self.hw_sample_rate,
@@ -134,13 +128,10 @@ class AudioInputManager:
 
         utterance_44k = np.concatenate(voiced_frames_44k, axis=0).astype(np.int16)
 
-        # (optional) debug dump
-        # tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-        # with wave.open(tmp.name, "wb") as wf:
-        #     wf.setnchannels(1)
-        #     wf.setsampwidth(2)
-        #     wf.setframerate(self.hw_sample_rate)
-        #     wf.writeframes(utterance_44k.tobytes())
-        # print("[DEBUG] Saved VAD-gated WAV:", tmp.name)
-
         return utterance_44k
+
+    def analyze_voice_input(self, raw_bytes, recognized_speaker):    
+        # Placeholder for future voice analysis (Should Hal Respond To This Voice)
+        # For now, just print the raw byte length and speaker
+        print(f"[Voice Analysis] {len(raw_bytes)} bytes from speaker '{recognized_speaker}'")
+        return True

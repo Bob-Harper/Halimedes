@@ -2,8 +2,8 @@
 from crawler_utils.basic import _Basic_class
 from crawler_utils.utils import is_installed, run_command
 from distutils.spawn import find_executable
-import os
 import re
+
 
 class TTSFLITE(_Basic_class):
     """Text to speech class using Flite"""
