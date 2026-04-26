@@ -1,7 +1,7 @@
 class PerceptionManager:
     FIELDS = {
-        "user_text": None,
-        "user_emotion": None,
+        "speaker_text": None,
+        "speaker_emotion": None,
         "speaker": None,
 
         "faces": [],
@@ -24,7 +24,10 @@ class PerceptionManager:
 
     def reset(self):
         for k, v in self.FIELDS.items():
+            if k == "hardware_status":
+                continue  # <-- DO NOT RESET HARDWARE
             setattr(self, k, v if not isinstance(v, list) else [])
+
 
     def update(self, **kwargs):
         for k, v in kwargs.items():

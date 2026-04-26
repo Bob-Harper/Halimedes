@@ -8,12 +8,12 @@ os.environ.clear()
 from helpers.global_config import LED_INDICATOR
 from helpers.global_config import UNIFIED_API_GATEWAY
 server_host = UNIFIED_API_GATEWAY
-""" 
+"""
 NOTE Import the Picrawler class first to pass through.
 This prevents multiple initializations of the Picrawler class.
 Multiple implementation is NOT harmless, it is 100% disruptive.
 """
-from body.picrawler import Picrawler 
+from body.picrawler import Picrawler
 picrawler_instance = Picrawler()
 # We now have a single instance of Picrawler to pass to other classes that require it.
 
@@ -31,10 +31,12 @@ from body.hardware_state_manager import HardwareStateManager
 from body.indicators_manager import IndicatorsManager
 from body.searchlight import Searchlight
 from audio_input.audio_input_manager import AudioInputManager
+from audio_input.audio_preprocessor import AudioPreprocessor
 from audio_input.voice_recognition_manager import VoiceRecognitionManager
 from audio_output.emotional_sounds_manager import EmotionalSoundsManager
 from audio_output.response_manager import Response_Manager
 from helpers.gateway_server_client import GatewayClient
+from helpers.prompt_builder import PromptBuilder
 from eyes.EyeConfig import EyeConfig
 from eyes.EyeExpressionManager import EyeExpressionManager
 from eyes.EyeFrameComposer import EyeFrameComposer
@@ -63,8 +65,10 @@ emotion_sound_manager = EmotionalSoundsManager()
 emotion_categorizer = EmotionCategorizer()
 response_manager = Response_Manager(picrawler_instance, actions_manager)
 audio_input = AudioInputManager(picrawler_instance)
+preprocessor = AudioPreprocessor()
 voice_recognition = VoiceRecognitionManager()
 unified_server = GatewayClient(server_host)
+prompt_builder = PromptBuilder()
 world_state = WorldStateManager()
 internal_state = InternalStateManager()
 perception = PerceptionManager()
@@ -115,59 +119,66 @@ async def main():
             truncated = True
 
         print(f"[Audio] Captured {pcm_audio.nbytes} bytes")
-        
+
         indicators.set_mode("busy")
 
         recognized_speaker = voice_recognition.recognize_speaker(pcm_audio)
 
         # Hal will attempt to determine if the detected speech requires a response
         # call to stubbed voice analysis method will default boolean TRUE during testing
-        if audio_input.analyze_voice_input(pcm_audio, recognized_speaker):
+        if audio_input.respond_to_voice_input(pcm_audio, recognized_speaker):
             print("[Voice Analysis] Positive response. Proceeding with cognition loop.")
 
         if recognized_speaker != "Unknown":
             print(f"[Speaker Recognition] Identified speaker: {recognized_speaker}")
         else:
-            print("[Speaker Recognition] Speaker is Unknown.")  
-            
-        raw_bytes = pcm_audio.tobytes()
-        transcription = await unified_server.transcribe_audio(raw_bytes)
+            print("[Speaker Recognition] Speaker is Unknown.")
+
+        wav_bytes = preprocessor.pcm_to_16k_wav(pcm_audio)
+        transcription = await unified_server.transcribe_audio(wav_bytes)
         # print(f"[Transcription RAW] {transcription}")
 
         spoken_text = transcription.get("text", "")
-        detected_user_emotion = emotion_categorizer.analyze_text_emotion(spoken_text)
-
-        # print(f"[Transcription] text='{spoken_text}' speaker='{recognized_speaker}' emotion='{detected_user_emotion}'")
-
+        speaker_emotion = emotion_categorizer.analyze_text_emotion(spoken_text)
         if not spoken_text:
             continue
 
-        # PERCEPTION SNAPSHOT ----------------------------------------------
+        hardware_state.update()
+        snapshot = perception.snapshot()
         perception.update(
-            user_text=spoken_text,
-            user_emotion=detected_user_emotion,
+            speaker_text=spoken_text,
+            speaker_emotion=speaker_emotion,
             speaker=recognized_speaker,
-
-            speech_confidence=confidence,
-            utterance_duration=duration,
+            faces=snapshot["faces"],
+            objects=snapshot["objects"],
+            qr_codes=snapshot["qr_codes"],
+            audio_direction=None,
+            last_action=None,
+            speech_confidence=transcription.get("confidence"),
+            utterance_duration=transcription.get("duration"),
             truncated=truncated,
-
             hardware_status=hardware_state.snapshot(),
-            faces=faces,
-            objects=objects,
-            qr_codes=qr_codes,
         )
 
-
         # SEND TO UNIFIED SERVER (COGNITION) -------------------------------
-        payload = {
-            "world_state": world_state.snapshot(),
-            "internal_state": internal_state.snapshot(),
-            "perception": perception(),
-        }
+        prompt = prompt_builder.build_prompt(
+            world_state.snapshot(),
+            internal_state.snapshot(),
+            perception.snapshot()
+        )
+        # DEBUG OUTPUT ------------------------------------------------------
+        print("[Cognition] Sending prompt to server…")
+        print("----- BEGIN PROMPT -----")
+        print(prompt)
+        print("------ END PROMPT ------")
+        # END DEBUG OUTPUT --------------------------------------------------
 
-        print("[Cognition] Sending perception payload to server…")
-        print(f"[Cognition] Payload summary: hardware={len(payload['perception']['hardware_status'])} items, world={len(payload['world_state'])} items, internal={len(payload['internal_state'])} items, perception={{text_length={len(payload['perception']['user_text'])}, emotion='{payload['perception']['user_emotion']}', speaker='{payload['perception']['speaker']}'}}")
+        payload = {"prompt": prompt}
+
+        server_json = await unified_server.send_perception(payload)
+
+
+
         try:
             server_json = await unified_server.send_perception(payload)
             server_intent = parse_server_intent(server_json)

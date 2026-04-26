@@ -1,7 +1,5 @@
 import aiohttp
 import base64
-import subprocess
-import tempfile
 import time
 import uuid
 import json
@@ -14,38 +12,9 @@ class GatewayClient:
     # -------------------------
     # 1. Transcription
     # -------------------------
-    async def transcribe_audio(self, audio_bytes: bytes):
-
-        # 1. Write raw PCM to a temp file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".raw") as tmp_in:
-            in_path = tmp_in.name
-            tmp_in.write(audio_bytes)
-
-        # 2. Convert raw PCM → 16k WAV
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_out:
-            out_path = tmp_out.name
-
-        subprocess.run([
-            "ffmpeg",
-            "-y",
-            "-f", "s16le",                 # raw PCM
-            "-ar", "44100",                # original sample rate
-            "-ac", "1",                    # mono
-            "-i", in_path,                 # input raw file
-
-            # --- OUTPUT FORMAT ---
-            "-ac", "1",
-            "-ar", "16000",                # final sample rate for Vosk
-            "-sample_fmt", "s16",
-            out_path
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-        # 3. Load converted WAV
-        wav_bytes = open(out_path, "rb").read()
-
-        # 4. Base64 encode
+    async def transcribe_audio(self, wav_bytes: bytes):
         audio_b64 = base64.b64encode(wav_bytes).decode("ascii")
-        payload = {"audio_b64": audio_b64}
+        payload = {"audio_b64": audio_b64}        
         url = f"{self.server_host}/api/transcribe"
 
         req_id = str(uuid.uuid4())
