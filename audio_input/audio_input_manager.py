@@ -54,7 +54,7 @@ class AudioInputManager:
 
         q = queue.Queue()
 
-        def callback(indata):
+        def callback(indata, frames, time, status):
             q.put(indata.copy())
 
         # Match your working VAD config

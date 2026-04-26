@@ -1,12 +1,11 @@
 # cortex/cognition_loop.py
 
 import time
-from cortex.perception_snapshot import PerceptionSnapshot
 
 class CognitionLoop:
     """
     The brainstem: runs each cognition tick.
-    Pulls perception → builds context → wraps snapshot → decides → executes.
+    Pulls perception → builds context → decides → executes.
     """
 
     def __init__(
@@ -31,7 +30,7 @@ class CognitionLoop:
     def tick(self, server_intent=None):
         server_intent = server_intent or {}
 
-        # 1. Raw perception snapshot
+        # 1. Raw perception dict
         raw = self.perception.snapshot()
 
         # 2. Derived context
@@ -43,26 +42,22 @@ class CognitionLoop:
             self.decision.internal_state
         )
         if initiative:
-            # Inject initiative into server intent
             server_intent = dict(server_intent)
             server_intent["initiative"] = initiative
 
         # 4. Merge raw + context into unified dict
         merged = {**raw, **ctx}
 
-        # 5. Wrap in PerceptionSnapshot dataclass
-        snap = PerceptionSnapshot(**merged)
-
-        # 6. Decision manager → BehaviorPlan
+        # 5. Decision manager → BehaviorPlan
         plan = self.decision.decide(
-            perception=snap.__dict__,   # DecisionManager expects a dict
+            perception=merged,
             server_intent=server_intent
         )
 
-        # 7. Execute the plan
+        # 6. Execute the plan
         self.executor.execute(plan)
 
-        # 8. Reset transient perception fields
+        # 7. Reset transient perception fields
         self.perception.reset()
 
     # ------------------------------------------------------------------

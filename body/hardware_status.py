@@ -28,6 +28,22 @@ def get_battery_status(max_retries=3, retry_delay=2):
     return voltage, status
 
 
+def get_cpu_temp_status():
+    with open("/sys/class/thermal/thermal_zone0/temp", "r") as f:
+        temp = milli_c = int(f.read().strip()) / 1000.0
+
+    if temp < 50:
+        status = "Cool"
+    elif temp < 65:
+        status = "Warm"
+    elif temp < 80:
+        status = "Hot"
+    else:
+        status = "Critical"
+
+    return temp, status
+
+
 if __name__ == '__main__':
     voltage, status = get_battery_status()
     # Output voltage and status separated by a space.

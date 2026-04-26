@@ -104,7 +104,6 @@ class ADXL345(I2C):
         self.mem_write(0, 0x31)
         self.mem_write(8, 0x2D)
         raw = self.mem_read(2, self._AXISES[axis])
-        # 第一次读的值总是为0，所以多读取一次
         self.mem_write(0, 0x31)
         self.mem_write(8, 0x2D)
         raw = self.mem_read(2, self._AXISES[axis])

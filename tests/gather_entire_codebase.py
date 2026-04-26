@@ -7,10 +7,17 @@ from datetime import datetime
 # CONFIG: Directories to scan (non-recursive)
 # ---------------------------------------------------------
 DIRECTORIES = [
-    "/home/msutt/hal",
+    "/home/msutt/hal/",
+    "/home/msutt/hal/audio_input",
+    "/home/msutt/hal/audio_output",
     "/home/msutt/hal/body",
-    "/home/msutt/hal/helpers",
     "/home/msutt/hal/cortex",
+    "/home/msutt/hal/dsl",
+    "/home/msutt/hal/eyes",
+    "/home/msutt/hal/helpers",
+    "/home/msutt/hal/kernel",
+    "/home/msutt/hal/vision_processing",
+    
 ]
 
 # ---------------------------------------------------------

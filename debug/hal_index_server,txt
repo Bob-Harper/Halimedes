@@ -28,91 +28,34 @@ def extract_symbols(path):
         return []
 
     symbols = []
-
     for node in ast.walk(tree):
-        # Classes
         if isinstance(node, ast.ClassDef):
-            symbols.append(f"CLASS:{node.name}")
-
-        # Functions (with signature)
+            symbols.append(node.name)
         elif isinstance(node, ast.FunctionDef):
-            params = []
-            for arg in node.args.args:
-                params.append(arg.arg)
-
-            # Handle *args and **kwargs
-            if node.args.vararg:
-                params.append("*" + node.args.vararg.arg)
-            if node.args.kwarg:
-                params.append("**" + node.args.kwarg.arg)
-
-            signature = f"{node.name}({', '.join(params)})"
-            symbols.append(f"FUNC:{signature}")
-
-        # Async functions
+            symbols.append(node.name)
         elif isinstance(node, ast.AsyncFunctionDef):
-            params = [arg.arg for arg in node.args.args]
-            signature = f"{node.name}({', '.join(params)})"
-            symbols.append(f"ASYNC:{signature}")
-
-        # Imports
+            symbols.append(node.name)
         elif isinstance(node, ast.Import):
             for n in node.names:
-                symbols.append(f"IMPORT:{n.name}")
-
+                symbols.append(n.name)
         elif isinstance(node, ast.ImportFrom):
             if node.module:
-                symbols.append(f"FROM:{node.module}")
-
+                symbols.append(node.module)
     return symbols
-
-
-WHITELIST_DIRS = {
-    "audio_input",
-    "audio_output",
-    "body",
-    "cortex",
-    "dsl",
-    "eyes",
-    "helpers",
-    "kernel",
-    "vision_components",
-    "vision_processing",
-}
-
-ROOT_FILES = {"main.py"}
 
 def indexer():
     while True:
         new_index = {}
+        for root, dirs, files in os.walk(ROOT):
+            # skip venvs, git, caches
+            dirs[:] = [d for d in dirs if d not in (".git", ".venv", "__pycache__")]
 
-        # 1. Include root-level files (like main.py)
-        for f in ROOT_FILES:
-            full = os.path.join(ROOT, f)
-            if os.path.isfile(full):
-                mtime = os.path.getmtime(full)
-                sha = sha256_of_file(full)
-                symbols = extract_symbols(full)
-                new_index[f] = {
-                    "path": f,
-                    "mtime": mtime,
-                    "hash": sha,
-                    "symbols": symbols,
-                }
-
-        # 2. Include ONLY top-level .py files inside whitelisted dirs
-        for d in WHITELIST_DIRS:
-            dir_path = os.path.join(ROOT, d)
-            if not os.path.isdir(dir_path):
-                continue
-
-            for f in os.listdir(dir_path):
+            for f in files:
                 if not f.endswith(".py"):
                     continue
 
-                full = os.path.join(dir_path, f)
-                rel = os.path.join(d, f)
-
+                full = os.path.join(root, f)
+                rel = os.path.relpath(full, ROOT)
                 mtime = os.path.getmtime(full)
                 sha = sha256_of_file(full)
                 symbols = extract_symbols(full)
@@ -162,23 +105,9 @@ class Handler(BaseHTTPRequestHandler):
 
             return self._json(listing)
 
-        if path.startswith("/all"):
-            prefix = self._query("path") or self._query("file")
-
-            with LOCK:
-                if prefix:
-                    subset = {
-                        k: v for k, v in INDEX.items()
-                        if k == prefix or k.startswith(prefix + "/")
-                    }
-                    return self._json(subset)
-
-                return self._json(INDEX)
-
 
         if path.startswith("/info"):
-            # Accept both ?path= and ?file=
-            q = self._query("path") or self._query("file")
+            q = self._query("path")
             if not q:
                 return self._json({"error": "missing path"}, 400)
 
@@ -202,7 +131,7 @@ class Handler(BaseHTTPRequestHandler):
 
             return self._json(results)
         if path.startswith("/file"):
-            q = self._query("path") or self._query("file")
+            q = self._query("path")
             if not q:
                 return self._json({"error": "missing path"}, 400)
 

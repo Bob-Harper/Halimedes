@@ -1,29 +1,30 @@
 class PerceptionManager:
+    FIELDS = {
+        "user_text": None,
+        "user_emotion": None,
+        "speaker": None,
+
+        "faces": [],
+        "objects": [],
+        "qr_codes": [],
+
+        "hardware_status": {},
+
+        "audio_direction": None,
+        "last_action": None,
+
+        "speech_confidence": None,
+        "utterance_duration": None,
+        "truncated": False,
+    }
+
     def __init__(self):
-        self.user_text = None
-        self.user_emotion = None
-        self.speaker = None
-
-        self.faces = []
-        self.objects = []
-        self.qr_codes = []
-
-        self.battery_level = None
-        self.audio_direction = None
-        self.last_action = None
+        for k, v in self.FIELDS.items():
+            setattr(self, k, v if not isinstance(v, list) else [])
 
     def reset(self):
-        self.user_text = None
-        self.user_emotion = None
-        self.speaker = None
-
-        self.faces = []
-        self.objects = []
-        self.qr_codes = []
-
-        self.audio_direction = None
-        self.last_action = None
-        # battery_level persists until overwritten
+        for k, v in self.FIELDS.items():
+            setattr(self, k, v if not isinstance(v, list) else [])
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
@@ -31,16 +32,4 @@ class PerceptionManager:
                 setattr(self, k, v)
 
     def snapshot(self) -> dict:
-        return {
-            "user_text": self.user_text,
-            "user_emotion": self.user_emotion,
-            "speaker": self.speaker,
-
-            "faces": list(self.faces),
-            "objects": list(self.objects),
-            "qr_codes": list(self.qr_codes),
-
-            "battery_level": self.battery_level,
-            "audio_direction": self.audio_direction,
-            "last_action": self.last_action,
-        }
+        return {k: getattr(self, k) for k in self.FIELDS}

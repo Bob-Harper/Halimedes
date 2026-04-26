@@ -5,6 +5,7 @@ warnings.simplefilter('ignore')
 import os
 # Explicitly clear any previously cached env variables
 os.environ.clear()
+from helpers.global_config import LED_INDICATOR
 from helpers.global_config import UNIFIED_API_GATEWAY
 server_host = UNIFIED_API_GATEWAY
 """ 
@@ -26,7 +27,8 @@ from cortex.action_executor import ActionExecutor
 from cortex.cognition_loop import CognitionLoop
 from cortex.emotions_manager import EmotionCategorizer
 from cortex.server_intent_parser import parse_server_intent
-from body.battery_status import get_battery_status
+from body.hardware_state_manager import HardwareStateManager
+from body.indicators_manager import IndicatorsManager
 from body.searchlight import Searchlight
 from audio_input.audio_input_manager import AudioInputManager
 from audio_input.voice_recognition_manager import VoiceRecognitionManager
@@ -38,8 +40,10 @@ from eyes.EyeExpressionManager import EyeExpressionManager
 from eyes.EyeFrameComposer import EyeFrameComposer
 from eyes.EyeGazeInterpolator import GazeInterpolator
 
-# Hardware singletons
+# Hardware items
+hardware_state = HardwareStateManager()
 searchlight = Searchlight()
+indicators = IndicatorsManager(LED_INDICATOR)
 
 # Actions (Picrawler is now the action manager)
 actions_manager = picrawler_instance
@@ -88,6 +92,10 @@ async def main():
 
     print("[Hal] Ready. Entering main loop.")
     print("[Hal] Listening.")
+
+    indicators.start()
+    indicators.set_mode("idle")
+
     while True:
 
         # AUDIO INPUT ------------------------------------------------------
@@ -107,6 +115,8 @@ async def main():
             truncated = True
 
         print(f"[Audio] Captured {pcm_audio.nbytes} bytes")
+        
+        indicators.set_mode("busy")
 
         recognized_speaker = voice_recognition.recognize_speaker(pcm_audio)
 
@@ -122,54 +132,49 @@ async def main():
             
         raw_bytes = pcm_audio.tobytes()
         transcription = await unified_server.transcribe_audio(raw_bytes)
-        print(f"[Transcription RAW] {transcription}")
+        # print(f"[Transcription RAW] {transcription}")
 
         spoken_text = transcription.get("text", "")
         detected_user_emotion = emotion_categorizer.analyze_text_emotion(spoken_text)
 
-        print(f"[Transcription] text='{spoken_text}' speaker='{recognized_speaker}' emotion='{detected_user_emotion}'")
+        # print(f"[Transcription] text='{spoken_text}' speaker='{recognized_speaker}' emotion='{detected_user_emotion}'")
 
         if not spoken_text:
             continue
-
-        battery_voltage, battery_status = get_battery_status()
-        battery_state = {
-            "voltage": battery_voltage,
-            "status": battery_status
-        }
 
         # PERCEPTION SNAPSHOT ----------------------------------------------
         perception.update(
             user_text=spoken_text,
             user_emotion=detected_user_emotion,
             speaker=recognized_speaker,
-            battery_level=battery_state,
-            audio_direction=None,
-            last_action=None,
+
+            speech_confidence=confidence,
+            utterance_duration=duration,
             truncated=truncated,
-            faces=[],
-            objects=[],
-            qr_codes=[],
+
+            hardware_status=hardware_state.snapshot(),
+            faces=faces,
+            objects=objects,
+            qr_codes=qr_codes,
         )
 
-        print(f"[Perception] Snapshot updated: {perception.snapshot()}")
 
         # SEND TO UNIFIED SERVER (COGNITION) -------------------------------
         payload = {
             "world_state": world_state.snapshot(),
             "internal_state": internal_state.snapshot(),
-            "perception": perception.snapshot(),
+            "perception": perception(),
         }
 
-        print("[Cognition] Sending perception to server…")
-
+        print("[Cognition] Sending perception payload to server…")
+        print(f"[Cognition] Payload summary: hardware={len(payload['perception']['hardware_status'])} items, world={len(payload['world_state'])} items, internal={len(payload['internal_state'])} items, perception={{text_length={len(payload['perception']['user_text'])}, emotion='{payload['perception']['user_emotion']}', speaker='{payload['perception']['speaker']}'}}")
         try:
             server_json = await unified_server.send_perception(payload)
             server_intent = parse_server_intent(server_json)
             print(f"[Cognition] Server intent: {server_intent}")
         except Exception as e:
             print(f"[Server Error] {e}")
-            server_intent = {"intent": "observe"}
+            server_intent = {"intent": "experience entropy"}
 
         # RESET PERCEPTION -------------------------------------------------
         perception.reset()
@@ -179,12 +184,15 @@ async def main():
         print(f"[Decision] Executed plan for intent '{server_intent.get('intent')}'")
         # LOOP --------------------------------------------------------------
         print("[Hal] Listening.")
+        indicators.set_mode("idle")
         await asyncio.sleep(0.01)
 
 
 async def graceful_shutdown():
 
     print("[Shutdown] Resetting MCU...")
+
+    indicators.set_mode("off")
     reset_mcu()
 
     print("[Shutdown] Done.")
@@ -193,9 +201,11 @@ async def graceful_shutdown():
 if __name__ == "__main__":
     try:
         asyncio.run(main())
+
     except KeyboardInterrupt:
         print("[Shutdown] KeyboardInterrupt received.")
         asyncio.run(graceful_shutdown())
+
     except Exception as e:
         print(f"[Shutdown] Fatal error: {e}")
         asyncio.run(graceful_shutdown())

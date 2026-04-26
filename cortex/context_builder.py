@@ -33,18 +33,6 @@ class ContextBuilder:
         context["idle_ticks"] = self.idle_counter
 
         # ------------------------------------------------------------
-        # BATTERY STATE
-        # ------------------------------------------------------------
-        battery = perception.get("battery_level")
-        try:
-            battery = float(battery) if battery is not None else None
-        except Exception:
-            battery = None
-
-        context["battery_low"] = battery is not None and battery < 0.15
-        context["battery_critical"] = battery is not None and battery < 0.08
-
-        # ------------------------------------------------------------
         # AUDIO / SPEECH
         # ------------------------------------------------------------
         user_text = perception.get("user_text")
