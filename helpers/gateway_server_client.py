@@ -14,7 +14,7 @@ class GatewayClient:
     # -------------------------
     async def transcribe_audio(self, wav_bytes: bytes):
         audio_b64 = base64.b64encode(wav_bytes).decode("ascii")
-        payload = {"audio_b64": audio_b64}        
+        payload = {"audio_b64": audio_b64}
         url = f"{self.server_host}/api/transcribe"
 
         req_id = str(uuid.uuid4())
@@ -28,7 +28,7 @@ class GatewayClient:
                 async with session.post(
                     url,
                     json=payload,
-                    timeout=aiohttp.ClientTimeout(total=60)
+                    timeout=aiohttp.ClientTimeout(total=600)
                 ) as resp:
                     t1 = time.monotonic()
                     text = await resp.text()
@@ -45,7 +45,7 @@ class GatewayClient:
                 err_type = type(e).__name__
                 print(f"[GatewayClient] [{req_id}] EXCEPTION after {(t1 - t0)*1000:.2f} ms: {err_type}: {repr(e)}")
                 return {"error": err_type, "detail": repr(e), "text": ""}
-            
+
     # -------------------------
     # 2. Unified cognition
     # -------------------------
@@ -53,9 +53,13 @@ class GatewayClient:
         url = f"{self.server_host}/api/inference"
 
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload) as resp:
-                return await resp.json()    
-            
+            async with session.post(
+                url,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=600)
+            ) as resp:
+                return await resp.json()
+
     # -------------------------
     # 4. Face Recognition (future)
     # -------------------------
@@ -71,4 +75,3 @@ class GatewayClient:
 
     async def query_memory(self, query: str):
         pass
-    

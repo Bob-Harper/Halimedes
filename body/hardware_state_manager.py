@@ -9,6 +9,9 @@ class HardwareStateManager:
     def __init__(self):
         self.status = {}
 
+    async def start(self):
+        self.update()
+        return
     # ------------------------------
     # BATTERY
     # ------------------------------

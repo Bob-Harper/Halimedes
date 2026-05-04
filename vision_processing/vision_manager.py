@@ -33,7 +33,7 @@ class VisionManager:
     async def search_for_face(self, search_steps=4, delay=1):
         """
         Search for a face by moving and scanning.
-        
+
         :param search_steps: Number of movements to perform during search.
         :param delay: Time to wait between movements (in seconds).
         :return: True if a face is found, False otherwise.
@@ -48,3 +48,16 @@ class VisionManager:
             await asyncio.sleep(delay)
         print("Search complete: No face detected.")
         return False
+        
+    # === ADD THESE THREE METHODS ===
+    def get_faces(self):
+        """Return a list of detected faces (simple boolean for now)."""
+        return [{"detected": self.is_face_detected()}]
+
+    def get_objects(self):
+        """Return empty list until object detection is implemented."""
+        return []
+
+    def get_qr_codes(self):
+        """Return empty list until QR detection is implemented."""
+        return []

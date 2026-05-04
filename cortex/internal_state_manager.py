@@ -5,7 +5,9 @@ class InternalStateManager:
         self.curiosity = 0.5
         self.confidence = 0.5
         self.emotion = "neutral"
-
+        # Cognitive bookkeeping
+        self.last_intent = "IDLE"
+        
     def update(self, **kwargs):
         for k, v in kwargs.items():
             if hasattr(self, k):
@@ -19,4 +21,3 @@ class InternalStateManager:
             "confidence": self.confidence,
             "emotion": self.emotion
         }
-    

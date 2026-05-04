@@ -1,8 +1,10 @@
 from crawler_utils.utils import reset_mcu
+from aiohttp import web
 import asyncio
 import warnings
 warnings.simplefilter('ignore')
 import os
+import json
 # Explicitly clear any previously cached env variables
 os.environ.clear()
 from helpers.global_config import LED_INDICATOR
@@ -37,10 +39,13 @@ from audio_output.emotional_sounds_manager import EmotionalSoundsManager
 from audio_output.response_manager import Response_Manager
 from helpers.gateway_server_client import GatewayClient
 from helpers.prompt_builder import PromptBuilder
+from helpers.event_builder import EventBuilder
+from helpers.api_server import create_hal_api
 from eyes.EyeConfig import EyeConfig
 from eyes.EyeExpressionManager import EyeExpressionManager
 from eyes.EyeFrameComposer import EyeFrameComposer
 from eyes.EyeGazeInterpolator import GazeInterpolator
+from vision_processing.vision_manager import VisionManager
 
 # Hardware items
 hardware_state = HardwareStateManager()
@@ -57,8 +62,6 @@ gaze_interpolator = GazeInterpolator()
 expression_manager = EyeExpressionManager()
 
 composer.setup(gaze_interpolator, expression_manager)
-gaze_interpolator.setup(composer)
-expression_manager.setup(composer)
 
 # Action + sound managers (must exist before MacroPlayer)
 emotion_sound_manager = EmotionalSoundsManager()
@@ -69,9 +72,11 @@ preprocessor = AudioPreprocessor()
 voice_recognition = VoiceRecognitionManager()
 unified_server = GatewayClient(server_host)
 prompt_builder = PromptBuilder()
+event_builder = EventBuilder()
 world_state = WorldStateManager()
 internal_state = InternalStateManager()
-perception = PerceptionManager()
+vision = VisionManager()
+perception = PerceptionManager(hardware_state, emotion_categorizer, vision)
 decision_manager = DecisionManager()
 context_builder = ContextBuilder()
 initiative_manager = InitiativeManager()
@@ -90,16 +95,26 @@ cortex = CognitionLoop(
     action_executor=action_executor,
     tick_rate=0.1
 )
-
+DEBUG_REASONING = False
 
 async def main():
 
     print("[Hal] Ready. Entering main loop.")
-    print("[Hal] Listening.")
+
+    await hardware_state.start()
+    # create API app
+    api_app = create_hal_api(hardware_state)
+
+    # run API server in background
+    runner = web.AppRunner(api_app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", 8123)
+    await site.start()
 
     indicators.start()
     indicators.set_mode("idle")
 
+    print("[Hal] Listening.")
     while True:
 
         # AUDIO INPUT ------------------------------------------------------
@@ -139,48 +154,42 @@ async def main():
         # print(f"[Transcription RAW] {transcription}")
 
         spoken_text = transcription.get("text", "")
-        speaker_emotion = emotion_categorizer.analyze_text_emotion(spoken_text)
         if not spoken_text:
             continue
+        speaker_emotion = emotion_categorizer.analyze_text_emotion(spoken_text)
 
-        hardware_state.update()
-        snapshot = perception.snapshot()
-        perception.update(
-            speaker_text=spoken_text,
-            speaker_emotion=speaker_emotion,
-            speaker=recognized_speaker,
-            faces=snapshot["faces"],
-            objects=snapshot["objects"],
-            qr_codes=snapshot["qr_codes"],
-            audio_direction=None,
-            last_action=None,
-            speech_confidence=transcription.get("confidence"),
-            utterance_duration=transcription.get("duration"),
-            truncated=truncated,
-            hardware_status=hardware_state.snapshot(),
-        )
+        perception.ingest_audio_event(
+            spoken_text,
+            recognized_speaker,
+            transcription,
+            truncated
+        )  # wherefor is emotion
 
         # SEND TO UNIFIED SERVER (COGNITION) -------------------------------
-        prompt = prompt_builder.build_prompt(
-            world_state.snapshot(),
-            internal_state.snapshot(),
-            perception.snapshot()
+        event = event_builder.build_event(
+            perception=perception.snapshot(),
+            last_intent=internal_state.last_intent
         )
+
         # DEBUG OUTPUT ------------------------------------------------------
-        print("[Cognition] Sending prompt to server…")
-        print("----- BEGIN PROMPT -----")
-        print(prompt)
-        print("------ END PROMPT ------")
+        print("[Cognition] Sending event to server…")
+        print("----- BEGIN EVENT -----")
+        print(event)
+        print("------ END EVENT ------")
         # END DEBUG OUTPUT --------------------------------------------------
 
-        payload = {"prompt": prompt}
+        if DEBUG_REASONING:
+            # Allow chain-of-thought (no /nothink)
+            prompt_str = json.dumps(event, indent=2)
+        else:
+            # Standard operation: suppress CoT
+            prompt_str = "/nothink\n" + json.dumps(event, indent=2)
+
+        payload = { "prompt": prompt_str }
 
         server_json = await unified_server.send_perception(payload)
-
-
-
+        print(f"\n[Cognition] Returned from the server, before processing:: \n{server_json}\n\n")
         try:
-            server_json = await unified_server.send_perception(payload)
             server_intent = parse_server_intent(server_json)
             print(f"[Cognition] Server intent: {server_intent}")
         except Exception as e:

@@ -45,21 +45,22 @@ class ActionExecutor:
             return
         for entry in speech_list:
             text = entry.get("text")
-            if text:
-                self.audio.say(text)
+            # if text:
+                # self.audio.say(text)
 
     # ------------------------------------------------------------------
     # GAZE
     # ------------------------------------------------------------------
     def _execute_gaze(self, gaze_list):
+        pass
         if not self.eyes:
             return
         for g in gaze_list:
             mode = g.get("mode")
             if mode == "center":
                 self.eyes.look_center()
-            elif mode == "wander":
-                self.eyes.look_wander()
+            #elif mode == "wander":
+            #    self.eyes.look_wander()
 
     # ------------------------------------------------------------------
     # EXPRESSIONS
@@ -69,8 +70,8 @@ class ActionExecutor:
             return
         for expr in expr_list:
             mood = expr.get("mood")
-            if mood:
-                self.eyes.set_mood(mood)
+            # if mood:
+                # self.eyes.set_mood(mood)
 
     # ------------------------------------------------------------------
     # ACTIONS (movement, searchlight, etc.)
@@ -80,21 +81,21 @@ class ActionExecutor:
             category = act.get("category")
 
             # Full-body movement (placeholder)
-            if category == "full-body" and self.motors:
-                self.motors.do_full_body_motion()
+            # if category == "full-body" and self.motors:
+                # self.motors.do_full_body_motion()
 
             # Subtle idle movement
-            elif category == "subtle" and self.motors:
-                self.motors.do_idle_fidget()
+            # elif category == "subtle" and self.motors:
+            #     self.motors.do_idle_fidget()
 
-            # Expressive gesture
-            elif category == "expressive" and self.motors:
-                self.motors.do_expressive_motion()
+            # # Expressive gesture
+            # elif category == "expressive" and self.motors:
+            #     self.motors.do_expressive_motion()
 
-            # Searchlight control (example)
-            if category == "searchlight" and self.searchlight:
-                level = act.get("level", 0)
-                self.searchlight.speed(level)
+            # # Searchlight control (example)
+            # if category == "searchlight" and self.searchlight:
+            #     level = act.get("level", 0)
+            #     self.searchlight.speed(level)
 
     # ------------------------------------------------------------------
     # SOUNDS (non-speech)
@@ -104,5 +105,5 @@ class ActionExecutor:
             return
         for snd in sounds_list:
             category = snd.get("category")
-            if category:
-                self.audio.play_effect(category)
+            # if category:
+                # self.audio.play_effect(category)
