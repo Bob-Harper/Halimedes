@@ -29,6 +29,9 @@ from cortex.action_executor import ActionExecutor
 from cortex.cognition_loop import CognitionLoop
 from cortex.emotions_manager import EmotionCategorizer
 from cortex.server_intent_parser import parse_server_intent
+from cortex.embedding import Embedder
+from cortex.semantic_memory import SemanticMemory
+from cortex.episodic_memory import EpisodicMemory
 from body.hardware_state_manager import HardwareStateManager
 from body.indicators_manager import IndicatorsManager
 from body.searchlight import Searchlight
@@ -77,7 +80,11 @@ world_state = WorldStateManager()
 internal_state = InternalStateManager()
 vision = VisionManager()
 perception = PerceptionManager(hardware_state, emotion_categorizer, vision)
+embedder = Embedder()
+semantic = SemanticMemory(server_host)
+episodic = EpisodicMemory(server_host)
 decision_manager = DecisionManager()
+decision_manager.attach_memory(embedder, semantic, episodic)
 context_builder = ContextBuilder()
 initiative_manager = InitiativeManager()
 action_executor = ActionExecutor(

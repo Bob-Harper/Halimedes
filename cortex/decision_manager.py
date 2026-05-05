@@ -4,7 +4,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any, Dict, List, Optional, Mapping
-from helpers.modular_code import safe_float 
+
+import asyncio
+from helpers.modular_code import safe_float
 from cortex.behavior_manager import BehaviorManager
 from cortex.behavior_plan import BehaviorPlan
 
@@ -19,7 +21,7 @@ class IntentType(Enum):
     EXPLORE = auto()
     IDLE = auto()
     INTERNAL = auto()
-        
+
 
 @dataclass
 class ServerIntent:
@@ -73,6 +75,50 @@ class DecisionManager:
         self.internal_state = InternalState()
         self.goals = Goals()
         self.behaviors = BehaviorManager()
+        self.embedder = None
+        self.semantic = None
+        self.episodic = None
+
+    # -------------------------------------------------------------------------
+    # Memory retrieval and integration
+    # -------------------------------------------------------------------------
+    def attach_memory(self, embedder, semantic, episodic):
+        self.embedder = embedder
+        self.semantic = semantic
+        self.episodic = episodic
+
+    def _spawn(self, coro):
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(coro)
+        except RuntimeError:
+            pass
+
+    async def _store_episodic(self, text: str):
+        if self.embedder is None or self.episodic is None:
+            return
+        vector = self.embedder.embed(text)
+        await self.episodic.store(text, vector)
+
+    async def _recall_episodic(self, text: str, perception: dict):
+        if self.embedder is None or self.episodic is None:
+            return
+        qvec = self.embedder.embed(text)
+        recall = await self.episodic.search(qvec, top_k=5)
+        perception["episodic_recall"] = recall
+
+    async def _store_semantic(self, text: str):
+        if self.embedder is None or self.semantic is None:
+            return
+        vector = self.embedder.embed(text)
+        await self.semantic.store(text, vector)
+
+    async def _recall_semantic(self, text: str, perception: dict):
+        if self.embedder is None or self.semantic is None:
+            return
+        qvec = self.embedder.embed(text)
+        recall = await self.semantic.search(qvec, top_k=5)
+        perception["semantic_recall"] = recall
 
     # -------------------------------------------------------------------------
     # PUBLIC ENTRYPOINT
@@ -81,23 +127,36 @@ class DecisionManager:
         """
         Main decision function called each tick/turn.
         """
-        # 1. Update world & internal state from perception
+        # MEMORY HOOKS
+        text = perception.get("speaker_text")
+
+        # Episodic memory
+        if text and self.embedder and self.episodic:
+            self._spawn(self._store_episodic(text))
+            self._spawn(self._recall_episodic(text, perception))
+
+        # Semantic memory
+        if text and self.embedder and self.semantic:
+            self._spawn(self._store_semantic(text))
+            self._spawn(self._recall_semantic(text, perception))
+
+        # Update world & internal state from perception
         self._update_world_state(perception)
         self._update_internal_state(perception)
 
-        # 2. Interpret intent in context
+        # Interpret intent in context
         effective_intent = self._interpret_intent(perception, server_intent)
 
-        # 3. Possibly update goals based on intent
+        # Possibly update goals based on intent
         self._update_goals(effective_intent, perception, server_intent)
 
-        # 4. Plan behavior (speech + nonverbal + memory/world updates)
+        # Plan behavior (speech + nonverbal + memory/world updates)
         plan = self._plan_behavior(effective_intent, perception, server_intent)
 
-        # 5. Apply safety / constraints
+        # Apply safety / constraints
         self._apply_safety(plan, perception)
 
-        # 6. Update internal bookkeeping from plan
+        # Update internal bookkeeping from plan
         self._post_plan_update(plan)
 
         return plan
@@ -152,7 +211,7 @@ class DecisionManager:
                 return IntentType.IDLE
             if initiative == "explore":
                 return IntentType.EXPLORE
-            
+
         # Map string → IntentType
         server_intent_enum = None
         if isinstance(raw_intent, str):
@@ -197,7 +256,7 @@ class DecisionManager:
         # TODO: add real goal logic; for now, keep it minimal.
         if intent == IntentType.EXPLORE and not self.goals.short_term:
             self.goals.short_term.append({"type": "explore_area", "priority": "normal"})
-            
+
     # -------------------------------------------------------------------------
     # BEHAVIOR PLANNING
     # -------------------------------------------------------------------------
@@ -258,8 +317,8 @@ class DecisionManager:
             return plan
 
         # Fallback
-        return plan    
-        
+        return plan
+
     # ---- Specific planners ---------------------------------------------------
 
     def _plan_conversation(self, plan: BehaviorPlan, perception: Mapping[str, Any], server_intent: Mapping[str, Any]) -> None:
@@ -319,7 +378,7 @@ class DecisionManager:
         # Memory/world updates
         plan.memory["write"].extend(server_intent.get("memory_updates", []))
         plan.world_state["update"].extend(server_intent.get("world_updates", []))
-        
+
     def _plan_nonverbal_only(self, plan: BehaviorPlan, perception: Mapping[str, Any], server_intent: Mapping[str, Any]) -> None:
         """
         Nonverbal reaction only (no speech).
@@ -341,7 +400,7 @@ class DecisionManager:
             "mood": self.internal_state.mood,
             "when": "during",
         })
-        
+
     def _plan_command_response(self, plan: BehaviorPlan, perception: Mapping[str, Any], server_intent: Mapping[str, Any]) -> None:
         plan.speech = plan.speech or []
         plan.nonverbal = plan.nonverbal or {}
@@ -357,7 +416,7 @@ class DecisionManager:
         for act in server_intent.get("actions", []):
             if isinstance(act, dict):
                 plan.nonverbal["actions"].append(act)
-                
+
     def _plan_exploration(self, plan: BehaviorPlan, perception: Mapping[str, Any], server_intent: Mapping[str, Any]) -> None:
         """
         Exploration behavior: full-body movement, gaze scanning, etc.
@@ -379,7 +438,7 @@ class DecisionManager:
             "mode": "wander",
             "when": "during",
         })
-        
+
     def _plan_idle(self, plan: BehaviorPlan, perception: Mapping[str, Any], server_intent: Mapping[str, Any]) -> None:
         """
         Idle behavior: small fidgets, subtle gaze, no speech.
@@ -468,4 +527,3 @@ class DecisionManager:
 
         # Otherwise → idle
         self.internal_state.current_activity = "idle"
-        
