@@ -1,7 +1,0 @@
-{
-    "python.analysis.exclude": [
-        "_deprecated",
-        "body/picrawler.py"
-    ],
-    "python.terminal.useEnvFile": true
-}
