@@ -15,3 +15,7 @@ eyes/cache
 vision/face_recognition_models
 audio_input/vosk/libvosk.so
 hal.code-workspace
+.vscode/
+tests/
+vision_components/
+vision_processing/face_recognition_models/
