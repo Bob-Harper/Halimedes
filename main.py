@@ -98,7 +98,7 @@ action_executor = hotswap.load_module("cortex.action_executor", "ActionExecutor"
     searchlight=searchlight,
     audio=response_manager
 )
-cortex = hotswap.load_module("cortex.cognition_loop", "CognitionLoop")(
+cortex = hotswap.load_module("cortex.cognitive_relay", "CognitiveRelay")(
     perception_manager=perception,
     context_builder=context_builder,
     initiative_manager=initiative_manager,
