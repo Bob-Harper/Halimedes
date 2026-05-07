@@ -8,8 +8,6 @@ class ActiveLoop:
         self.globals = globals_dict
 
     async def run(self):
-        print("[Hal] Listening.")
-
         while True:
             # 1. Hot‑swap first
             self.hotswap.process(self.globals)
@@ -19,6 +17,7 @@ class ActiveLoop:
 
             # 3. Tick pacing
             await asyncio.sleep(active_loop_config["tick_rate"])
+
 
     async def loop_body(self):
         g = self.globals
@@ -38,6 +37,7 @@ class ActiveLoop:
         self.hotswap.process(g)
 
         # AUDIO INPUT ------------------------------------------------------
+        print("[Hal] Listening.")
         pcm_audio = await audio_input.capture_audio()
         if pcm_audio is None or len(pcm_audio) == 0:
             return # No audio captured, skip this loop iteration
@@ -76,17 +76,18 @@ class ActiveLoop:
         spoken_text = transcription.get("text", "")
         if not spoken_text:
             return
-        # speaker_emotion = emotion_categorizer.analyze_text_emotion(spoken_text)
+        # speaker_emotion = emotion_categorizer.analyze_text_emotion(spoken_text) THIS HAPPENS IN PERCEPTION MANAGER.
 
         perception.ingest_audio_event(
             spoken_text,
             recognized_speaker,
             transcription,
             truncated
-        )  # wherefor is emotion
+        )
 
         # SEND TO UNIFIED SERVER (COGNITION) -------------------------------
         event = event_builder.build_event(
+            self,
             perception=perception.snapshot(),
             last_intent=internal_state.last_intent
         )

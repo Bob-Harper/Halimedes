@@ -1,7 +1,7 @@
 class PerceptionManager:
-    def __init__(self, hardware_state, emotion_analyzer, vision):
+    def __init__(self, hardware_state, emotion_categorizer, vision):
         self.hardware_state = hardware_state
-        self.emotion_analyzer = emotion_analyzer
+        self.emotion_categorizer = emotion_categorizer
         self.vision = vision
 
         for k, v in self.FIELDS.items():
@@ -46,7 +46,7 @@ class PerceptionManager:
         self.speaker = speaker
 
         # compute emotion internally
-        self.speaker_emotion = self.emotion_analyzer.analyze_text_emotion(spoken_text)
+        self.speaker_emotion = self.emotion_categorizer.analyze_text_emotion(spoken_text)
 
         # transcription metadata
         self.speech_confidence = transcription.get("confidence")
