@@ -75,8 +75,8 @@ class ActiveLoop:
 
         spoken_text = transcription.get("text", "")
         if not spoken_text:
+            indicators.set_mode("idle")
             return
-        # speaker_emotion = emotion_categorizer.analyze_text_emotion(spoken_text) THIS HAPPENS IN PERCEPTION MANAGER.
 
         perception.ingest_audio_event(
             spoken_text,
@@ -124,7 +124,6 @@ class ActiveLoop:
         cortex.tick(server_intent)
         print(f"[Decision] Executed plan for intent '{server_intent.get('intent')}'")
         # LOOP --------------------------------------------------------------
-        print("[Hal] Listening.")
         indicators.set_mode("idle")
         await asyncio.sleep(active_loop_config["tick_rate"])
 
