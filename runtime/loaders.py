@@ -72,12 +72,6 @@ class HotSwapLoader:
                 "args": ["server_host"],
                 "kwargs": {}
             },
-            "prompt_builder": {
-                "path": "helpers.prompt_builder",
-                "class": "PromptBuilder",
-                "args": [],
-                "kwargs": {}
-            },
             "event_builder": {
                 "path": "helpers.event_builder",
                 "class": "EventBuilder",

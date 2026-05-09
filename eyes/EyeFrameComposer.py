@@ -11,8 +11,8 @@ if not expressionconfig_path.exists():
     raise FileNotFoundError(f"[EyeLoader] No profile named '{EYE_EXPRESSIONS_FILE}' in {EYE_EXPRESSIONS_PATH}/")
 with open(expressionconfig_path, "r") as f:
     expression_map = json.load(f)
-FRAME_RATE = 60
-FRAME_DURATION = 1.0 / FRAME_RATE
+FRAME_RATE = 30
+FRAME_DURATION = 3 / FRAME_RATE
 
 
 class EyeFrameComposer:

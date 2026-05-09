@@ -1,3 +1,5 @@
+# hal_runtime.py
+
 import os
 import warnings
 import asyncio
@@ -29,6 +31,9 @@ from cortex.server_intent_parser import parse_server_intent
 from helpers.api_server import create_hal_api
 from helpers.global_config import LED_INDICATOR, UNIFIED_API_GATEWAY
 
+from dsl.channels import GazeChannel, ExpressionChannel, SpeechChannel, ActionChannel, SoundChannel
+from dsl.macro_player import MacroPlayer
+
 from activeloop import ActiveLoop
 
 warnings.simplefilter("ignore")
@@ -58,6 +63,8 @@ class Hal:
         self.gaze_interpolator = GazeInterpolator()
         self.expression_manager = EyeExpressionManager()
         self.composer.setup(self.gaze_interpolator, self.expression_manager)
+        self.gaze_interpolator.setup(self.composer)
+        self.expression_manager.setup(self.composer)
 
         # --- audio ---
         self.preprocessor = AudioPreprocessor()
@@ -99,8 +106,15 @@ class Hal:
         # --- helpers (hotswapped) ---
         self.unified_server = self.hotswap.load_module("helpers.gateway_server_client", "GatewayClient"
         )(self.server_host)
-        self.prompt_builder = self.hotswap.load_module("helpers.prompt_builder", "PromptBuilder")
         self.event_builder = self.hotswap.load_module("helpers.event_builder", "EventBuilder")
+
+        self.macro_player = MacroPlayer(
+            gaze=GazeChannel(self.gaze_interpolator),
+            expression=ExpressionChannel(self.expression_manager),
+            speech=SpeechChannel(self.response_manager),
+            action=ActionChannel(self.actions_manager),
+            sound=SoundChannel(self.emotion_sound_manager.play_sound),
+        )
 
         # --- API server holder ---
         self._api_runner = None
@@ -118,6 +132,7 @@ class Hal:
             "composer": self.composer,
             "gaze_interpolator": self.gaze_interpolator,
             "expression_manager": self.expression_manager,
+            "macro_player": self.macro_player,
             "preprocessor": self.preprocessor,
             "audio_input": self.audio_input,
             "voice_recognition": self.voice_recognition,
@@ -137,7 +152,6 @@ class Hal:
             "action_executor": self.action_executor,
             "cortex": self.cortex,
             "unified_server": self.unified_server,
-            "prompt_builder": self.prompt_builder,
             "event_builder": self.event_builder,
             "parse_server_intent": parse_server_intent,
         }
@@ -158,6 +172,23 @@ class Hal:
         self.indicators.start()
         self.indicators.set_mode("idle")
 
+        # Start eye rendering loop
+        asyncio.create_task(self.composer.start_loop())
+
+        # Quick visual test: eyes move + expression change
+        await self.macro_player.run("""
+expression set mood neutral
+gaze move to 90 90 1.0
+wait 0.5
+gaze move to 80 90 1.0
+wait 0.5
+gaze move to 100 90 1.0
+wait 0.5
+gaze move to 90 90 1.0
+expression set mood sleepy
+wait 0.5
+expression set mood positive
+""")
         await self.loop.run()
 
     async def shutdown(self):

@@ -49,8 +49,8 @@ class GatewayClient:
     # -------------------------
     # 2. Unified cognition
     # -------------------------
-    async def send_perception(self, payload: dict):
-        url = f"{self.server_host}/api/inference"
+    async def send_perception(self, payload: dict, endpoint):
+        url = f"{self.server_host}{endpoint}"
 
         async with aiohttp.ClientSession() as session:
             async with session.post(

@@ -1,6 +1,16 @@
+# activeloop.py
+
 import asyncio
 import json
 from cortex.config import active_loop_config
+
+COMMAND_PHRASES = {
+    "diagnostic mode": "tool",
+    "news fetch": "tool",
+    "forecast fetch": "tool",
+    "wikipedia fetch": "tool",
+}
+
 
 class ActiveLoop:
     def __init__(self, hotswap, globals_dict):
@@ -78,6 +88,14 @@ class ActiveLoop:
             indicators.set_mode("idle")
             return
 
+        # COMMAND PHRASE CHECK
+        lower = spoken_text.lower().strip()
+        inference_type = "chat"
+        for phrase in COMMAND_PHRASES:
+            if lower.startswith(phrase):
+                inference_type = COMMAND_PHRASES[phrase]
+                break
+
         perception.ingest_audio_event(
             spoken_text,
             recognized_speaker,
@@ -108,7 +126,14 @@ class ActiveLoop:
 
         payload = { "prompt": prompt_str }
 
-        server_json = await unified_server.send_perception(payload)
+        if inference_type == "tool":
+            endpoint = "/api/tool"
+        elif inference_type == "autonomous":
+            endpoint = "/api/autonomous"
+        else:
+            endpoint = "/api/chat"
+
+        server_json = await unified_server.send_perception(payload, endpoint)
         print(f"\n[Cognition] Returned from the server, before processing:: \n{server_json}\n\n")
         try:
             server_intent = parse_server_intent(server_json)

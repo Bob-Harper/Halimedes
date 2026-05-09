@@ -1,3 +1,5 @@
+# dsl/macro_tag_validator.py
+
 from difflib import get_close_matches
 
 class MacroTagValidator:
@@ -21,11 +23,10 @@ class MacroTagValidator:
     @classmethod
     def validate_gaze(cls, tag: str):
         return cls.closest_match(tag, cls.VALID_GAZE)
-    
+
     # def validate_markup(text):
     # # Basic sanity check: every opening tag has a matching closing tag
     # open_tags = re.findall(r'<(\w+)>', text)
     # close_tags = re.findall(r'</(\w+)>', text)
     # return open_tags == close_tags
 
-    
