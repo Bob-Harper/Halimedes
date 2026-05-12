@@ -7,6 +7,7 @@ class InternalStateManager:
         self.emotion = "neutral"
         # Cognitive bookkeeping
         self.last_intent = "IDLE"
+        self.activity_level = 1.0
         
     def update(self, **kwargs):
         for k, v in kwargs.items():

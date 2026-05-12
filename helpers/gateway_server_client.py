@@ -3,12 +3,17 @@ import base64
 import time
 import uuid
 import json
-
+from cortex.embedding import Embedder
+from cortex.episodic_memory import EpisodicMemory
+from cortex.semantic_memory import SemanticMemory
 
 class GatewayClient:
     def __init__(self, server_host: str):
         self.server_host = server_host.rstrip("/")
-
+        self.embedder = Embedder()
+        self.semantic = SemanticMemory(self.server_host)
+        self.episodic = EpisodicMemory(self.server_host)
+        
     # -------------------------
     # 1. Transcription
     # -------------------------
@@ -70,8 +75,33 @@ class GatewayClient:
     # -------------------------
     # 6. Memory Operations (future)
     # -------------------------
-    async def store_memory(self, text: str, tags: list):
-        pass
+    async def store_memory(self, text: str, tags: list[str] | None = None):
+        """
+        High-level memory write used by HAL.
+        - Creates embedding
+        - Stores episodic memory
+        - Optionally stores semantic tags
+        """
+        # 1. embed text (HAL already has embed() in cognition)
+        vector = self.embedder.embed(text)
 
-    async def query_memory(self, query: str):
-        pass
+        # 2. episodic memory write
+        result = await self.episodic.store(content=text, vector=vector)
+
+        # 3. optional semantic tags
+        if tags:
+            for tag in tags:
+                await self.semantic.write(tag, text)
+
+        return result
+
+    async def query_memory(self, query: str, top_k: int = 5):
+        """
+        High-level memory search used by HAL.
+        - Embeds query
+        - Vector search episodic memory
+        - Returns structured results
+        """
+        qvec = self.embedder.embed(query)
+
+        return await self.episodic.search(qvec, top_k=top_k)

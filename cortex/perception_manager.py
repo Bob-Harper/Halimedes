@@ -1,6 +1,13 @@
 class PerceptionManager:
-    def __init__(self, hardware_state, emotion_categorizer, vision):
+    def __init__(
+        self,
+        hardware_state,
+        sensor_state,
+        emotion_categorizer,
+        vision
+    ):
         self.hardware_state = hardware_state
+        self.sensor_state = sensor_state
         self.emotion_categorizer = emotion_categorizer
         self.vision = vision
 
@@ -8,22 +15,24 @@ class PerceptionManager:
             setattr(self, k, v if not isinstance(v, list) else [])
 
     FIELDS = {
+        # Microphone
         "speaker_text": None,
         "speaker_emotion": None,
         "speaker": None,
-
-        "faces": [],
-        "objects": [],
-        "qr_codes": [],
-
-        "hardware_status": {},
-
         "audio_direction": None,
-        "last_action": None,
-
         "speech_confidence": None,
         "utterance_duration": None,
         "truncated": False,
+        # Camera
+        "faces": [],
+        "objects": [],
+        "qr_codes": [],
+        # Pi readings
+        "hardware_status": {},
+        # Self
+        "last_action": None,
+        # ISensors
+        "sensor_status": {},
     }
 
     def reset(self):
@@ -55,6 +64,26 @@ class PerceptionManager:
 
         # hardware + vision
         self.hardware_status = self.hardware_state.snapshot()
+        self.sensor_status = self.sensor_state.snapshot()
         self.faces = self.vision.get_faces()
         self.objects = self.vision.get_objects()
         self.qr_codes = self.vision.get_qr_codes()
+
+    def update_from_vision(self):
+        if self.vision:
+            try:
+                faces = self.vision.get_faces()
+                if faces is not None:
+                    self.faces = faces
+
+                objects = self.vision.get_objects()
+                if objects is not None:
+                    self.objects = objects
+
+                qr = self.vision.get_qr_codes()
+                if qr is not None:
+                    self.qr_codes = qr
+
+            except Exception as e:
+                print(f"[Perception] Vision update failed: {e}")
+

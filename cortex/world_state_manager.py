@@ -1,6 +1,5 @@
 import datetime
 
-
 class WorldStateManager:
     def __init__(self):
         self.location = "unknown"
@@ -8,11 +7,21 @@ class WorldStateManager:
         self.faces = []
         self.time_of_day = "unknown"
         self.lighting = "unknown"
+        self.events = []
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
             if hasattr(self, k):
                 setattr(self, k, v)
+
+    def add_event(self, event: dict):
+        self.events.append(event)
+
+    def add_face(self, face):
+        self.faces.append(face)
+
+    def add_object(self, obj):
+        self.objects.append(obj)
 
     def snapshot(self) -> dict:
         return {
@@ -20,19 +29,10 @@ class WorldStateManager:
             "objects": list(self.objects),
             "faces": list(self.faces),
             "time_of_day": self.get_time_of_day(),
-            "lighting": self.lighting
+            "lighting": self.lighting,
+            "events": list(self.events)
         }
-    
-    def get_location(self):
 
-        return self.location
-
-    def get_objects(self):
-        return self.objects 
-    
-    def get_faces(self):
-        return self.faces   
-    
     def get_time_of_day(self):
         time = datetime.datetime.now().time()
         if time >= datetime.time(6, 0) and time < datetime.time(12, 0):
@@ -43,4 +43,3 @@ class WorldStateManager:
             return "evening"
         else:
             return "night"
-        

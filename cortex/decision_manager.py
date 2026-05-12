@@ -1,9 +1,9 @@
 # cortex/decision_manager.py
-
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any, Dict, List, Optional, Mapping
+import datetime
 
 import asyncio
 from helpers.modular_code import safe_float
@@ -108,17 +108,17 @@ class DecisionManager:
         perception["episodic_recall"] = recall
 
     async def _store_semantic(self, text: str):
-        if self.embedder is None or self.semantic is None:
+        if self.semantic is None:
             return
-        vector = self.embedder.embed(text)
-        await self.semantic.store(text, vector)
+        # For now, just store under a simple key; you can make this smarter later.
+        await self.semantic.write("last_utterance", text)
 
     async def _recall_semantic(self, text: str, perception: dict):
-        if self.embedder is None or self.semantic is None:
+        if self.semantic is None:
             return
-        qvec = self.embedder.embed(text)
-        recall = await self.semantic.search(qvec, top_k=5)
-        perception["semantic_recall"] = recall
+        # Example: read back that same key
+        value = await self.semantic.read("last_utterance")
+        perception["semantic_recall"] = value
 
     # -------------------------------------------------------------------------
     # PUBLIC ENTRYPOINT
@@ -164,17 +164,79 @@ class DecisionManager:
     # -------------------------------------------------------------------------
     # STATE UPDATES
     # -------------------------------------------------------------------------
-    def _update_world_state(self, perception: Mapping[str, Any]) -> None:
-        """Ingest perception into world_state."""
+    def _update_world_state(self, perception):
+        # Existing fields
         speaker = perception.get("speaker")
-        if speaker is not None:
+        if speaker:
             self.world_state.last_speaker = speaker
 
-        emotion = perception.get("user_emotion")
-        if emotion is not None:
+        emotion = perception.get("speaker_emotion")
+        if emotion:
             self.world_state.last_user_emotion = emotion
 
-        # TODO: integrate faces, objects, qr_codes, location, etc.
+        # NEW: faces
+        faces = perception.get("faces")
+        if faces:
+            self.world_state.environment["faces"] = faces
+
+        # NEW: objects
+        objects = perception.get("objects")
+        if objects:
+            self.world_state.environment["objects"] = objects
+
+        # NEW: QR codes
+        qr = perception.get("qr_codes")
+        if qr:
+            self.world_state.environment["qr_codes"] = qr
+
+        # NEW: audio direction
+        direction = perception.get("audio_direction")
+        if direction is not None:
+            self.world_state.environment["audio_direction"] = direction
+
+        # NEW: last action (robot’s own)
+        last_action = perception.get("last_action")
+        if last_action:
+            self.world_state.environment["last_action"] = last_action
+
+        if speaker:
+            person = self.world_state.known_people.setdefault(speaker, {})
+            person["last_seen"] = datetime.time()
+            person["last_emotion"] = emotion
+
+        # Ultrasonic
+        dist = perception.get("ultrasonic_distance")
+        if dist is not None:
+            self.world_state.environment["ultrasonic_distance"] = dist
+
+        # Radar
+        presence = perception.get("radar_presence")
+        if presence is not None:
+            self.world_state.environment["radar_presence"] = presence
+
+        radar_dist = perception.get("radar_distance")
+        if radar_dist is not None:
+            self.world_state.environment["radar_distance"] = radar_dist
+
+        # Accelerometer
+        accel = perception.get("accel")
+        if accel:
+            self.world_state.environment["accel"] = accel
+
+        # Gyro
+        gyro = perception.get("gyro")
+        if gyro:
+            self.world_state.environment["gyro"] = gyro
+
+        # Grayscale
+        gray = perception.get("grayscale")
+        if gray:
+            self.world_state.environment["grayscale"] = gray
+
+        # Cliff sensors
+        cliff = perception.get("cliff_sensors")
+        if cliff:
+            self.world_state.environment["cliff_sensors"] = cliff
 
     def _update_internal_state(self, perception: Mapping[str, Any]) -> None:
         """Update internal mood/engagement/fatigue/etc."""
@@ -197,7 +259,7 @@ class DecisionManager:
         """
 
         # Normalize local values
-        user_text = perception.get("user_text")
+        speaker_text = perception.get("speaker_text")
         battery_raw = perception.get("battery_level")
 
         # Normalize server intent value
@@ -229,8 +291,8 @@ class DecisionManager:
         elif isinstance(raw_intent, IntentType):
             server_intent_enum = raw_intent
 
-        # 1) If no user_text but server wants to converse, prefer OBSERVE
-        if not user_text and server_intent_enum == IntentType.CONVERSE:
+        # 1) If no speaker_text but server wants to converse, prefer OBSERVE
+        if not speaker_text and server_intent_enum == IntentType.CONVERSE:
             return IntentType.OBSERVE
 
         # 2) Battery check: avoid EXPLORE/ACT when low
@@ -341,10 +403,10 @@ class DecisionManager:
         if speech_suggestions:
             plan.speech.extend(speech_suggestions)
         else:
-            user_text = perception.get("user_text")
-            if user_text:
+            speaker_text = perception.get("speaker_text")
+            if speaker_text:
                 plan.speech.append({
-                    "text": f"I heard you say: {user_text}",
+                    "text": f"I heard you say: {speaker_text}",
                     "emotion": self.internal_state.mood,
                 })
 
@@ -406,10 +468,10 @@ class DecisionManager:
         plan.nonverbal = plan.nonverbal or {}
         plan.nonverbal.setdefault("actions", [])
 
-        user_text = perception.get("user_text", "")
+        speaker_text = perception.get("speaker_text", "")
 
         plan.speech.append({
-            "text": f"Okay, {user_text}" if user_text else "Okay.",
+            "text": f"Okay, {speaker_text}" if speaker_text else "Okay.",
             "emotion": "neutral"
         })
 

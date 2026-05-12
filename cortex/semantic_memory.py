@@ -1,3 +1,4 @@
+# cortex/semantic_memory.py
 # Hard data, objectively interpretable data, facts, information. Can be used for reasoning, logic, etc.
 import aiohttp
 import logging

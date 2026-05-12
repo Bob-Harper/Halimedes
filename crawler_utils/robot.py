@@ -30,7 +30,7 @@ class Robot(_Basic_class):
     """Preset actions"""
 
     max_dps = 428  # dps, degrees per second, genally in 4.8V : 60des/0.14s, dps = 428
-    # max_dps = 500
+    # max_dps = 500 # physical hardware constraint
     """Servo max Degree Per Second"""
 
     def __init__(self, pin_list, db=config_file, name=None, init_angles=None, init_order=None, **kwargs):
@@ -78,7 +78,7 @@ class Robot(_Basic_class):
         else:
             if len(init_angles) != self.pin_num:
                 raise ValueError('init angles numbers do not match pin numbers ')
-            
+
         if init_order == None:
             init_order = range(self.pin_num)
 
@@ -143,7 +143,7 @@ class Robot(_Basic_class):
         '''
         speed = max(0, speed)
         speed = min(100, speed)
-        step_time = 10  # ms 
+        step_time = 10  # ms
         delta = []
         absdelta = []
         max_step = 0

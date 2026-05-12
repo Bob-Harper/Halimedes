@@ -9,10 +9,13 @@ from crawler_utils.utils import reset_mcu
 from runtime.loaders import HotSwapLoader
 
 from body.picrawler import Picrawler
+from body.picrawler_extended import PicrawlerExtended
+from body.unified_motors import UnifiedMotors
 from body.hardware_state_manager import HardwareStateManager
+from body.sensor_state_manager import SensorStateManager
 from body.searchlight import Searchlight
 from body.indicators_manager import IndicatorsManager
-
+from kernel.reflexes import load_all_reflexes
 from eyes.EyeConfig import EyeConfig
 from eyes.EyeFrameComposer import EyeFrameComposer
 from eyes.EyeGazeInterpolator import GazeInterpolator
@@ -31,9 +34,6 @@ from cortex.server_intent_parser import parse_server_intent
 from helpers.api_server import create_hal_api
 from helpers.global_config import LED_INDICATOR, UNIFIED_API_GATEWAY
 
-from dsl.channels import GazeChannel, ExpressionChannel, SpeechChannel, ActionChannel, SoundChannel
-from dsl.macro_player import MacroPlayer
-
 from activeloop import ActiveLoop
 
 warnings.simplefilter("ignore")
@@ -48,14 +48,18 @@ class Hal:
         self.server_host = UNIFIED_API_GATEWAY
 
         # --- core helpers ---
-        self.hotswap = HotSwapLoader()
+        self.hotswap = HotSwapLoader()  # DANGER ZONE: DO NOT HOTSWAP ENABLE HARDWARE.  ONLY ENABLE PURE SOFTWARE SYSTEMS.
 
         # --- body / hardware ---
         self.picrawler_instance = Picrawler()
+        self.picrawler_extended = PicrawlerExtended(self.picrawler_instance)
+        self.motors = UnifiedMotors(self.picrawler_instance, self.picrawler_extended)
         self.actions_manager = self.picrawler_instance
         self.hardware_state = HardwareStateManager()
+        self.sensor_state = SensorStateManager()
         self.searchlight = Searchlight()
         self.indicators = IndicatorsManager(LED_INDICATOR)
+        self.reflexes = load_all_reflexes()
 
         # --- eyes ---
         eye_profile = EyeConfig.load_eye_profile("whitegold01")
@@ -76,7 +80,7 @@ class Hal:
         # --- vision ---
         self.vision = VisionManager()
 
-        # --- cortex (hotswapped) ---
+        # --- cortex (hotswapped) ---  # HOTSWAP SAFETY ZONE: CORTEX, HELPERS, AND ACTIVELOOP ONLY.  NEVER HOTSWAP ANYTHING THAT EVEN KNOWS HARDWARE EXISTS.
         self.internal_state = self.hotswap.load_module("cortex.internal_state_manager", "InternalStateManager")()
         self.world_state = self.hotswap.load_module("cortex.world_state_manager", "WorldStateManager")()
         self.initiative_manager = self.hotswap.load_module("cortex.initiative_manager", "InitiativeManager")()
@@ -85,36 +89,36 @@ class Hal:
         self.episodic = self.hotswap.load_module("cortex.episodic_memory", "EpisodicMemory")(self.server_host)
         self.embedder = self.hotswap.load_module("cortex.embedding", "Embedder")()
         self.context_builder = self.hotswap.load_module("cortex.context_builder", "ContextBuilder")()
-        self.perception = self.hotswap.load_module("cortex.perception_manager", "PerceptionManager"
-        )(self.hardware_state, self.emotion_categorizer, self.vision)
+        self.perception = self.hotswap.load_module("cortex.perception_manager", "PerceptionManager")(
+            hardware_state=self.hardware_state,
+            sensor_state=self.sensor_state,
+            emotion_categorizer=self.emotion_categorizer,
+            vision=self.vision
+        )
         self.decision_manager = self.hotswap.load_module("cortex.decision_manager", "DecisionManager")()
         self.decision_manager.attach_memory(self.embedder, self.semantic, self.episodic)
         self.action_executor = self.hotswap.load_module("cortex.action_executor", "ActionExecutor")(
-            motors=self.actions_manager,
+            motors=self.motors,
             eyes=self.expression_manager,
             searchlight=self.searchlight,
             audio=self.response_manager,
         )
+        self.behavior_executor = self.hotswap.load_module("cortex.behavior_executor", "BehaviorExecutor")(self.action_executor)
         self.cortex = self.hotswap.load_module("cortex.cognitive_relay", "CognitiveRelay")(
             perception_manager=self.perception,
             context_builder=self.context_builder,
             initiative_manager=self.initiative_manager,
             decision_manager=self.decision_manager,
-            action_executor=self.action_executor,
+            behavior_executor=self.behavior_executor,
+            internal_state_manager=self.internal_state,   # ← PASS IT IN
         )
+
 
         # --- helpers (hotswapped) ---
         self.unified_server = self.hotswap.load_module("helpers.gateway_server_client", "GatewayClient"
         )(self.server_host)
         self.event_builder = self.hotswap.load_module("helpers.event_builder", "EventBuilder")
 
-        self.macro_player = MacroPlayer(
-            gaze=GazeChannel(self.gaze_interpolator),
-            expression=ExpressionChannel(self.expression_manager),
-            speech=SpeechChannel(self.response_manager),
-            action=ActionChannel(self.actions_manager),
-            sound=SoundChannel(self.emotion_sound_manager.play_sound),
-        )
 
         # --- API server holder ---
         self._api_runner = None
@@ -132,7 +136,6 @@ class Hal:
             "composer": self.composer,
             "gaze_interpolator": self.gaze_interpolator,
             "expression_manager": self.expression_manager,
-            "macro_player": self.macro_player,
             "preprocessor": self.preprocessor,
             "audio_input": self.audio_input,
             "voice_recognition": self.voice_recognition,
@@ -167,6 +170,7 @@ class Hal:
         print("[Hal] Entering main loop.")
 
         await self.hardware_state.start()
+        await self.sensor_state.start()
         await self.start_api()
 
         self.indicators.start()
@@ -175,20 +179,6 @@ class Hal:
         # Start eye rendering loop
         asyncio.create_task(self.composer.start_loop())
 
-        # Quick visual test: eyes move + expression change
-        await self.macro_player.run("""
-expression set mood neutral
-gaze move to 90 90 1.0
-wait 0.5
-gaze move to 80 90 1.0
-wait 0.5
-gaze move to 100 90 1.0
-wait 0.5
-gaze move to 90 90 1.0
-expression set mood sleepy
-wait 0.5
-expression set mood positive
-""")
         await self.loop.run()
 
     async def shutdown(self):

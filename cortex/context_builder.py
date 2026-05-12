@@ -9,7 +9,11 @@ class ContextBuilder:
     def __init__(self):
         self.last_user_presence = False
         self.idle_counter = 0
-
+        self.last_intent = None
+        self.memory = {}
+        self.world_state = {}
+        self.internal_state = {}
+        
     def build(self, perception: dict) -> dict:
         """
         Returns a dict of derived context signals.
@@ -35,8 +39,8 @@ class ContextBuilder:
         # ------------------------------------------------------------
         # AUDIO / SPEECH
         # ------------------------------------------------------------
-        user_text = perception.get("user_text")
-        context["user_speaking"] = bool(user_text)
+        speaker_text = perception.get("speaker_text")
+        context["user_speaking"] = bool(speaker_text)
 
         # ------------------------------------------------------------
         # ATTENTION TARGET

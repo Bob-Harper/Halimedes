@@ -41,7 +41,8 @@ class ActiveLoop:
         cortex = g["cortex"]
         indicators = g["indicators"]
         parse_server_intent = g["parse_server_intent"]
-        DEBUG_REASONING = g["DEBUG_REASONING"]
+        # DEBUG_REASONING = g["DEBUG_REASONING"]
+        DEBUG_REASONING = False
 
         # Check for Module Reload Flag ------------------------------------------------------
         self.hotswap.process(g)
@@ -146,7 +147,7 @@ class ActiveLoop:
         perception.reset()
 
         # DECISION LAYER ---------------------------------------------------
-        cortex.tick(server_intent)
+        await cortex.tick(server_intent)
         print(f"[Decision] Executed plan for intent '{server_intent.get('intent')}'")
         # LOOP --------------------------------------------------------------
         indicators.set_mode("idle")

@@ -8,7 +8,7 @@ class EventBuilder:
             "timestamp": time.time(),
             "last_intent": last_intent,
             "perception": {
-                "user_text": perception["speaker_text"],
+                "speaker_text": perception["speaker_text"],
                 "speaker": perception["speaker"],
                 "user_emotion": perception["speaker_emotion"],
                 "speech_confidence": perception["speech_confidence"],
