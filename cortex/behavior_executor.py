@@ -8,8 +8,9 @@ class BehaviorExecutor:
     This is the layer BETWEEN BehaviorManager and ActionExecutor.
     """
 
-    def __init__(self, action_executor):
+    def __init__(self, action_executor, response_manager):
         self.action_executor = action_executor
+        self.response_manager = response_manager
         self.current_task = None
         self.interrupt_flag = False
 
@@ -117,5 +118,6 @@ class BehaviorExecutor:
             if self.interrupt_flag:
                 return
             text = entry.get("text")
+            emotion = "neutral"
             if text:
-                await self.action_executor.audio.say(text)
+                await self.response_manager.speak(text, emotion)

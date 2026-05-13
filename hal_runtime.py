@@ -20,6 +20,7 @@ from eyes.EyeConfig import EyeConfig
 from eyes.EyeFrameComposer import EyeFrameComposer
 from eyes.EyeGazeInterpolator import GazeInterpolator
 from eyes.EyeExpressionManager import EyeExpressionManager
+from eyes.eye_channels import GazeChannel, ExpressionChannel
 
 from audio_input.audio_preprocessor import AudioPreprocessor
 from audio_input.audio_input_manager import AudioInputManager
@@ -69,6 +70,8 @@ class Hal:
         self.composer.setup(self.gaze_interpolator, self.expression_manager)
         self.gaze_interpolator.setup(self.composer)
         self.expression_manager.setup(self.composer)
+        self.gaze_channel = GazeChannel(self.gaze_interpolator)
+        self.expression_channel = ExpressionChannel(self.expression_manager)
 
         # --- audio ---
         self.preprocessor = AudioPreprocessor()
@@ -99,11 +102,12 @@ class Hal:
         self.decision_manager.attach_memory(self.embedder, self.semantic, self.episodic)
         self.action_executor = self.hotswap.load_module("cortex.action_executor", "ActionExecutor")(
             motors=self.motors,
-            eyes=self.expression_manager,
             searchlight=self.searchlight,
             audio=self.response_manager,
+            gaze_channel=self.gaze_channel,
+            expression_channel=self.expression_channel,
         )
-        self.behavior_executor = self.hotswap.load_module("cortex.behavior_executor", "BehaviorExecutor")(self.action_executor)
+        self.behavior_executor = self.hotswap.load_module("cortex.behavior_executor", "BehaviorExecutor")(self.action_executor, self.response_manager)
         self.cortex = self.hotswap.load_module("cortex.cognitive_relay", "CognitiveRelay")(
             perception_manager=self.perception,
             context_builder=self.context_builder,

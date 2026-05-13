@@ -1,3 +1,5 @@
+# cortex/server_intent_parser.py
+
 import json
 from typing import Any, Dict, List
 from cortex.decision_manager import IntentType
@@ -40,8 +42,10 @@ def parse_server_intent(raw_server_response: Any) -> Dict[str, Any]:
 
     return {
         "intent": _map_intent(server.get("intent")),
+        "behavior": server.get("behavior"),
+        "speech_suggestions": _ensure_list(server.get("speech_suggestions")),
+        "nonverbal_suggestions": server.get("nonverbal_suggestions", {}),
         "memory_updates": _ensure_list(server.get("memory_updates")),
         "world_updates": _ensure_list(server.get("world_updates")),
-        "speech": _ensure_list(server.get("speech")),
         "actions": _ensure_list(server.get("actions")),
     }

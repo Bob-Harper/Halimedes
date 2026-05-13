@@ -10,6 +10,9 @@ class Response_Manager:
     _actions_manager = None  # Store actions manager globally
 
     def __init__(self, picrawler_instance, actions_manager=None, eye_animator=None):
+        self._speech_lock = asyncio.Lock()
+        self._current_speech_task = None
+
         self.crawler = picrawler_instance
         # Hal's voicefile
         self.voice_path = SPEECH_MODEL_PATH/SPEECH_MODEL_NAME
@@ -81,3 +84,24 @@ class Response_Manager:
                 print(f"[TTS] Flite/aplay error: {e}")
             except FileNotFoundError as e:
                 print(f"[TTS] Command not found: {e}")
+
+    async def speak(self, text, emotion="neutral"):
+        # Cancel any ongoing speech
+        if self._current_speech_task and not self._current_speech_task.done():
+            self._current_speech_task.cancel()
+            try:
+                await self._current_speech_task
+            except asyncio.CancelledError:
+                pass
+
+        # Create a new speech task
+        self._current_speech_task = asyncio.create_task(
+            self._speak_serialized(text, emotion)
+        )
+
+    async def _speak_serialized(self, text, emotion):
+        async with self._speech_lock:
+            await self.speak_with_flite(text, emotion)
+
+    async def say(self, text):
+        return await self.speak_with_flite(text, emotion="neutral")
