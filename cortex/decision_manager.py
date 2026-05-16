@@ -9,6 +9,7 @@ import asyncio
 from helpers.modular_code import safe_float
 from cortex.behavior_manager import BehaviorManager
 from cortex.behavior_plan import BehaviorPlan
+from cortex.decision_policy import DecisionPolicy
 
 
 # ====== ENUMS / BASIC TYPES ===================================================
@@ -78,6 +79,40 @@ class DecisionManager:
         self.embedder = None
         self.semantic = None
         self.episodic = None
+        self.policy = DecisionPolicy()
+
+
+    # DECISION MAKER FIRST STEPS.
+    def _build_state_vector(self, perception):
+        # Minimal proof-of-concept
+        return {
+            "speaker_present": 1.0 if perception.get("speaker") else 0.0,
+            "speech_detected": 1.0 if perception.get("speaker_text") else 0.0,
+            "battery": safe_float(perception.get("battery_level")) or 1.0,
+            "mood": 0.0 if self.internal_state.mood == "neutral" else 1.0,
+            "engagement": self.internal_state.engagement,
+            "curiosity": self.internal_state.curiosity,
+            "fatigue": self.internal_state.fatigue,
+        }
+
+    def _interpret_intent(self, perception: Mapping[str, Any], server_intent: Mapping[str, Any]) -> IntentType:
+        """
+        Intent is chosen locally by the policy. The server no longer decides intent.
+        """
+        state = self._build_state_vector(perception)  # you said this is already wired
+        policy_intent = self.policy.decide(state)
+
+        mapping = {
+            "converse": IntentType.CONVERSE,
+            "act": IntentType.ACT,
+            "ignore": IntentType.IGNORE,
+            "observe": IntentType.OBSERVE,
+            "command": IntentType.COMMAND,
+            "explore": IntentType.EXPLORE,
+            "idle": IntentType.IDLE,
+            "internal": IntentType.INTERNAL,
+        }
+        return mapping.get(policy_intent, IntentType.OBSERVE)
 
     # -------------------------------------------------------------------------
     # Memory retrieval and integration
@@ -252,64 +287,7 @@ class DecisionManager:
     # INTENT INTERPRETATION / GOALS
     # -------------------------------------------------------------------------
 
-    def _interpret_intent(self, perception: Mapping[str, Any], server_intent: Mapping[str, Any]) -> IntentType:
-        """
-        Combine server intent + local context to decide what Hal should do.
-        Always returns an IntentType.
-        """
 
-        # Normalize local values
-        speaker_text = perception.get("speaker_text")
-        battery_raw = perception.get("battery_level")
-
-        # Normalize server intent value
-        raw_intent = server_intent.get("intent")
-
-        initiative = perception.get("initiative")
-        if initiative:
-            if initiative == "greet":
-                return IntentType.CONVERSE
-            if initiative == "idle":
-                return IntentType.IDLE
-            if initiative == "explore":
-                return IntentType.EXPLORE
-
-        # Map string → IntentType
-        server_intent_enum = None
-        if isinstance(raw_intent, str):
-            mapping = {
-                "converse": IntentType.CONVERSE,
-                "act": IntentType.ACT,
-                "ignore": IntentType.IGNORE,
-                "observe": IntentType.OBSERVE,
-                "command": IntentType.COMMAND,
-                "explore": IntentType.EXPLORE,
-                "idle": IntentType.IDLE,
-                "internal": IntentType.INTERNAL,
-            }
-            server_intent_enum = mapping.get(raw_intent.lower())
-        elif isinstance(raw_intent, IntentType):
-            server_intent_enum = raw_intent
-
-        # 1) If no speaker_text but server wants to converse, prefer OBSERVE
-        if not speaker_text and server_intent_enum == IntentType.CONVERSE:
-            return IntentType.OBSERVE
-
-        # 2) Battery check: avoid EXPLORE/ACT when low
-        if battery_raw is not None:
-            try:
-                if float(battery_raw) < 0.15:
-                    if server_intent_enum in (IntentType.EXPLORE, IntentType.ACT):
-                        return IntentType.IDLE
-            except (TypeError, ValueError):
-                pass
-
-        # 3) Default: trust server intent if valid
-        if server_intent_enum is not None:
-            return server_intent_enum
-
-        # Fallback
-        return IntentType.OBSERVE
 
     def _update_goals(self, intent: IntentType, perception: Mapping[str, Any], server_intent: Mapping[str, Any]) -> None:
         """
@@ -332,10 +310,10 @@ class DecisionManager:
         plan.memory.setdefault("write", [])
         plan.world_state.setdefault("update", [])
 
-        shortcut = server_intent.get("behavior")
-        if shortcut:
-            template = self.behaviors.build_behavior(shortcut, mood=self.internal_state.mood)
-            return template
+        # shortcut = server_intent.get("behavior")
+        # if shortcut:
+        #     template = self.behaviors.build_behavior(shortcut, mood=self.internal_state.mood)
+        #     return template
 
         # IGNORE → do nothing
         if intent == IntentType.IGNORE:
@@ -589,3 +567,4 @@ class DecisionManager:
 
         # Otherwise → idle
         self.internal_state.current_activity = "idle"
+
