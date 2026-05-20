@@ -36,9 +36,9 @@ NEWSAPIDOTCOM = getenv_optional("NEWSAPIDOTCOM")
 # Define but don't initialize
 LED_INDICATOR = LED(26)
 
-# Paths are now kept in .env so we dont need to hardcode 
+# Paths are now kept in .env so we dont need to hardcode
 
-# DualEye Display 
+# DualEye Display
 EYE_ASSETS_PATH = Path(getenv_required("EYE_ASSETS_PATH"))
 EYE_CACHE_PATH = Path(getenv_required("EYE_CACHE_PATH"))
 EYE_EXPRESSIONS_PATH = Path(getenv_required("EYE_EXPRESSIONS_PATH"))
@@ -47,17 +47,16 @@ EYE_EXPRESSIONS_FILE = Path(getenv_required("EYE_EXPRESSIONS_FILE"))
 # Sound Files
 SOUND_ASSETS_PATH = Path(getenv_required("SOUND_ASSETS_PATH"))
 
-# Core SPEECH model 
+# Core SPEECH model
 SPEECH_MODEL_PATH = Path(getenv_required("SPEECH_MODEL_PATH"))
 SPEECH_MODEL_NAME = getenv_required("SPEECH_MODEL_NAME")
 
-# Voice recognition config 
+# Voice recognition config
 VOICE_RECOGNITION_MODEL_PATH = Path(getenv_required("VOICE_RECOGNITION_MODEL_PATH"))
 VOICE_RECOGNITION_MODEL_NAME = getenv_required("VOICE_RECOGNITION_MODEL_NAME")
 VOICEPRINT_MODEL_DIR = Path(getenv_required("VOICEPRINT_MODEL_DIR"))
 
-# These will be moved to DB after testing phase
-VOICEPRINT_USER1_NAME = getenv_required("VOICEPRINT_USER1_NAME")
-VOICEPRINT_USER1_MODEL = getenv_required("VOICEPRINT_USER1_MODEL")
-VOICEPRINT_USER2_NAME = getenv_optional("VOICEPRINT_USER2_NAME")
-VOICEPRINT_USER2_MODEL = getenv_optional("VOICEPRINT_USER2_MODEL")
+# These MAY be moved to DB after testing phase
+VOICEPRINT_USER1_NAME, VOICEPRINT_USER1_MODEL = getenv_required("VOICEPRINT_USER1_NAME"), getenv_required("VOICEPRINT_USER1_MODEL")
+VOICEPRINT_USER2_NAME, VOICEPRINT_USER2_MODEL = getenv_optional("VOICEPRINT_USER2_NAME"), getenv_optional("VOICEPRINT_USER2_MODEL")
+VOICEPRINT_HALIMEDES_NAME, VOICEPRINT_HALIMEDES_MODEL = getenv_required("VOICEPRINT_HALIMEDES_NAME"), getenv_required("VOICEPRINT_HALIMEDES_MODEL")

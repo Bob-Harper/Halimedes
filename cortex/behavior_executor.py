@@ -22,6 +22,7 @@ class BehaviorExecutor:
         Execute a BehaviorPlan with proper timing, concurrency,
         and interruptibility.
         """
+        print("[BehaviorExecutor] Running plan:", plan)
         # Cancel any running behavior if needed
         if self.current_task and plan.should_interrupt:
             self.interrupt_flag = True
@@ -65,22 +66,22 @@ class BehaviorExecutor:
 
         # Gaze
         for g in nonverbal.get("gaze", []):
-            if g.get("when") == phase:
+            if g.get("when", "start") == phase:
                 self.action_executor._execute_gaze([g])
 
         # Expression
         for e in nonverbal.get("expression", []):
-            if e.get("when") == phase:
+            if e.get("when", "start") == phase:
                 self.action_executor._execute_expression([e])
 
         # Actions
-        for a in nonverbal.get("actions", []):
-            if a.get("when") == phase:
-                self.action_executor._execute_actions([a])
+        for act in plan.actions:
+            self.action_executor._execute_actions([act])
+
 
         # Sounds
         for s in nonverbal.get("sounds", []):
-            if s.get("when") == phase:
+            if s.get("when", "start") == phase:
                 self.action_executor._execute_sounds([s])
 
     # --------------------------------------------------------------
@@ -91,7 +92,8 @@ class BehaviorExecutor:
         if self.interrupt_flag:
             return
 
-        speech_list = plan.speech or []
+        speech_list = plan.speech.get("output_speech", [])
+
         nonverbal = plan.nonverbal or {}
 
         # Launch speech

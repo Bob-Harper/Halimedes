@@ -30,7 +30,6 @@ from audio_output.response_manager import Response_Manager
 
 from vision_processing.vision_manager import VisionManager
 
-from cortex.server_intent_parser import parse_server_intent
 
 from helpers.api_server import create_hal_api
 from helpers.global_config import LED_INDICATOR, UNIFIED_API_GATEWAY
@@ -72,19 +71,19 @@ class Hal:
         self.expression_manager.setup(self.composer)
         self.gaze_channel = GazeChannel(self.gaze_interpolator)
         self.expression_channel = ExpressionChannel(self.expression_manager)
+        self.internal_state = self.hotswap.load_module("cortex.internal_state_manager", "InternalStateManager")()
 
         # --- audio ---
         self.preprocessor = AudioPreprocessor()
         self.audio_input = AudioInputManager(self.picrawler_instance)
         self.voice_recognition = VoiceRecognitionManager()
         self.emotion_sound_manager = EmotionalSoundsManager()
-        self.response_manager = Response_Manager(self.picrawler_instance, self.actions_manager)
+        self.response_manager = Response_Manager(self.picrawler_instance, self.actions_manager, self.internal_state)
 
         # --- vision ---
         self.vision = VisionManager()
 
         # --- cortex (hotswapped) ---  # HOTSWAP SAFETY ZONE: CORTEX, HELPERS, AND ACTIVELOOP ONLY.  NEVER HOTSWAP ANYTHING THAT EVEN KNOWS HARDWARE EXISTS.
-        self.internal_state = self.hotswap.load_module("cortex.internal_state_manager", "InternalStateManager")()
         self.world_state = self.hotswap.load_module("cortex.world_state_manager", "WorldStateManager")()
         self.initiative_manager = self.hotswap.load_module("cortex.initiative_manager", "InitiativeManager")()
         self.emotion_categorizer = self.hotswap.load_module("cortex.emotions_manager", "EmotionCategorizer")()
@@ -98,8 +97,12 @@ class Hal:
             emotion_categorizer=self.emotion_categorizer,
             vision=self.vision
         )
-        self.decision_manager = self.hotswap.load_module("cortex.decision_manager", "DecisionManager")()
-        self.decision_manager.attach_memory(self.embedder, self.semantic, self.episodic)
+        self.behavior_manager = self.hotswap.load_module("cortex.behavior_manager", "BehaviorManager")()
+        DecisionManagerClass = self.hotswap.load_module("cortex.decision_manager", "DecisionManager")
+        self.decision_manager = DecisionManagerClass(
+            internal_state_manager=self.internal_state,
+            behavior_manager=self.behavior_manager
+        )
         self.action_executor = self.hotswap.load_module("cortex.action_executor", "ActionExecutor")(
             motors=self.motors,
             searchlight=self.searchlight,
@@ -108,21 +111,21 @@ class Hal:
             expression_channel=self.expression_channel,
         )
         self.behavior_executor = self.hotswap.load_module("cortex.behavior_executor", "BehaviorExecutor")(self.action_executor, self.response_manager)
-        self.cortex = self.hotswap.load_module("cortex.cognitive_relay", "CognitiveRelay")(
+        CognitiveRelayClass = self.hotswap.load_module("cortex.cognitive_relay", "CognitiveRelay")
+        self.cortex = CognitiveRelayClass(
             perception_manager=self.perception,
             context_builder=self.context_builder,
             initiative_manager=self.initiative_manager,
             decision_manager=self.decision_manager,
+            behavior_manager=self.behavior_manager,   # ← ADD THIS
             behavior_executor=self.behavior_executor,
-            internal_state_manager=self.internal_state,   # ← PASS IT IN
+            internal_state_manager=self.internal_state,
         )
-
 
         # --- helpers (hotswapped) ---
         self.unified_server = self.hotswap.load_module("helpers.gateway_server_client", "GatewayClient"
         )(self.server_host)
         self.event_builder = self.hotswap.load_module("helpers.event_builder", "EventBuilder")
-
 
         # --- API server holder ---
         self._api_runner = None
@@ -160,7 +163,6 @@ class Hal:
             "cortex": self.cortex,
             "unified_server": self.unified_server,
             "event_builder": self.event_builder,
-            "parse_server_intent": parse_server_intent,
         }
 
     async def start_api(self):

@@ -22,16 +22,12 @@ class ActionExecutor:
     # ------------------------------------------------------------------
     async def execute(self, plan):
         """
-        Execute speech, nonverbal actions, and world/memory updates.
+        Execute nonverbal actions, and world/memory updates.
         NOTE: BehaviorExecutor will call the channel methods directly,
         but this remains for compatibility if needed.
         """
         if not plan:
             return
-
-        # Speech
-        if plan.speech:
-            await self._execute_speech(plan.speech)
 
         # Nonverbal
         nonverbal = plan.nonverbal or {}
@@ -39,19 +35,6 @@ class ActionExecutor:
         self._execute_expression(nonverbal.get("expression", []))
         self._execute_actions(nonverbal.get("actions", []))
         self._execute_sounds(nonverbal.get("sounds", []))
-
-    # ------------------------------------------------------------------
-    # SPEECH
-    # ------------------------------------------------------------------
-    async def _execute_speech(self, speech_list):
-        if not self.audio:
-            return
-
-        for entry in speech_list:
-            text = entry.get("text")
-            emotion = entry.get("emotion", "neutral")
-            if text:
-                await self.audio.speak(text, emotion)
 
     # ------------------------------------------------------------------
     # GAZE

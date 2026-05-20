@@ -40,7 +40,6 @@ class ActiveLoop:
         internal_state = g["internal_state"]
         cortex = g["cortex"]
         indicators = g["indicators"]
-        parse_server_intent = g["parse_server_intent"]
         # DEBUG_REASONING = g["DEBUG_REASONING"]
         DEBUG_REASONING = False
 
@@ -71,7 +70,6 @@ class ActiveLoop:
         recognized_speaker = voice_recognition.recognize_speaker(pcm_audio)
 
         # Hal will attempt to determine if the detected speech requires a response
-        # call to stubbed voice analysis method will default boolean TRUE during testing
         if audio_input.respond_to_voice_input(pcm_audio, recognized_speaker):
             print("[Voice Analysis] Positive response. Proceeding with cognition loop.")
 
@@ -108,7 +106,6 @@ class ActiveLoop:
         event = event_builder.build_event(
             self,
             perception=perception.snapshot(),
-            last_intent=internal_state.last_intent
         )
 
         # DEBUG OUTPUT ------------------------------------------------------
@@ -136,19 +133,12 @@ class ActiveLoop:
 
         server_json = await unified_server.send_perception(payload, endpoint)
         print(f"\n[Cognition] Returned from the server, before processing:: \n{server_json}\n\n")
-        try:
-            server_intent = parse_server_intent(server_json)
-            print(f"[Cognition] Server intent: {server_intent}")
-        except Exception as e:
-            print(f"[Server Error] {e}")
-            server_intent = {"intent": "experience entropy"}
 
         # RESET PERCEPTION -------------------------------------------------
-        perception.reset()
+        # perception.reset()
 
         # DECISION LAYER ---------------------------------------------------
-        await cortex.tick(server_intent)
-        print(f"[Decision] Executed plan for intent '{server_intent.get('intent')}'")
+        await cortex.tick(server_json)
         # LOOP --------------------------------------------------------------
         indicators.set_mode("idle")
         await asyncio.sleep(active_loop_config["tick_rate"])

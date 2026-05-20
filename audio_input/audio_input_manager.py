@@ -7,7 +7,7 @@ import queue
 import collections
 import time
 from typing import Dict, Any, cast
-
+from helpers.global_config import VOICEPRINT_HALIMEDES_NAME
 
 class AudioInputManager:
     """
@@ -28,7 +28,7 @@ class AudioInputManager:
         max_utterance_length: float = 20.0
     ):
         self.picrawler_instance = picrawler_instance
-
+        self.hal_voiceprint = VOICEPRINT_HALIMEDES_NAME
         # Device setup
         self.input_device_index = self._detect_input_device()
         dev = cast(Dict[str, Any], sd.query_devices(self.input_device_index))
@@ -159,7 +159,10 @@ class AudioInputManager:
         return utterance_44k
 
     def respond_to_voice_input(self, raw_bytes, recognized_speaker):
-        # Placeholder for future (Should Hal Respond To This Voice)
-        # For now, just print the raw byte length and speaker
+        # Should Hal Respond To This Voice
+        # For now, also print the raw byte length and speaker
+        if recognized_speaker == self.hal_voiceprint:
+            print(f"[Voice Analysis] {len(raw_bytes)} bytes from speaker '{recognized_speaker}'.  Hal will NOT respond to its own voice.")
+            return False
         print(f"[Voice Analysis] {len(raw_bytes)} bytes from speaker '{recognized_speaker}'")
         return True

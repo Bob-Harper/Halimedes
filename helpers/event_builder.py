@@ -2,11 +2,10 @@ import json
 import time
 
 class EventBuilder:
-    def build_event(self, perception: dict, last_intent: str) -> str:
+    def build_event(self, perception: dict) -> str:
         event = {
             "event_type": "user_utterance",
             "timestamp": time.time(),
-            "last_intent": last_intent,
             "perception": {
                 "speaker_text": perception["speaker_text"],
                 "speaker": perception["speaker"],

@@ -1,150 +1,124 @@
-# cortex/behavior_manager.py
+from .behavior_plan import BehaviorPlan
 
-from __future__ import annotations
-from typing import Optional
-from cortex.behavior_plan import BehaviorPlan
-
-
+# Map Hal's internal moods to valid LCD expression keys
+MOOD_TO_EXPRESSION = {
+    "happy": "positive",
+    "neutral": "neutral",
+    "cautious": "skeptical",
+    "curious": "anticipation",
+    "sleepy": "sleepy"
+}
 
 class BehaviorManager:
     """
-    Library of reusable behavior templates.
-    Turns high-level behavior names into BehaviorPlan instances.
+    Behavior-driven planner.
+    Converts a behavior string into a BehaviorPlan.
     """
 
-    def __init__(self):
+    def build_plan(self, behavior, perception, internal_state):
+        plan = BehaviorPlan()
+
+        # Normalize speech to always be a list
+        speech = perception.get("speech")
+        if isinstance(speech, dict):
+            perception["speech"] = [speech]
+        elif speech is None:
+            perception["speech"] = []
+
+        # Memory/world updates from LLM
+        plan.memory["write"].extend(perception.get("memory_updates", []))
+        plan.world_state["update"].extend(perception.get("world_updates", []))
+
+        handler = getattr(self, f"_plan_{behavior}", None)
+        if callable(handler):
+            handler(plan, perception, internal_state)
+        else:
+            self._plan_observe(plan, perception, internal_state)
+
+        return plan
+
+    # ----------------- behaviors -----------------
+
+    def _plan_converse(self, plan, perception, internal_state):
+        speech = perception.get("speech", [])
+
+        # Add emotion to speech
+        for s in speech:
+            s["emotion"] = internal_state.mood
+
+        if speech:
+            plan.speech["output_speech"] = speech
+        else:
+            text = internal_state.last_user_text or ""
+            if text:
+                plan.speech["output_speech"] = [{
+                    "text": f"I've been thinking about what you said: {text[:80]}...",
+                    "emotion": internal_state.mood
+                }]
+
+        # Expression based on Hal's internal mood
+        expr = MOOD_TO_EXPRESSION.get(internal_state.mood, "neutral")
+        plan.nonverbal["expression"] = [{"mood": expr, "when": "start"}]
+
+        plan.nonverbal["gaze"] = [{"mode": "center", "when": "start"}]
+
+
+    def _plan_greet(self, plan, perception, internal_state):
+        speech = perception.get("speech", [])
+
+        for s in speech:
+            s["emotion"] = internal_state.mood
+
+        if speech:
+            plan.speech["output_speech"] = speech
+        else:
+            name = internal_state.last_speaker or "there"
+            plan.speech["output_speech"] = [{
+                "text": f"Hello, {name}! It's good to see you.",
+                "emotion": internal_state.mood
+            }]
+
+        expr = MOOD_TO_EXPRESSION.get(internal_state.mood, "neutral")
+        plan.nonverbal["expression"] = [{"mood": expr, "when": "start"}]
+        plan.nonverbal["gaze"] = [{"mode": "center", "when": "start"}]
+
+
+    def _plan_idle_fidget(self, plan, perception, internal_state):
+        plan.actions.append({
+            "category": "subtle",
+            "type": "fidget_small",
+            "when": "start"
+        })
+
+        plan.nonverbal["gaze"] = [{"mode": "wander", "when": "start"}]
+
+
+    def _plan_idle(self, plan, perception, internal_state):
         pass
 
-    # ------------------------------------------------------------------
-    # PUBLIC API
-    # ------------------------------------------------------------------
-    def build_behavior(self, name: str, *, mood: Optional[str] = None) -> BehaviorPlan:
-        """
-        Given a behavior name, return a BehaviorPlan.
-        """
-        name = (name or "").lower().strip()
 
-        if name == "greet":
-            return self._behavior_greet(mood=mood)
-        if name == "idle_fidget":
-            return self._behavior_idle_fidget()
-        if name == "explore":
-            return self._behavior_explore()
-        if name == "look_around":
-            return self._behavior_look_around()
+    def _plan_observe(self, plan, perception, internal_state):
+        plan.nonverbal["gaze"] = [{"mode": "center", "when": "start"}]
 
-        # Fallback: empty plan
-        return BehaviorPlan()
 
-    # ------------------------------------------------------------------
-    # BEHAVIOR TEMPLATES
-    # ------------------------------------------------------------------
-    def _behavior_greet(self, mood: Optional[str] = None) -> BehaviorPlan:
-        plan = BehaviorPlan()
+    def _plan_act(self, plan, perception, internal_state):
+        actions = perception.get("actions", [])
+        for act in actions:
+            if isinstance(act, dict) and "category" in act:
+                if "when" not in act:
+                    act["when"] = "start"
+                plan.actions.append(act)
 
-        # Speech
-        plan.speech.append({
-            "text": "Hello.",
-            "emotion": mood or "neutral",
-        })
 
-        # Gaze: center on user
-        plan.nonverbal["gaze"].append({
-            "mode": "center",
-            "when": "start",
-            "target": "user",
-        })
+    def _plan_internal(self, plan, perception, internal_state):
+        pass
 
-        # Expression: match mood
-        plan.nonverbal["expression"].append({
-            "mood": mood or "neutral",
-            "when": "during",
-        })
 
-        # Subtle action
-        plan.nonverbal["actions"].append({
-            "category": "subtle",
-            "when": "after_speech",
-        })
-
-        return plan
-
-    def _behavior_idle_fidget(self) -> BehaviorPlan:
-        plan = BehaviorPlan()
-
-        plan.nonverbal["actions"].append({
-            "category": "subtle",
-            "when": "start",
-        })
-
-        plan.nonverbal["gaze"].append({
-            "mode": "wander",
-            "when": "during",
-        })
-
-        return plan
-
-    def _behavior_explore(self) -> BehaviorPlan:
-        plan = BehaviorPlan()
-
-        plan.nonverbal["actions"].append({
-            "category": "full-body",
-            "when": "start",
-        })
-
-        plan.nonverbal["gaze"].append({
-            "mode": "wander",
-            "when": "during",
-        })
-
-        return plan
-
-    def _behavior_look_around(self) -> BehaviorPlan:
-        plan = BehaviorPlan()
-
-        plan.nonverbal["gaze"].append({
-            "mode": "wander",
-            "when": "start",
-        })
-
-        plan.nonverbal["actions"].append({
-            "category": "subtle",
-            "when": "during",
-        })
-
-        return plan
-
-    # ------------------------------------------------------------------
-    # UTILS
-    # ------------------------------------------------------------------
-    def merge_plans(self, base: BehaviorPlan, extra: BehaviorPlan) -> BehaviorPlan:
-        """
-        Merge two BehaviorPlans into one.
-        base is modified in-place and also returned.
-        """
-
-        # Speech
-        base.speech.extend(extra.speech)
-
-        # Nonverbal
-        for key, value in extra.nonverbal.items():
-            base.nonverbal.setdefault(key, [])
-            base.nonverbal[key].extend(value)
-
-        # Memory
-        for key, value in extra.memory.items():
-            base.memory.setdefault(key, [])
-            base.memory[key].extend(value)
-
-        # World state
-        for key, value in extra.world_state.items():
-            base.world_state.setdefault(key, [])
-            base.world_state[key].extend(value)
-
-        # Priority / interrupt flags (simple override)
-        if extra.priority != "normal":
-            base.priority = extra.priority
-        if extra.should_interrupt:
-            base.should_interrupt = True
-
-        return base
+    def _plan_explore(self, plan, perception, internal_state):
+        plan.speech["output_speech"] = [{
+            "text": "I can't explore right now; it's not safe in this environment.",
+            "emotion": internal_state.mood
+        }]
+        expr = MOOD_TO_EXPRESSION.get(internal_state.mood, "neutral")
+        plan.nonverbal["expression"] = [{"mood": expr, "when": "start"}]
+        plan.actions.clear()

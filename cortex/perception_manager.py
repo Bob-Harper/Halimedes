@@ -23,17 +23,31 @@ class PerceptionManager:
         "speech_confidence": None,
         "utterance_duration": None,
         "truncated": False,
+
         # Camera
         "faces": [],
         "objects": [],
         "qr_codes": [],
+
         # Pi readings
         "hardware_status": {},
+
         # Self
         "last_action": None,
+
         # ISensors
         "sensor_status": {},
+
+        # --- NEW FIELDS replacing server intent ---
+        "intent": None,
+        "behavior": None,
+        "speech": [],
+        "nonverbal_output_speech": {},
+        "memory_updates": [],
+        "world_updates": [],
+        "actions": [],
     }
+
 
     def reset(self):
         for k, v in self.FIELDS.items():

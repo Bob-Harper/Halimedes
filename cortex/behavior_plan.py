@@ -1,24 +1,28 @@
-from dataclasses import dataclass, field
-from typing import Any, Dict, List
-
-@dataclass
 class BehaviorPlan:
-    speech: List[Dict[str, Any]] = field(default_factory=list)
+    """
+    Unified plan object consumed by BehaviorExecutor.
+    """
 
-    nonverbal: Dict[str, List[Dict[str, Any]]] = field(default_factory=lambda: {
-        "gaze": [],
-        "expression": [],
-        "actions": [],
-        "sounds": [],
-    })
+    def __init__(self):
+        self.should_interrupt = False
 
-    memory: Dict[str, List[Dict[str, Any]]] = field(default_factory=lambda: {
-        "write": [],
-    })
+        self.speech = {
+            "output_speech": []  # list[{"text": str, "emotion": str}]
+        }
 
-    world_state: Dict[str, List[Dict[str, Any]]] = field(default_factory=lambda: {
-        "update": [],
-    })
+        self.nonverbal = {
+            "gaze": [],        # list[{"mode": str, "when": str}]
+            "expression": [],  # list[{"mood": str, "when": str}]
+            "sounds": [],      # list[{"category": str, "when": str}]
+        }
 
-    priority: str = "normal"
-    should_interrupt: bool = False
+        # list[{"category": str, "type": str, ...}]
+        self.actions = []
+
+        self.memory = {
+            "write": []
+        }
+
+        self.world_state = {
+            "update": []
+        }

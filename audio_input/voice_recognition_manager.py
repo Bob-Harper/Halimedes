@@ -3,11 +3,13 @@ import torch
 import torchaudio
 import numpy as np
 from helpers.global_config import (
-# Voice recognition config 
+# Voice recognition config
 VOICE_RECOGNITION_MODEL_PATH,
 VOICE_RECOGNITION_MODEL_NAME,
 VOICEPRINT_MODEL_DIR,
-# These will be moved to DB after testing phase
+# These MAY be moved to DB after testing phase
+VOICEPRINT_HALIMEDES_NAME,
+VOICEPRINT_HALIMEDES_MODEL,
 VOICEPRINT_USER1_NAME,
 VOICEPRINT_USER1_MODEL,
 VOICEPRINT_USER2_NAME,
@@ -24,6 +26,7 @@ class VoiceRecognitionManager:
         self.model = self._load_model()
         # Load all known speaker embeddings here
         self.embeddings = {
+            VOICEPRINT_HALIMEDES_NAME: self.load_embedding(VOICEPRINT_HALIMEDES_MODEL),
             VOICEPRINT_USER1_NAME: self.load_embedding(VOICEPRINT_USER1_MODEL),
             VOICEPRINT_USER2_NAME: self.load_embedding(VOICEPRINT_USER2_MODEL),
             # Add more speakers here as needed
@@ -40,10 +43,10 @@ class VoiceRecognitionManager:
         try:
             # Step 1: Convert raw audio to waveform
             waveform = self.convert_raw_to_waveform(raw_audio)
-            
+
             # Step 2: Extract the new embedding from waveform
             new_embedding = self.extract_embedding_from_waveform(waveform)
-            
+
             # Step 3: Perform the comparison
             best_speaker = "Unknown"
             best_score = -1.0
@@ -58,11 +61,11 @@ class VoiceRecognitionManager:
             if best_score >= self.threshold:
                 return best_speaker
             return "Unknown"
-        
+
         except Exception as e:
             print(f"Error during speaker recognition: {e}")
             return "Unknown"
-    
+
     def _load_model(self):
         """Load the embedding model and its weights."""
         full_state_dict = torch.load(self.model_path, map_location=torch.device("cpu"))["state_dict"]
@@ -131,7 +134,7 @@ class VoiceRecognitionManager:
     def extract_embedding_from_waveform(self, waveform):
         with torch.no_grad():
             return self.model(waveform)
-        
+
     @staticmethod
     def convert_raw_to_waveform(raw_audio):
         # Ensure NumPy array

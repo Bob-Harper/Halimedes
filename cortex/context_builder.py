@@ -9,11 +9,10 @@ class ContextBuilder:
     def __init__(self):
         self.last_user_presence = False
         self.idle_counter = 0
-        self.last_intent = None
         self.memory = {}
         self.world_state = {}
         self.internal_state = {}
-        
+
     def build(self, perception: dict) -> dict:
         """
         Returns a dict of derived context signals.

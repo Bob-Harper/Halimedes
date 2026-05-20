@@ -27,5 +27,8 @@ if __name__ == "__main__":
 
     except Exception as e:
         print(f"[Shutdown] Fatal error: {e}")
+        # run cleanup script
+        import os
+        os.system("/home/msutt/.local/bin/cleanhal")
         asyncio.run(_shutdown(hal_instance))
         raise

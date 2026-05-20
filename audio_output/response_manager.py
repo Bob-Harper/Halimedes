@@ -4,15 +4,17 @@ import tempfile
 from audio_output.emotional_sounds_manager import get_voice_modifiers
 from audio_output.emotional_sounds_manager import EmotionalSoundsManager
 from helpers.global_config import SPEECH_MODEL_PATH, SPEECH_MODEL_NAME
+import soundfile as sf
+import numpy as np
 
 
 class Response_Manager:
     _actions_manager = None  # Store actions manager globally
 
-    def __init__(self, picrawler_instance, actions_manager=None, eye_animator=None):
+    def __init__(self, picrawler_instance, actions_manager=None, eye_animator=None, internal_state=None):
         self._speech_lock = asyncio.Lock()
         self._current_speech_task = None
-
+        self.internal_state = internal_state
         self.crawler = picrawler_instance
         # Hal's voicefile
         self.voice_path = SPEECH_MODEL_PATH/SPEECH_MODEL_NAME
@@ -73,35 +75,107 @@ class Response_Manager:
                 )
 
                 # Play the generated WAV
+                self.apply_volume(wav_path, 1)  # 200% volume
+
                 play_cmd = ["aplay", wav_path]
                 await asyncio.to_thread(
                     subprocess.run,
                     play_cmd,
                     check=True
                 )
-
+                if self.internal_state:
+                    self.internal_state.is_speaking = False
             except subprocess.CalledProcessError as e:
                 print(f"[TTS] Flite/aplay error: {e}")
+                if self.internal_state:
+                    self.internal_state.is_speaking = False
             except FileNotFoundError as e:
                 print(f"[TTS] Command not found: {e}")
+                if self.internal_state:
+                    self.internal_state.is_speaking = False
 
-    async def speak(self, text, emotion="neutral"):
-        # Cancel any ongoing speech
-        if self._current_speech_task and not self._current_speech_task.done():
+    async def speak(self, text, emotion="neutral", interrupt=False):
+        if interrupt and self._current_speech_task and not self._current_speech_task.done():
             self._current_speech_task.cancel()
             try:
                 await self._current_speech_task
             except asyncio.CancelledError:
+                if self.internal_state:
+                    self.internal_state.is_speaking = False
                 pass
-
-        # Create a new speech task
+        if self.internal_state:
+            self.internal_state.is_speaking = True
         self._current_speech_task = asyncio.create_task(
             self._speak_serialized(text, emotion)
         )
+        if self.internal_state:
+            self.internal_state.is_speaking = False
 
     async def _speak_serialized(self, text, emotion):
         async with self._speech_lock:
             await self.speak_with_flite(text, emotion)
+        if self.internal_state:
+            self.internal_state.is_speaking = False
 
     async def say(self, text):
         return await self.speak_with_flite(text, emotion="neutral")
+
+    def apply_volume(self, wav_path, gain):
+        data, samplerate = sf.read(wav_path)
+        data = data * gain
+        data = np.clip(data, -1.0, 1.0)
+        sf.write(wav_path, data, samplerate)
+
+if __name__ == "__main__":
+    import asyncio
+
+    async def main():
+        rm = Response_Manager(
+            picrawler_instance=None,
+            actions_manager=None,
+            eye_animator=None,
+            internal_state=None
+        )
+
+        # Text you want HAL to say
+        test_line = """
+The quick brown fox jumps over the lazy dog
+How vexingly quick daft zebras jump
+The five boxing wizards jump quickly.
+Waltz, bad nymph, for quick jigs vex.
+        """
+
+
+        await rm.speak_with_flite(test_line, emotion="positive")
+
+    asyncio.run(main())
+
+"""
+emotion_voice_map = {
+    "joy": {"pitch_factor": 1.4, "speed_factor": 0.7},       # Higher pitch, faster speech
+    "positive": {"pitch_factor": 1.3, "speed_factor": 0.8},  # Energetic and faster
+    "neutral": {"pitch_factor": 1.0, "speed_factor": 1.0},   # Baseline voice
+    "trust": {"pitch_factor": 1.15, "speed_factor": 0.9},    # Warm, steady, and slightly faster
+    "surprise": {"pitch_factor": 1.5, "speed_factor": 0.6},  # Very excited and fast
+    "fear": {"pitch_factor": 0.6, "speed_factor": 1.1},      # Low pitch, slower—hesitant
+    "anger": {"pitch_factor": 0.5, "speed_factor": 1.15},     # Deep, intense, and slower
+    "sadness": {"pitch_factor": 0.4, "speed_factor": 1.25},   # Very slow and low pitch
+    "disgust": {"pitch_factor": 0.6, "speed_factor": 1.2},   # Low pitch, slower pace
+    "anticipation": {"pitch_factor": 1.25, "speed_factor": 0.75}, # Faster and eager
+    "negative": {"pitch_factor": 0.5, "speed_factor": 1.15},  # Deep pitch, slower
+    "announcment": {"pitch_factor": 0.85, "speed_factor": 1.1},  # Neutral, slower
+}
+
+phrases for testing
+The birch canoe slid on the smooth planks.
+Glue the sheet to the dark blue background.
+It's easy to tell the depth of a well.
+These days a chicken leg is a rare dish.
+Rice is often served in round bowls.
+The juice of lemons makes fine punch.
+The box was thrown beside the parked truck.
+The hogs were fed chopped corn and garbage.
+Four hours of steady work faced us.
+A large size in stockings is hard to sell.
+
+"""

@@ -18,48 +18,31 @@ class InitiativeManager:
         self.last_action += 1
 
     def suggest(self, perception, world_state, internal_state):
-        """
-        Returns one of:
-            "greet"
-            "idle"
-            "explore"
-            "look_at_face"
-            None
-        """
 
-        # ------------------------------------------------------------
-        # USER SPOKE → reset idle timer
-        # ------------------------------------------------------------
-        if perception.speaker_text:
+        # USER SPOKE
+        if perception["speaker_text"]:
             self.last_user_interaction = 0
             return None
 
-        # ------------------------------------------------------------
-        # NEW FACE APPEARED → greet
-        # ------------------------------------------------------------
-        if perception.faces and self._is_new_face(perception, world_state):
+        # NEW FACE APPEARED
+        if perception["faces"] and self._is_new_face(perception, world_state):
             return "greet"
 
-        # ------------------------------------------------------------
-        # LONG IDLE → idle animation
-        # ------------------------------------------------------------
+        # LONG IDLE
         if self.last_user_interaction > self.idle_threshold:
             return "idle"
 
-        # ------------------------------------------------------------
-        # VERY LONG IDLE → explore
-        # ------------------------------------------------------------
+        # VERY LONG IDLE
         if self.last_user_interaction > self.explore_threshold:
             return "explore"
 
-        # ------------------------------------------------------------
-        # HAL IS BORED / LOW ACTIVITY → look around
-        # ------------------------------------------------------------
+        # BORED
         if internal_state.activity_level < 0.3 and self.last_action > 30:
             return "look_around"
 
         return None
 
+
     def _is_new_face(self, perception, world_state):
-        """Simple continuity check."""
-        return len(perception.faces) > len(world_state.faces)
+        return len(perception["faces"]) > len(world_state.faces)
+
