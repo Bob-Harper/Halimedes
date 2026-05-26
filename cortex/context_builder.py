@@ -6,10 +6,11 @@ class ContextBuilder:
     These are NOT decisions — just interpretations of the environment.
     """
 
-    def __init__(self):
+    def __init__(self, working_memory):
         self.last_user_presence = False
         self.idle_counter = 0
         self.memory = {}
+        self.working_memory = working_memory
         self.world_state = {}
         self.internal_state = {}
 

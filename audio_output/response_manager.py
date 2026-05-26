@@ -11,7 +11,8 @@ import numpy as np
 class Response_Manager:
     _actions_manager = None  # Store actions manager globally
 
-    def __init__(self, picrawler_instance, actions_manager=None, eye_animator=None, internal_state=None):
+    def __init__(self, picrawler_instance, actions_manager=None, eye_animator=None, internal_state=None, working_memory=None):
+        self.working_memory = working_memory
         self._speech_lock = asyncio.Lock()
         self._current_speech_task = None
         self.internal_state = internal_state
@@ -114,8 +115,14 @@ class Response_Manager:
     async def _speak_serialized(self, text, emotion):
         async with self._speech_lock:
             await self.speak_with_flite(text, emotion)
+
+        # Append assistant turn AFTER speech actually happened
+        if self.working_memory is not None:
+            self.working_memory.append(("assistant", text))
+
         if self.internal_state:
             self.internal_state.is_speaking = False
+
 
     async def say(self, text):
         return await self.speak_with_flite(text, emotion="neutral")

@@ -1,19 +1,17 @@
-import json
-import time
-
 class EventBuilder:
-    def build_event(self, perception: dict) -> str:
+    def build_event(self, perception: dict, working_memory=None):
+        """
+        Normalize perception + working memory into a clean structure
+        for the PromptBuilder to transform into message-array format.
+        """
+
+        # Extract the actual user text (the thing the model responds to)
+        user_text = perception.get("speaker_text", "") or ""
+
         event = {
-            "event_type": "user_utterance",
-            "timestamp": time.time(),
-            "perception": {
-                "speaker_text": perception["speaker_text"],
-                "speaker": perception["speaker"],
-                "user_emotion": perception["speaker_emotion"],
-                "speech_confidence": perception["speech_confidence"],
-                "utterance_duration": perception["utterance_duration"],
-                "truncated": perception["truncated"]
-            }
+            "user_text": user_text,
+            "perception": perception,          # full snapshot, not truncated
+            "working_memory": working_memory or []
         }
 
-        return json.dumps(event, indent=2)
+        return event

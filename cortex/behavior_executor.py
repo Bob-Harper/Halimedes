@@ -53,6 +53,7 @@ class BehaviorExecutor:
 
         # 3. AFTER-SPEECH PHASE
         await self._run_phase(plan, phase="after_speech")
+        
 
     # --------------------------------------------------------------
     async def _run_phase(self, plan, phase):

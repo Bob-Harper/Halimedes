@@ -18,6 +18,7 @@ async def _shutdown(hal: Hal | None):
 if __name__ == "__main__":
     hal_instance = None
     try:
+        print("[Startup] Startup Sequence initiated.")
         hal_instance = Hal(debug_reasoning=debug_reasoning)
         asyncio.run(hal_instance.run())
 
@@ -30,5 +31,6 @@ if __name__ == "__main__":
         # run cleanup script
         import os
         os.system("/home/msutt/.local/bin/cleanhal")
+        print("[Shutdown] Cleanup script executed.")
         asyncio.run(_shutdown(hal_instance))
         raise

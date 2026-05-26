@@ -21,7 +21,7 @@ This is not a scripted robot. This is a layered cognitive architecture running o
 - Perception Manager: Handles audio, visual, and internal state inputs
 - Speaker recognition: Identifies known humans and ignores Hal’s own voice
 - Emotion system: Internal mood influences voice, motion, and idle behavior
-- LLM-powered dialogue: Structured responses with <action>, <sound>, <gaze>, and <face> tags
+- LLM-powered dialogue: Structured responses with defined tags
 - LCD Eye animation engine: Blinks, saccades, expressions, and gaze tracking
 - High-intensity LED “photon projector”: Because a laser was a lawsuit waiting to happen
 

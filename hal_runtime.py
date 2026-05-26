@@ -1,13 +1,12 @@
 # hal_runtime.py
-
+print("[Startup] Importing System Modules.")
 import os
 import warnings
 import asyncio
 from aiohttp import web
-
 from crawler_utils.utils import reset_mcu
 from runtime.loaders import HotSwapLoader
-
+print("[Startup] Importing Hardware Modules.")
 from body.picrawler import Picrawler
 from body.picrawler_extended import PicrawlerExtended
 from body.unified_motors import UnifiedMotors
@@ -16,23 +15,25 @@ from body.sensor_state_manager import SensorStateManager
 from body.searchlight import Searchlight
 from body.indicators_manager import IndicatorsManager
 from kernel.reflexes import load_all_reflexes
+from kernel.reflexive_layer import ReflexEngine
+from kernel.sh2_hal import Sh2Host
+print("[Startup] Importing Helper Modules.")
+from helpers.api_server import create_hal_api
+from helpers.global_config import LED_INDICATOR, UNIFIED_API_GATEWAY
+print("[Startup] Importing Eye Display Modules.")
 from eyes.EyeConfig import EyeConfig
 from eyes.EyeFrameComposer import EyeFrameComposer
 from eyes.EyeGazeInterpolator import GazeInterpolator
 from eyes.EyeExpressionManager import EyeExpressionManager
 from eyes.eye_channels import GazeChannel, ExpressionChannel
-
+print("[Startup] Importing Audio Modules.")
 from audio_input.audio_preprocessor import AudioPreprocessor
 from audio_input.audio_input_manager import AudioInputManager
 from audio_input.voice_recognition_manager import VoiceRecognitionManager
 from audio_output.emotional_sounds_manager import EmotionalSoundsManager
 from audio_output.response_manager import Response_Manager
-
+print("[Startup] Importing Vision Modules.")
 from vision_processing.vision_manager import VisionManager
-
-
-from helpers.api_server import create_hal_api
-from helpers.global_config import LED_INDICATOR, UNIFIED_API_GATEWAY
 
 from activeloop import ActiveLoop
 
@@ -42,14 +43,16 @@ warnings.simplefilter("ignore")
 class Hal:
     def __init__(self, debug_reasoning: bool = False):
         # --- env reset (preserve existing behavior) ---
+        print("[Startup] Clearing previous environment variables.")
         os.environ.clear()
 
         self.DEBUG_REASONING = debug_reasoning
         self.server_host = UNIFIED_API_GATEWAY
+        print("[Startup] Initializing System Modules.")
 
         # --- core helpers ---
         self.hotswap = HotSwapLoader()  # DANGER ZONE: DO NOT HOTSWAP ENABLE HARDWARE.  ONLY ENABLE PURE SOFTWARE SYSTEMS.
-
+        print("[Startup] Initializing Hardware.")
         # --- body / hardware ---
         self.picrawler_instance = Picrawler()
         self.picrawler_extended = PicrawlerExtended(self.picrawler_instance)
@@ -60,7 +63,15 @@ class Hal:
         self.searchlight = Searchlight()
         self.indicators = IndicatorsManager(LED_INDICATOR)
         self.reflexes = load_all_reflexes()
+        self.reflex_engine = ReflexEngine(self.reflexes)
+        self.sh2_host = Sh2Host()
+        print("[Startup] Initializing Cognitive Memory.")
+        self.semantic = self.hotswap.load_module("cortex.semantic_memory", "SemanticMemory")(self.server_host)
+        self.episodic = self.hotswap.load_module("cortex.episodic_memory", "EpisodicMemory")(self.server_host)
+        self.working_memory = self.hotswap.load_module("cortex.working_memory", "WorkingMemory")()
+        self.embedder = self.hotswap.load_module("cortex.embedding", "Embedder")()
 
+        print("[Startup] Initializing Eye Display.")
         # --- eyes ---
         eye_profile = EyeConfig.load_eye_profile("whitegold01")
         self.composer = EyeFrameComposer(eye_profile)
@@ -73,24 +84,23 @@ class Hal:
         self.expression_channel = ExpressionChannel(self.expression_manager)
         self.internal_state = self.hotswap.load_module("cortex.internal_state_manager", "InternalStateManager")()
 
-        # --- audio ---
+        print("[Startup] Initializing Vision.")
+        self.vision = VisionManager()
+
+        print("[Startup] Initializing Audio Output.")
         self.preprocessor = AudioPreprocessor()
         self.audio_input = AudioInputManager(self.picrawler_instance)
         self.voice_recognition = VoiceRecognitionManager()
         self.emotion_sound_manager = EmotionalSoundsManager()
-        self.response_manager = Response_Manager(self.picrawler_instance, self.actions_manager, self.internal_state)
-
-        # --- vision ---
-        self.vision = VisionManager()
+        self.response_manager = Response_Manager(self.picrawler_instance, self.actions_manager, self.internal_state, working_memory=self.working_memory)
 
         # --- cortex (hotswapped) ---  # HOTSWAP SAFETY ZONE: CORTEX, HELPERS, AND ACTIVELOOP ONLY.  NEVER HOTSWAP ANYTHING THAT EVEN KNOWS HARDWARE EXISTS.
+        print("[Startup] Initializing Cortex.")
+        #
         self.world_state = self.hotswap.load_module("cortex.world_state_manager", "WorldStateManager")()
         self.initiative_manager = self.hotswap.load_module("cortex.initiative_manager", "InitiativeManager")()
         self.emotion_categorizer = self.hotswap.load_module("cortex.emotions_manager", "EmotionCategorizer")()
-        self.semantic = self.hotswap.load_module("cortex.semantic_memory", "SemanticMemory")(self.server_host)
-        self.episodic = self.hotswap.load_module("cortex.episodic_memory", "EpisodicMemory")(self.server_host)
-        self.embedder = self.hotswap.load_module("cortex.embedding", "Embedder")()
-        self.context_builder = self.hotswap.load_module("cortex.context_builder", "ContextBuilder")()
+        self.context_builder = self.hotswap.load_module("cortex.context_builder", "ContextBuilder")(self.working_memory)
         self.perception = self.hotswap.load_module("cortex.perception_manager", "PerceptionManager")(
             hardware_state=self.hardware_state,
             sensor_state=self.sensor_state,
@@ -122,12 +132,13 @@ class Hal:
             internal_state_manager=self.internal_state,
         )
 
-        # --- helpers (hotswapped) ---
+        print("[Startup] Initializing Helper Modules.")
         self.unified_server = self.hotswap.load_module("helpers.gateway_server_client", "GatewayClient"
         )(self.server_host)
-        self.event_builder = self.hotswap.load_module("helpers.event_builder", "EventBuilder")
+        self.event_builder = self.hotswap.load_module("helpers.event_builder", "EventBuilder")()
 
         # --- API server holder ---
+        print("[Startup] Initializing API Server.")
         self._api_runner = None
 
         # --- ActiveLoop with a controlled "globals" dict ---
@@ -135,6 +146,8 @@ class Hal:
 
     def _build_globals_dict(self):
         # This mirrors your old globals() usage, but under Hal’s control.
+        print("[Startup] Building globals dictionary.")
+
         return {
             "DEBUG_REASONING": self.DEBUG_REASONING,
             "hardware_state": self.hardware_state,
@@ -155,6 +168,7 @@ class Hal:
             "emotion_categorizer": self.emotion_categorizer,
             "semantic": self.semantic,
             "episodic": self.episodic,
+            "working_memory": self.working_memory,
             "embedder": self.embedder,
             "context_builder": self.context_builder,
             "perception": self.perception,
@@ -163,6 +177,9 @@ class Hal:
             "cortex": self.cortex,
             "unified_server": self.unified_server,
             "event_builder": self.event_builder,
+            "reflex_engine": self.reflex_engine,
+            "reflexes": self.reflexes,
+            "imu": self.sh2_host,
         }
 
     async def start_api(self):
@@ -173,7 +190,7 @@ class Hal:
         await site.start()
 
     async def run(self):
-        print("[Hal] Entering main loop.")
+        print("[Startup] Entering main loop.")
 
         await self.hardware_state.start()
         await self.sensor_state.start()
@@ -183,6 +200,8 @@ class Hal:
         self.indicators.set_mode("idle")
 
         # Start eye rendering loop
+        print("[Startup] Begin Eye Rendering.")
+
         asyncio.create_task(self.composer.start_loop())
 
         await self.loop.run()

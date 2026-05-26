@@ -27,39 +27,42 @@ class CognitiveRelay:
 
     async def tick(self, server_json):
 
-        # Snapshot perception
+        # Snapshot perception + context
         raw = self.perception.snapshot()
-
-        # Build context
         ctx = self.context.build(raw)
 
         # Initiative tick
         if hasattr(self.initiative, "tick"):
             self.initiative.tick()
 
-        # Initiative suggestion  ** WHY IS IT NOT USED.  WE WILL ATTEND TO THAT.
         initiative_intent = self.initiative.suggest(
             self.perception.snapshot(),
             world_state=self.context.world_state,
             internal_state=self.internal_state
         )
 
-        # Behavior from server
-        behavior = server_json["behavior"]
+        # LLM behavior + expressive suggestions
+        llm_behavior = server_json.get("behavior")
+        llm_speech = server_json.get("speech", [])
+        llm_nonverbal = server_json.get("nonverbal_suggestions", {})
 
-        # Build plan using server output
-        plan = self.behavior_manager.build_plan(
-            behavior=behavior,
-            perception=server_json,
-            internal_state=self.internal_state
-        )
+        # Fuse into a single decision packet
+        decision = {
+            "behavior": llm_behavior,
+            "speech": llm_speech,
+            "nonverbal_suggestions": llm_nonverbal,
+            "initiative_intent": initiative_intent,
+            "perception": raw,
+            "world_state": self.context.world_state,
+            "internal_state": self.internal_state,  # or snapshot()
+            # later: "memory_updates": ..., "world_updates": ... (from YOUR code, not LLM)
+        }
+
+        plan = self.behavior_manager.build_plan(decision)
         print(f"\n[Cognition] Plan as sent to executor.run_plan: \n{plan}\n\n")
-        # Execute
+
         await self.executor.run_plan(plan)
-
-        # Reset perception
         self.perception.reset()
-
 
 
     def _merge_intents(self, initiative):

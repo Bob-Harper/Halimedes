@@ -15,31 +15,48 @@ class BehaviorManager:
     Converts a behavior string into a BehaviorPlan.
     """
 
-    def build_plan(self, behavior, perception, internal_state):
+    def build_plan(self, decision):
         plan = BehaviorPlan()
 
-        # Normalize speech to always be a list
-        speech = perception.get("speech")
+        # Extract everything from the fused packet
+        behavior = decision.get("behavior")
+        speech = decision.get("speech", [])
+        nonverbal = decision.get("nonverbal_suggestions", {})
+        initiative = decision.get("initiative_intent")
+        perception = decision.get("perception")          # REAL perception snapshot
+        world_state = decision.get("world_state")        # REAL world state
+        internal_state = decision.get("internal_state")  # REAL internal state
+
+        # --- SPEECH ---------------------------------------------------------
+        # Normalize speech to always be a list of dicts
         if isinstance(speech, dict):
-            perception["speech"] = [speech]
-        elif speech is None:
-            perception["speech"] = []
+            speech = [speech]
+        plan.speech["output_speech"] = speech
 
-        # Memory/world updates from LLM
-        plan.memory["write"].extend(perception.get("memory_updates", []))
-        plan.world_state["update"].extend(perception.get("world_updates", []))
+        # --- NONVERBAL ------------------------------------------------------
+        plan.nonverbal["gaze"] = nonverbal.get("gaze", [])
+        plan.nonverbal["expression"] = nonverbal.get("expression", [])
+        plan.nonverbal["sounds"] = nonverbal.get("sounds", [])
+        plan.nonverbal["actions"] = nonverbal.get("actions", [])
 
+        # --- MEMORY + WORLD UPDATES ----------------------------------------
+        # These now come from system, not the LLM
+        plan.memory["write"] = decision.get("memory_updates", [])
+        plan.world_state["update"] = decision.get("world_updates", [])
+
+        # --- BEHAVIOR HANDLER ----------------------------------------------
         handler = getattr(self, f"_plan_{behavior}", None)
         if callable(handler):
-            handler(plan, perception, internal_state)
+            handler(plan, perception, internal_state, initiative)
         else:
-            self._plan_observe(plan, perception, internal_state)
+            self._plan_observe(plan, perception, internal_state, initiative)
 
         return plan
 
+
     # ----------------- behaviors -----------------
 
-    def _plan_converse(self, plan, perception, internal_state):
+    def _plan_converse(self, plan, perception, internal_state, initiative):
         speech = perception.get("speech", [])
 
         # Add emotion to speech
@@ -63,7 +80,7 @@ class BehaviorManager:
         plan.nonverbal["gaze"] = [{"mode": "center", "when": "start"}]
 
 
-    def _plan_greet(self, plan, perception, internal_state):
+    def _plan_greet(self, plan, perception, internal_state, initiative):
         speech = perception.get("speech", [])
 
         for s in speech:
@@ -83,7 +100,7 @@ class BehaviorManager:
         plan.nonverbal["gaze"] = [{"mode": "center", "when": "start"}]
 
 
-    def _plan_idle_fidget(self, plan, perception, internal_state):
+    def _plan_idle_fidget(self, plan, perception, internal_state, initiative):
         plan.actions.append({
             "category": "subtle",
             "type": "fidget_small",
@@ -93,15 +110,15 @@ class BehaviorManager:
         plan.nonverbal["gaze"] = [{"mode": "wander", "when": "start"}]
 
 
-    def _plan_idle(self, plan, perception, internal_state):
+    def _plan_idle(self, plan, perception, internal_state, initiative):
         pass
 
 
-    def _plan_observe(self, plan, perception, internal_state):
+    def _plan_observe(self, plan, perception, internal_state, initiative):
         plan.nonverbal["gaze"] = [{"mode": "center", "when": "start"}]
 
 
-    def _plan_act(self, plan, perception, internal_state):
+    def _plan_act(self, plan, perception, internal_state, initiative):
         actions = perception.get("actions", [])
         for act in actions:
             if isinstance(act, dict) and "category" in act:
@@ -110,11 +127,11 @@ class BehaviorManager:
                 plan.actions.append(act)
 
 
-    def _plan_internal(self, plan, perception, internal_state):
+    def _plan_internal(self, plan, perception, internal_state, initiative):
         pass
 
 
-    def _plan_explore(self, plan, perception, internal_state):
+    def _plan_explore(self, plan, perception, internal_state, initiative):
         plan.speech["output_speech"] = [{
             "text": "I can't explore right now; it's not safe in this environment.",
             "emotion": internal_state.mood

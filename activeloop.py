@@ -1,8 +1,9 @@
 # activeloop.py
 
 import asyncio
-import json
+
 from cortex.config import active_loop_config
+from helpers.llm_message_builder import LLMMessageBuilder
 
 COMMAND_PHRASES = {
     "diagnostic mode": "tool",
@@ -28,72 +29,40 @@ class ActiveLoop:
             # 3. Tick pacing
             await asyncio.sleep(active_loop_config["tick_rate"])
 
-
-    async def loop_body(self):
+    async def _process_audio(self, pcm_audio):
         g = self.globals
         audio_input = g["audio_input"]
         voice_recognition = g["voice_recognition"]
         preprocessor = g["preprocessor"]
         unified_server = g["unified_server"]
-        event_builder = g["event_builder"]
-        perception = g["perception"]
-        internal_state = g["internal_state"]
-        cortex = g["cortex"]
         indicators = g["indicators"]
-        # DEBUG_REASONING = g["DEBUG_REASONING"]
-        DEBUG_REASONING = False
 
-        # Check for Module Reload Flag ------------------------------------------------------
-        self.hotswap.process(g)
-
-        # AUDIO INPUT ------------------------------------------------------
-        print("[Hal] Listening.")
-        pcm_audio = await audio_input.capture_audio()
-        if pcm_audio is None or len(pcm_audio) == 0:
-            return # No audio captured, skip this loop iteration
-
-        # --- AUDIO SAFETY CAP --------------------------------------------
-        MAX_AUDIO_BYTES = 5_000_000  # ~5 MB cap
+        # --- SAFETY CAP ---
+        MAX_AUDIO_BYTES = 5_000_000
         truncated = False
-
-        # pcm_audio is int16 → 2 bytes per sample
         if pcm_audio.nbytes > MAX_AUDIO_BYTES:
-            print(f"[Audio] Oversized capture ({pcm_audio.nbytes} bytes). Truncating.")
             max_samples = MAX_AUDIO_BYTES // 2
             pcm_audio = pcm_audio[:max_samples]
             truncated = True
 
-        print(f"[Audio] Captured {pcm_audio.nbytes} bytes")
-
-        indicators.set_mode("busy")
-
         recognized_speaker = voice_recognition.recognize_speaker(pcm_audio)
 
-        # Hal will attempt to determine if the detected speech requires a response
-        if audio_input.respond_to_voice_input(pcm_audio, recognized_speaker):
-            print("[Voice Analysis] Positive response. Proceeding with cognition loop.")
-
-        if recognized_speaker != "Unknown":
-            print(f"[Speaker Recognition] Identified speaker: {recognized_speaker}")
-        else:
-            print("[Speaker Recognition] Speaker is Unknown.")
+        if not audio_input.respond_to_voice_input(pcm_audio, recognized_speaker):
+            indicators.set_mode("idle")
+            return None
 
         wav_bytes = preprocessor.pcm_to_16k_wav(pcm_audio)
         transcription = await unified_server.transcribe_audio(wav_bytes)
-        # print(f"[Transcription RAW] {transcription}")
 
         spoken_text = transcription.get("text", "")
         if not spoken_text:
             indicators.set_mode("idle")
-            return
+            return None
 
-        # COMMAND PHRASE CHECK
-        lower = spoken_text.lower().strip()
-        inference_type = "chat"
-        for phrase in COMMAND_PHRASES:
-            if lower.startswith(phrase):
-                inference_type = COMMAND_PHRASES[phrase]
-                break
+        return spoken_text, recognized_speaker, transcription, truncated
+
+    def _update_perception(self, spoken_text, recognized_speaker, transcription, truncated):
+        perception = self.globals["perception"]
 
         perception.ingest_audio_event(
             spoken_text,
@@ -102,27 +71,14 @@ class ActiveLoop:
             truncated
         )
 
-        # SEND TO UNIFIED SERVER (COGNITION) -------------------------------
-        event = event_builder.build_event(
-            self,
-            perception=perception.snapshot(),
-        )
+        imu = self.globals["imu"]
+        perception["imu"] = imu.poll()
 
-        # DEBUG OUTPUT ------------------------------------------------------
-        print("[Cognition] Sending event to server…")
-        print("----- BEGIN EVENT -----")
-        print(event)
-        print("------ END EVENT ------")
-        # END DEBUG OUTPUT --------------------------------------------------
+    async def _send_to_server(self, event, inference_type):
+        g = self.globals
+        unified_server = g["unified_server"]
 
-        if DEBUG_REASONING:
-            # Allow chain-of-thought (no /nothink)
-            prompt_str = json.dumps(event, indent=2)
-        else:
-            # Standard operation: suppress CoT
-            prompt_str = "/nothink\n" + json.dumps(event, indent=2)
-
-        payload = { "prompt": prompt_str }
+        payload = LLMMessageBuilder.build_messages(event, debug_reasoning=False)
 
         if inference_type == "tool":
             endpoint = "/api/tool"
@@ -131,15 +87,105 @@ class ActiveLoop:
         else:
             endpoint = "/api/chat"
 
-        server_json = await unified_server.send_perception(payload, endpoint)
-        print(f"\n[Cognition] Returned from the server, before processing:: \n{server_json}\n\n")
+        return await unified_server.send_perception(payload, endpoint)
 
-        # RESET PERCEPTION -------------------------------------------------
-        # perception.reset()
+    async def _run_reflexes(self):
+        reflex_engine = self.globals["reflex_engine"]
 
-        # DECISION LAYER ---------------------------------------------------
+        result = reflex_engine.check_and_execute(
+            perception=self.globals["perception"],
+            world_state=self.globals["world_state"],
+            internal_state=self.globals["internal_state"],
+        )
+
+        if result is None:
+            return None
+
+        # reflex fired → handle it
+        return await self._handle_reflex(result)
+
+    async def _handle_reflex(self, reflex_result):
+        action = reflex_result.get("action")
+        if not action:
+            return
+
+        motor = self.globals["motor_controller"]
+        await motor.execute(action)
+        return True
+
+    def _update_perception_no_audio(self):
+        imu = self.globals["imu"]
+        self.globals["perception"]["imu"] = imu.poll()
+
+    async def _run_autonomous_behaviors(self):
+        pass # stub for now to allow for autonomous behaviors in the future without blocking reflexes or speech processing
+
+    async def loop_body(self):
+        g = self.globals
+        audio_input = g["audio_input"]
+        indicators = g["indicators"]
+        working_memory = g["working_memory"]
+        event_builder = g["event_builder"]
+        cortex = g["cortex"]
+
+        self.hotswap.process(g)
+
+        pcm_audio = await audio_input.capture_audio()
+        if not pcm_audio:
+            self._update_perception_no_audio()
+            await self._run_reflexes()
+            await self._run_autonomous_behaviors()  # stub for now
+            return
+
+        # --- Valid speech, set as Busy ---
+        indicators.set_mode("busy")
+
+        processed = await self._process_audio(pcm_audio)
+        if processed is None:
+            return
+
+        spoken_text, recognized_speaker, transcription, truncated = processed
+
+        # --- Command phrase detection ---
+        lower = spoken_text.lower().strip()
+        inference_type = "chat"
+        for phrase in COMMAND_PHRASES:
+            if lower.startswith(phrase):
+                inference_type = COMMAND_PHRASES[phrase]
+                break
+
+        working_memory.add("user", spoken_text)
+
+        # --- Build Perception ---
+        self._update_perception(
+            spoken_text,
+            recognized_speaker,
+            transcription,
+            truncated
+        )
+
+        # --- REFLEX PASS ---
+        reflex_fired = await self._run_reflexes()
+        if reflex_fired:
+            # reflex took over → skip cognition
+            return
+
+        # --- Build Event ---
+        event = event_builder.build_event(
+            perception=g["perception"].snapshot(),
+            working_memory=working_memory.turns,
+        )
+
+        # --- Send to Server & Get Response ---
+        server_json = await self._send_to_server(event, inference_type)
+
+        # --- Speech + decision layer ---
+        hal_speech = server_json.get("speech", [])
+        if hal_speech:
+            text = " ".join(seg.get("text", "") for seg in hal_speech if isinstance(seg, dict))
+            if text:
+                working_memory.add("hal", text)
+
+        # --- Send to Cortex for processing ---
         await cortex.tick(server_json)
-        # LOOP --------------------------------------------------------------
         indicators.set_mode("idle")
-        await asyncio.sleep(active_loop_config["tick_rate"])
-
