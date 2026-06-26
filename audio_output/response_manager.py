@@ -44,7 +44,7 @@ class Response_Manager:
         """
         if not words:
             return
-
+        print(f"[TTS] Speaking with emotion '{emotion}': {words}")  # Debug print
         # Get relative adjustment factors for pitch and speed
         emotion_settings = get_voice_modifiers(emotion)
         pitch_factor = emotion_settings["pitch_factor"]
@@ -74,9 +74,6 @@ class Response_Manager:
                     flite_cmd,
                     check=True
                 )
-
-                # Play the generated WAV
-                self.apply_volume(wav_path, 1)  # 200% volume
 
                 play_cmd = ["aplay", wav_path]
                 await asyncio.to_thread(
@@ -118,7 +115,7 @@ class Response_Manager:
 
         # Append assistant turn AFTER speech actually happened
         if self.working_memory is not None:
-            self.working_memory.append(("assistant", text))
+            self.working_memory.add("assistant", text)
 
         if self.internal_state:
             self.internal_state.is_speaking = False
@@ -127,11 +124,6 @@ class Response_Manager:
     async def say(self, text):
         return await self.speak_with_flite(text, emotion="neutral")
 
-    def apply_volume(self, wav_path, gain):
-        data, samplerate = sf.read(wav_path)
-        data = data * gain
-        data = np.clip(data, -1.0, 1.0)
-        sf.write(wav_path, data, samplerate)
 
 if __name__ == "__main__":
     import asyncio

@@ -1,4 +1,6 @@
 # body/sensor_state_manager.py
+from typing import Any
+
 
 class SensorStateManager:
     """
@@ -20,8 +22,6 @@ class SensorStateManager:
             "ultrasonic": None,
             "radar_presence": None,
             "radar_distance": None,
-            "accel": None,
-            "gyro": None,
             "grayscale": [],
             "cliff": [],
         }
@@ -32,7 +32,7 @@ class SensorStateManager:
         # ------------------------------
         self.ultrasonic_driver = None
         self.radar_driver = None
-        self.imu_driver = None
+        self.imu_driver: Any = None
         self.grayscale_driver = None
         self.cliff_driver = None
 
@@ -53,6 +53,7 @@ class SensorStateManager:
                 return None
         return None
 
+    # NOT CURRENTLY IMPLEMENTED,
     def _update_radar(self):
         if self.radar_driver:
             try:
@@ -67,13 +68,13 @@ class SensorStateManager:
     def _update_imu(self):
         if self.imu_driver:
             try:
-                accel = self.imu_driver.read_accel()
-                gyro = self.imu_driver.read_gyro()
-                return accel, gyro
-            except Exception:
-                return None, None
-        return None, None
+                return self.imu_driver.read()
 
+            except Exception:
+                return None
+        return None
+
+    # NOT CURRENTLY IMPLEMENTED, but placeholder for future grayscale sensor array
     def _update_grayscale(self):
         if self.grayscale_driver:
             try:
@@ -82,6 +83,7 @@ class SensorStateManager:
                 return []
         return []
 
+    # NOT CURRENTLY IMPLEMENTED, but placeholder for future cliff sensor array
     def _update_cliff(self):
         if self.cliff_driver:
             try:
@@ -105,9 +107,7 @@ class SensorStateManager:
         self.status["radar_distance"] = radar["distance"]
 
         # IMU
-        accel, gyro = self._update_imu()
-        self.status["accel"] = accel
-        self.status["gyro"] = gyro
+        self.status["imu"] = self._update_imu()
 
         # Grayscale
         self.status["grayscale"] = self._update_grayscale()

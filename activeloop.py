@@ -72,7 +72,11 @@ class ActiveLoop:
         )
 
         imu = self.globals["imu"]
-        perception["imu"] = imu.poll()
+        perception.sensor_status["imu"] = imu.read()
+
+    def _update_perception_no_audio(self):
+        imu = self.globals["imu"]
+        self.globals["perception"].sensor_status["imu"] = imu.read()
 
     async def _send_to_server(self, event, inference_type):
         g = self.globals
@@ -92,17 +96,19 @@ class ActiveLoop:
     async def _run_reflexes(self):
         reflex_engine = self.globals["reflex_engine"]
 
-        result = reflex_engine.check_and_execute(
-            perception=self.globals["perception"],
+        result = await reflex_engine.check_and_execute(
+            perception=self.globals["perception"].snapshot(),
             world_state=self.globals["world_state"],
             internal_state=self.globals["internal_state"],
+            hardware_state=self.globals["hardware_state"],
+            executor=self.globals["action_executor"],
         )
 
-        if result is None:
-            return None
+        if not result:
+            return False
 
-        # reflex fired → handle it
         return await self._handle_reflex(result)
+
 
     async def _handle_reflex(self, reflex_result):
         action = reflex_result.get("action")
@@ -113,14 +119,12 @@ class ActiveLoop:
         await motor.execute(action)
         return True
 
-    def _update_perception_no_audio(self):
-        imu = self.globals["imu"]
-        self.globals["perception"]["imu"] = imu.poll()
 
     async def _run_autonomous_behaviors(self):
         pass # stub for now to allow for autonomous behaviors in the future without blocking reflexes or speech processing
 
     async def loop_body(self):
+        print("[ActiveLoop] Hal Listening.")
         g = self.globals
         audio_input = g["audio_input"]
         indicators = g["indicators"]
@@ -131,7 +135,8 @@ class ActiveLoop:
         self.hotswap.process(g)
 
         pcm_audio = await audio_input.capture_audio()
-        if not pcm_audio:
+        if pcm_audio is None or pcm_audio.size == 0:
+
             self._update_perception_no_audio()
             await self._run_reflexes()
             await self._run_autonomous_behaviors()  # stub for now
@@ -175,17 +180,17 @@ class ActiveLoop:
             perception=g["perception"].snapshot(),
             working_memory=working_memory.turns,
         )
-
+        print(f"[ActiveLoop] Built Event: {event}")  # Debug print to verify event structure
         # --- Send to Server & Get Response ---
         server_json = await self._send_to_server(event, inference_type)
-
+        print(f"[ActiveLoop] Server Response: {server_json}")  # Debug print to verify server response structure
         # --- Speech + decision layer ---
         hal_speech = server_json.get("speech", [])
         if hal_speech:
             text = " ".join(seg.get("text", "") for seg in hal_speech if isinstance(seg, dict))
             if text:
                 working_memory.add("hal", text)
-
+        print(f"[ActiveLoop] working_memory: {working_memory.turns}")  # Debug print to verify speech extraction
         # --- Send to Cortex for processing ---
         await cortex.tick(server_json)
         indicators.set_mode("idle")

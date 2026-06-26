@@ -1,6 +1,7 @@
 from crawler_utils.robot import Robot
 from crawler_utils import utils
-
+import faulthandler
+faulthandler.enable()
 import time
 import math
 
@@ -511,7 +512,7 @@ class Picrawler(Robot):
                  [self.X_TURN, self.Y_DEFAULT, self.z_current],
                  [self.X_DEFAULT, self.Y_START, self.z_current]]
             ]
-        
+
         def turn_right_angle(self, angle=0):
             li = self.turn_angle_coord(angle)
             temp_x1 = li[0]
@@ -562,9 +563,9 @@ class Picrawler(Robot):
             temp_x3.append(self.z_current)
             return [
                 [
-                    [self.X_DEFAULT, self.Y_DEFAULT, self.z_current], 
-                    [self.X_DEFAULT, self.Y_START, self.z_current], 
-                    [self.X_TURN, self.Y_START, self.Z_UP], 
+                    [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                    [self.X_DEFAULT, self.Y_START, self.z_current],
+                    [self.X_TURN, self.Y_START, self.Z_UP],
                     [self.X_DEFAULT, self.Y_DEFAULT, self.z_current]
                 ],
                 [temp_x1, temp_x2, [self.X_TURN, self.Y_START, self.Z_UP], temp_x3]
@@ -591,8 +592,8 @@ class Picrawler(Robot):
                     [self.X_DEFAULT, self.Y_DEFAULT, self.z_current]
                 ],
                 [temp_x3, [self.X_TURN, self.Y_START, self.Z_UP], temp_x2, temp_x1]
-            ]    
-   
+            ]
+
         @property
         @check_stand
         @normal_action(0)

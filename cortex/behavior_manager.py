@@ -28,9 +28,20 @@ class BehaviorManager:
         internal_state = decision.get("internal_state")  # REAL internal state
 
         # --- SPEECH ---------------------------------------------------------
-        # Normalize speech to always be a list of dicts
-        if isinstance(speech, dict):
+        # Normalize speech
+        speech = decision.get("speech", [])
+
+        # Normalize speech into list-of-dicts
+        if isinstance(speech, str):
+            speech = [{"text": speech}]
+        elif isinstance(speech, dict):
             speech = [speech]
+        elif isinstance(speech, list):
+            speech = [
+                s if isinstance(s, dict) else {"text": str(s)}
+                for s in speech
+            ]
+
         plan.speech["output_speech"] = speech
 
         # --- NONVERBAL ------------------------------------------------------

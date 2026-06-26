@@ -29,7 +29,7 @@ class DrawEngine:
         key = self._mask_key(lid_cfg)
         if key not in self._lid_mask_cache:
             self._lid_mask_cache[key] = self._make_mask_images(lid_cfg)
-    
+
         return self._lid_mask_cache[key]
 
     def _make_mask_images(self, cfg: dict) -> tuple[Image.Image, Image.Image]:
@@ -94,7 +94,7 @@ class DrawEngine:
 
     def display(self, bufs):
 
-        if not bufs or not isinstance(bufs, tuple) or len(bufs) != 2:
+        if bufs is None or not isinstance(bufs, tuple) or len(bufs) != 2:
             return
 
         left_buf, right_buf = bufs
@@ -117,7 +117,7 @@ class DrawEngine:
         bufs: tuple[bytearray, bytearray],
         lid_cfg: dict
         ) -> tuple[bytearray, bytearray]:
-        
+
         left_raw, right_raw = bufs
         def buf_to_img(buf):
             arr = np.frombuffer(buf, dtype=np.uint8).reshape((160, 160, 2))

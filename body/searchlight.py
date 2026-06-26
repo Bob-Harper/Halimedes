@@ -5,8 +5,8 @@ import time
 
 class Searchlight:
     """Minimal driver using MotorPort2 (PWM12, GPIO24) only."""
-    def __init__(self, pwm_pin="P12", dir_pin="D5", freq=100):  # Motorport 2
-    # def __init__(self, pwm_pin="P13", dir_pin="D4", freq=100):  # Motorport 1
+    # def __init__(self, pwm_pin="P12", dir_pin="D5", freq=100):  # Motorport 2
+    def __init__(self, pwm_pin="P13", dir_pin="D4", freq=100):  # Motorport 1
         self.pwm = PWM(pwm_pin)
         self.dir = Pin(dir_pin)
 
@@ -48,5 +48,9 @@ if __name__ == "__main__":
 
     time.sleep(2)
 
+    print("[Test] Setting brightness to 100%")
+    led.brightness(100)
+
+    time.sleep(2)
     print("[Test] Turning off")
     led.brightness(0)

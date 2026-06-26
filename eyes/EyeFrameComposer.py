@@ -51,55 +51,63 @@ class EyeFrameComposer:
         assert self.gaze_interpolator is not None, "Gaze interpolator is not set"
         assert self.expression_manager is not None, "Expression manager is not set"
         self.running = True
+
         while self.running:
-            if self._dirty or self.state != self._previous:
-                if random.random() < 0.01:
+            try:
+                if self._dirty or self.state != self._previous:
+                    if random.random() < 0.01:
+                        if not self.expression_manager.is_blinking():
+                            self.expression_manager.trigger()
+
+                    self._frame_drawn_event.clear()
+
+                    self.set_gaze(self.state.x, self.state.y, self.state.pupil)
+
                     if not self.expression_manager.is_blinking():
-                        self.expression_manager.trigger()
+                        self.expression_manager.update_expression()
 
-                self._frame_drawn_event.clear()
-
-                self.set_gaze(self.state.x, self.state.y, self.state.pupil)
-
-                if not self.expression_manager.is_blinking():
-                    self.expression_manager.update_expression()
-
-                dt = FRAME_DURATION
-                if self.expression_manager and self.expression_manager.is_blinking():
-                    blink_lids = self.expression_manager.update_blink(dt)
-                    if blink_lids:
-                        lid_cfg = blink_lids
+                    dt = FRAME_DURATION
+                    if self.expression_manager and self.expression_manager.is_blinking():
+                        blink_lids = self.expression_manager.update_blink(dt)
+                        if blink_lids is not None:
+                            lid_cfg = blink_lids
+                        else:
+                            lid_cfg = self.state.eyelid_cfg or self.expression_manager.get_mask_config()
                     else:
                         lid_cfg = self.state.eyelid_cfg or self.expression_manager.get_mask_config()
-                else:
-                    lid_cfg = self.state.eyelid_cfg or self.expression_manager.get_mask_config()
 
-
-                left_buf, right_buf = await asyncio.to_thread(
-                    self.drawer.render_gaze_frame,
-                    self.state.x,
-                    self.state.y,
-                    self.state.pupil
-                )
-
-                try:
-                    masked = await asyncio.to_thread(
-                        self.drawer.apply_lids,
-                        (left_buf, right_buf), lid_cfg
+                    left_buf, right_buf = await asyncio.to_thread(
+                        self.drawer.render_gaze_frame,
+                        self.state.x,
+                        self.state.y,
+                        self.state.pupil
                     )
-                except Exception as e:
-                    masked = (left_buf, right_buf)
 
-                await asyncio.to_thread(self.drawer.display, masked)
-                self._frame_drawn_event.set()
+                    try:
+                        masked = await asyncio.to_thread(
+                            self.drawer.apply_lids,
+                            (left_buf, right_buf), lid_cfg
+                        )
+                    except Exception:
+                        masked = (left_buf, right_buf)
 
-            else:
-                self._previous = EyeState(
-                    x=self.state.x, y=self.state.y,
-                    pupil=self.state.pupil,
-                    expression=self.state.expression,
-                    blink=self.state.blink
-                )
-                self._dirty = False
+                    await asyncio.to_thread(self.drawer.display, masked)
+                    self._frame_drawn_event.set()
 
-            await asyncio.sleep(FRAME_DURATION)
+                else:
+                    self._previous = EyeState(
+                        x=self.state.x, y=self.state.y,
+                        pupil=self.state.pupil,
+                        expression=self.state.expression,
+                        blink=self.state.blink
+                    )
+                    self._dirty = False
+
+                await asyncio.sleep(FRAME_DURATION)
+
+            except Exception as e:
+                import traceback
+                print("[EyeFrameComposer] EXCEPTION:", repr(e))
+                traceback.print_exc()
+                self.running = False
+                raise

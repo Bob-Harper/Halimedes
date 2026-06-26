@@ -8,7 +8,8 @@ import os
 from typing import Optional, Sequence
 
 config_file = os.path.expanduser("~/hal/data/robot-hat.conf")
-
+import faulthandler
+faulthandler.enable()
 
 class Robot(_Basic_class):
     """

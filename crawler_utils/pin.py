@@ -3,7 +3,8 @@ from crawler_utils.basic import _Basic_class
 import gpiozero  # https://gpiozero.readthedocs.io/en/latest/installing.html
 from gpiozero import OutputDevice, InputDevice, Button
 from typing import Any, Optional, Union, cast
-
+import faulthandler
+faulthandler.enable()
 
 class Pin(_Basic_class):
     """Pin manipulation class"""
@@ -183,7 +184,7 @@ class Pin(_Basic_class):
 
             result = self.gpio.value
             self._debug(f"read pin {self.gpio.pin}: {result}")
-            return int(result)        
+            return int(result)
         else:
             if self._mode in [self.IN]:
                 self.setup(self.OUT)

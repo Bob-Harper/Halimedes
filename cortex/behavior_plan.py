@@ -7,7 +7,7 @@ class BehaviorPlan:
         self.should_interrupt = False
 
         self.speech = {
-            "output_speech": []  # list[{"text": str, "emotion": str}]
+            "output_speech": []
         }
 
         self.nonverbal = {

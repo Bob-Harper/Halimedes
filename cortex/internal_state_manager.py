@@ -13,6 +13,9 @@ class InternalStateManager:
         self.emotion = "neutral"
         self.activity_level = 1.0
 
+        # physical activity continuity
+        self.commanded_motion = False
+
         # Conversational continuity
         self.last_user_text = None
         self.last_user_emotion = None

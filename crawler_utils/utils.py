@@ -4,7 +4,8 @@ import os
 import re
 import subprocess
 from crawler_utils.pin import Pin
-
+import faulthandler
+faulthandler.enable()
 
 def set_volume(value: int):
     value = max(0, min(100, value))

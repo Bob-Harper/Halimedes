@@ -28,6 +28,7 @@ if __name__ == "__main__":
 
     except Exception as e:
         print(f"[Shutdown] Fatal error: {e}")
+        import traceback; traceback.print_exc()
         # run cleanup script
         import os
         os.system("/home/msutt/.local/bin/cleanhal")

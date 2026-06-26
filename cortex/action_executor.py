@@ -8,7 +8,9 @@ class ActionExecutor:
     This is the ONLY layer that touches hardware.
     """
 
-    def __init__(self, motors=None, searchlight=None, audio=None, gaze_channel=None, expression_channel=None):
+    def __init__(self, internal_state, motors=None, searchlight=None, audio=None, gaze_channel=None, expression_channel=None):
+
+        self.internal_state = internal_state
         self.motors = motors
         self.searchlight = searchlight
         self.audio = audio
@@ -83,7 +85,7 @@ class ActionExecutor:
                 await self._current_movement_task
             except asyncio.CancelledError:
                 pass
-
+        self.internal_state.commanded_motion = True
         # Start new movement
         self._current_movement_task = asyncio.create_task(
             self._movement_serialized(func, *args, **kwargs)
@@ -91,7 +93,11 @@ class ActionExecutor:
 
     async def _movement_serialized(self, func, *args, **kwargs):
         async with self._movement_lock:
-            await asyncio.to_thread(func, *args, **kwargs)
+            try:
+                await asyncio.to_thread(func, *args, **kwargs)
+            finally:
+                # >>> ADD THIS LINE <<<
+                self.internal_state.commanded_motion = False
 
     def _execute_actions(self, actions_list):
         for act in actions_list:

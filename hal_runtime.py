@@ -16,7 +16,7 @@ from body.searchlight import Searchlight
 from body.indicators_manager import IndicatorsManager
 from kernel.reflexes import load_all_reflexes
 from kernel.reflexive_layer import ReflexEngine
-from kernel.sh2_hal import Sh2Host
+from kernel.imu_bno08x import IMU
 print("[Startup] Importing Helper Modules.")
 from helpers.api_server import create_hal_api
 from helpers.global_config import LED_INDICATOR, UNIFIED_API_GATEWAY
@@ -38,7 +38,8 @@ from vision_processing.vision_manager import VisionManager
 from activeloop import ActiveLoop
 
 warnings.simplefilter("ignore")
-
+import faulthandler
+faulthandler.enable()
 
 class Hal:
     def __init__(self, debug_reasoning: bool = False):
@@ -49,7 +50,6 @@ class Hal:
         self.DEBUG_REASONING = debug_reasoning
         self.server_host = UNIFIED_API_GATEWAY
         print("[Startup] Initializing System Modules.")
-
         # --- core helpers ---
         self.hotswap = HotSwapLoader()  # DANGER ZONE: DO NOT HOTSWAP ENABLE HARDWARE.  ONLY ENABLE PURE SOFTWARE SYSTEMS.
         print("[Startup] Initializing Hardware.")
@@ -60,17 +60,18 @@ class Hal:
         self.actions_manager = self.picrawler_instance
         self.hardware_state = HardwareStateManager()
         self.sensor_state = SensorStateManager()
+        self.imu = IMU()
+        self.sensor_state.imu_driver = self.imu
         self.searchlight = Searchlight()
         self.indicators = IndicatorsManager(LED_INDICATOR)
         self.reflexes = load_all_reflexes()
         self.reflex_engine = ReflexEngine(self.reflexes)
-        self.sh2_host = Sh2Host()
+        # --- cortex / memory ---
         print("[Startup] Initializing Cognitive Memory.")
         self.semantic = self.hotswap.load_module("cortex.semantic_memory", "SemanticMemory")(self.server_host)
         self.episodic = self.hotswap.load_module("cortex.episodic_memory", "EpisodicMemory")(self.server_host)
         self.working_memory = self.hotswap.load_module("cortex.working_memory", "WorkingMemory")()
         self.embedder = self.hotswap.load_module("cortex.embedding", "Embedder")()
-
         print("[Startup] Initializing Eye Display.")
         # --- eyes ---
         eye_profile = EyeConfig.load_eye_profile("whitegold01")
@@ -114,6 +115,7 @@ class Hal:
             behavior_manager=self.behavior_manager
         )
         self.action_executor = self.hotswap.load_module("cortex.action_executor", "ActionExecutor")(
+            internal_state=self.internal_state,
             motors=self.motors,
             searchlight=self.searchlight,
             audio=self.response_manager,
@@ -179,7 +181,7 @@ class Hal:
             "event_builder": self.event_builder,
             "reflex_engine": self.reflex_engine,
             "reflexes": self.reflexes,
-            "imu": self.sh2_host,
+            "imu": self.imu,
         }
 
     async def start_api(self):
@@ -212,7 +214,7 @@ class Hal:
         self.indicators.set_mode("off")
         reset_mcu()
 
-        # If you later need to stop hardware_state or API runner, do it here.
+        # If we later need to stop hardware_state or API runner, do it here.
         # e.g.:
         # if self._api_runner is not None:
         #     await self._api_runner.cleanup()

@@ -2,7 +2,8 @@
 #!/usr/bin/env python3
 import logging
 import time
-
+import faulthandler
+faulthandler.enable()
 
 class _Basic_class(object):
     """
