@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-from crawler_utils.pin import Pin
-from crawler_utils.pwm import PWM
-from crawler_utils.adc import ADC
-from crawler_utils.i2c import I2C
+from crawler.pin import Pin
+from crawler.pwm import PWM
+from crawler.adc import ADC
+from crawler.i2c import I2C
 import time
-from crawler_utils.basic import _Basic_class
+from crawler.basic import _Basic_class
 from typing import Union, List, Tuple, Optional
 
 class Ultrasonic():
@@ -318,7 +318,7 @@ class Grayscale_Module(object):
         """
         read a channel or all datas
 
-        :param channel: channel to read, leave empty to read all. 0, 1, 2 or Grayscale_Module.LEFT, Grayscale_Module.CENTER, Grayscale_Module.RIGHT 
+        :param channel: channel to read, leave empty to read all. 0, 1, 2 or Grayscale_Module.LEFT, Grayscale_Module.CENTER, Grayscale_Module.RIGHT
         :type channel: int/None
         :return: list of grayscale data
         :rtype: list

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-from crawler_utils.basic import _Basic_class
-from crawler_utils.pwm import PWM
-from crawler_utils.pin import Pin
-from crawler_utils.filedb import fileDB
+from crawler.basic import _Basic_class
+from crawler.pwm import PWM
+from crawler.pin import Pin
+from crawler.filedb import fileDB
 import os
 
 config_file = os.path.expanduser("~/hal/data/robot-hat.conf")

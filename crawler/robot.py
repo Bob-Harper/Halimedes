@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-from crawler_utils.basic import _Basic_class
-from crawler_utils.pwm import PWM
-from crawler_utils.servo import Servo
+from crawler.basic import _Basic_class
+from crawler.pwm import PWM
+from crawler.servo import Servo
 import time
-from crawler_utils.filedb import fileDB
+from crawler.filedb import fileDB
 import os
 from typing import Optional, Sequence
 

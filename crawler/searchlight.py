@@ -1,5 +1,5 @@
-from crawler_utils.pwm import PWM
-from crawler_utils.pin import Pin
+from crawler.pwm import PWM
+from crawler.pin import Pin
 import time
 # Import RGB_LED and PWM class
 

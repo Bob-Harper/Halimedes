@@ -1,5 +1,5 @@
-from crawler_utils.robot import Robot
-from crawler_utils import utils
+from crawler.robot import Robot
+from crawler import utils
 import faulthandler
 faulthandler.enable()
 import time

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from crawler_utils.basic import _Basic_class
+from crawler.basic import _Basic_class
 import gpiozero  # https://gpiozero.readthedocs.io/en/latest/installing.html
 from gpiozero import OutputDevice, InputDevice, Button
 from typing import Any, Optional, Union, cast

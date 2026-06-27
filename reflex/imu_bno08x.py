@@ -1,4 +1,4 @@
-# hal/kernel/imu_bno08x.py
+# hal/reflex/imu_bno08x.py
 
 import time
 import board

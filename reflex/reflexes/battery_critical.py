@@ -1,6 +1,6 @@
-# kernel/reflexes/battery_critical.py
+# reflex/reflexes/battery_critical.py
 
-from kernel.reflexive_layer import Reflex
+from reflex.reflexive_layer import Reflex
 
 class BatteryCriticalReflex(Reflex):
     priority = 100

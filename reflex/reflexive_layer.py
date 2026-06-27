@@ -1,4 +1,4 @@
-# kernel/reflexive_layer.py
+# reflex/reflexive_layer.py
 from typing import List
 
 

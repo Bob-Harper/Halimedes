@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from crawler_utils.basic import _Basic_class
+from crawler.basic import _Basic_class
 import time
 import threading
 import pyaudio
@@ -63,8 +63,8 @@ class Music(_Basic_class):
         import warnings
         warnings_bk = warnings.filters
         warnings.filterwarnings("ignore")
-        # close welcome message of pygame, and the value must be <str> 
-        os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "1" 
+        # close welcome message of pygame, and the value must be <str>
+        os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "1"
         import pygame
         warnings.filters = warnings_bk
         """Initialize music"""
@@ -184,8 +184,8 @@ class Music(_Basic_class):
         """
         sound = self.pygame.mixer.Sound(filename)
         if volume is not None:
-            # attention: 
-            #   The volume of sound and music is separate, 
+            # attention:
+            #   The volume of sound and music is separate,
             # and the volume of different sound objects is also separate.
             sound.set_volume(round(volume/100.0, 2))
         time_delay = round(sound.get_length(), 2)

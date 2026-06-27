@@ -1,4 +1,4 @@
-from kernel.reflexive_layer import Reflex
+from reflex.reflexive_layer import Reflex
 
 class StuckReflex(Reflex):
     priority = 80

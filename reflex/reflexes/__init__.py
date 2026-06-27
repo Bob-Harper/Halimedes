@@ -1,7 +1,7 @@
 import pkgutil
 import inspect
 import importlib
-from kernel.reflexive_layer import Reflex
+from reflex.reflexive_layer import Reflex
 
 def load_all_reflexes():
     reflexes = []

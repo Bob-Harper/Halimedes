@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from crawler_utils.i2c import I2C
+from crawler.i2c import I2C
 
 
 class ADC(I2C):

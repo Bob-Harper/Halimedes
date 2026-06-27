@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import math
-from crawler_utils.i2c import I2C
+from crawler.i2c import I2C
 
 timer = [{"arr": 1}] * 4
 
@@ -161,7 +161,7 @@ class PWM(I2C):
         # print(temp)
         pulse_width = temp * timer[self.timer]["arr"]
         self.pulse_width(pulse_width)
-        
+
     def off(self) -> None:
         self.pulse_width_percent(0)
 

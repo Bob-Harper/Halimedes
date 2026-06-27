@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from crawler_utils.basic import _Basic_class
-from crawler_utils.utils import run_command
+from crawler.basic import _Basic_class
+from crawler.utils import run_command
 from smbus2 import SMBus
 import multiprocessing
 

@@ -12,6 +12,7 @@ class SensorStateManager:
     Drivers are singular objects (one IMU, one radar, etc).
     Status values are the processed outputs (lists, scalars, dicts).
     This is why the names do NOT match 1:1.
+    Note that the RADAR module has been removed.  It is unlikely to be added, there is nowhere to mount one.
     """
 
     def __init__(self):
@@ -20,8 +21,6 @@ class SensorStateManager:
         # ------------------------------
         self.status = {
             "ultrasonic": None,
-            "radar_presence": None,
-            "radar_distance": None,
             "grayscale": [],
             "cliff": [],
         }
@@ -31,7 +30,6 @@ class SensorStateManager:
         # (singular: one driver, many readings)
         # ------------------------------
         self.ultrasonic_driver = None
-        self.radar_driver = None
         self.imu_driver: Any = None
         self.grayscale_driver = None
         self.cliff_driver = None
@@ -53,17 +51,18 @@ class SensorStateManager:
                 return None
         return None
 
-    # NOT CURRENTLY IMPLEMENTED,
-    def _update_radar(self):
-        if self.radar_driver:
-            try:
-                return {
-                    "presence": self.radar_driver.presence(),
-                    "distance": self.radar_driver.distance(),
-                }
-            except Exception:
-                return {"presence": None, "distance": None}
-        return {"presence": None, "distance": None}
+    def _interpret_ultrasonic(self, units):
+        if units is None or units < 0:
+            return "NO_ECHO"
+        if units < 5:
+            return "BAD_TOUCH"
+        if units < 7.5:
+            return "TOO_CLOSE"
+        if units < 15:
+            return "DANGER"
+        if units < 25:
+            return "CAUTION"
+        return "CLEAR"
 
     def _update_imu(self):
         if self.imu_driver:
@@ -99,12 +98,8 @@ class SensorStateManager:
     def update(self):
         """Poll all sensors and update self.status."""
         # Ultrasonic
-        self.status["ultrasonic"] = self._update_ultrasonic()
-
-        # Radar
-        radar = self._update_radar()
-        self.status["radar_presence"] = radar["presence"]
-        self.status["radar_distance"] = radar["distance"]
+        raw = self._update_ultrasonic()
+        self.status["ultrasonic"] = self._interpret_ultrasonic(raw)
 
         # IMU
         self.status["imu"] = self._update_imu()

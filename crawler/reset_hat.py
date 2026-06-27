@@ -1,4 +1,4 @@
-from crawler_utils.utils import reset_mcu
+from crawler.utils import reset_mcu
 
 
 if __name__ == "__main__":

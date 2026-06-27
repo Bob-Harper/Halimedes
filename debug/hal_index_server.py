@@ -75,7 +75,7 @@ WHITELIST_DIRS = {
     "dsl",
     "eyes",
     "helpers",
-    "kernel",
+    "reflex",
     "vision_components",
     "vision_processing",
 }
@@ -230,7 +230,7 @@ class Handler(BaseHTTPRequestHandler):
                 if k == key:
                     return v
         return None
-    
+
 def main():
     t = threading.Thread(target=indexer, daemon=True)
     t.start()

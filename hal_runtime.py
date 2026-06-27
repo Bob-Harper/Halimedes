@@ -4,19 +4,19 @@ import os
 import warnings
 import asyncio
 from aiohttp import web
-from crawler_utils.utils import reset_mcu
+from crawler.utils import reset_mcu
 from runtime.loaders import HotSwapLoader
 print("[Startup] Importing Hardware Modules.")
-from body.picrawler import Picrawler
-from body.picrawler_extended import PicrawlerExtended
+from crawler.picrawler import Picrawler
+from crawler.picrawler_extended import PicrawlerExtended
+from crawler.searchlight import Searchlight
 from body.unified_motors import UnifiedMotors
 from body.hardware_state_manager import HardwareStateManager
 from body.sensor_state_manager import SensorStateManager
-from body.searchlight import Searchlight
 from body.indicators_manager import IndicatorsManager
-from kernel.reflexes import load_all_reflexes
-from kernel.reflexive_layer import ReflexEngine
-from kernel.imu_bno08x import IMU
+from reflex.reflexes import load_all_reflexes
+from reflex.reflexive_layer import ReflexEngine
+from reflex.imu_bno08x import IMU
 print("[Startup] Importing Helper Modules.")
 from helpers.api_server import create_hal_api
 from helpers.global_config import LED_INDICATOR, UNIFIED_API_GATEWAY

@@ -3,7 +3,7 @@ import time
 import os
 import re
 import subprocess
-from crawler_utils.pin import Pin
+from crawler.pin import Pin
 import faulthandler
 faulthandler.enable()
 
@@ -113,7 +113,7 @@ def get_battery_voltage():
     :return: battery voltage(V)
     :rtype: float
     """
-    from crawler_utils.adc import ADC
+    from crawler.adc import ADC
     adc = ADC("A4")
     raw_voltage = adc.read_voltage()
     voltage = raw_voltage * 3
