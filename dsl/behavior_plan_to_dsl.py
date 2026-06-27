@@ -1,7 +1,7 @@
 # dsl/behavior_plan_to_dsl.py
 
 from typing import List
-from cortex.decision_manager import BehaviorPlan
+from cortex.behavior_plan import BehaviorPlan
 
 
 def behavior_plan_to_dsl(plan: BehaviorPlan) -> str:
@@ -14,8 +14,11 @@ def behavior_plan_to_dsl(plan: BehaviorPlan) -> str:
     # ----------------------------------------------------------------------
     # SPEECH
     # ----------------------------------------------------------------------
-    for utterance in plan.speech:
+    for utterance in plan.speech["output_speech"]:
         text = utterance.get("text", "")
+        if text:
+            lines.append(f'speak "{_escape(text)}"')
+
         # emotion is ignored here because Response_Manager handles it internally
         if text:
             lines.append(f'speak "{_escape(text)}"')

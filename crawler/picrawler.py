@@ -21,9 +21,7 @@ class Picrawler(Robot):
         super().__init__(pin_list, db=self.OFFSET_FILE, name='picrawler', init_angles=init_angles)
 
         self.move_list = self.MoveList()
-        self.move_list_add = {
-            'my action': None
-        }
+        self.move_list_add = {}
         self.step_list = {
             "stand": self.move_list["stand"][0],
             "sit": self.move_list["sit"][0],
@@ -125,22 +123,54 @@ class Picrawler(Robot):
         return limit_flag,[alpha,beta,gamma]
 
     def do_action(self, motion_name, step, speed, **kwargs):
+        """
+        Execute a named motion for a given number of steps at a given speed.
+        Handles both property-based motions (forward, sit, etc.)
+        and angle-based motions (turn left angle, turn right angle).
+        """
+
+        # Normalize speed to 0–120 (new timing model)
+        speed = max(0, min(120, speed))
+
+        # Motions that toggle stand_position each cycle
+        toggle_motions = {
+            "forward", "backward",
+            "turn left", "turn right",
+            "turn left angle", "turn right angle"
+        }
+
+        # Angle-based motions
+        angle_motions = {
+            "turn left angle",
+            "turn right angle"
+        }
+
         try:
-            for _ in range(step):  # times
+            for _ in range(step):
+
+                # Sync MoveList stance state
                 self.move_list.stand_position = self.stand_position
-                if motion_name in ["forward", "backward", "turn left", "turn right", "turn left angle", "turn right angle"]:
-                    self.stand_position = (self.stand_position + 1) & 1  # Fixed toggle
-                if motion_name in ['turn left angle', 'turn right angle']:
-                    angle = kwargs.get('angle', 0)  # Use provided angle; default to 0 if not set
-                    # Call the method directly (note: removed @property so methods accept an angle)
-                    action = self.move_list.__getattribute__(motion_name.replace(" ", "_"))(angle)
-                    for _step in action:
-                        self.do_step(_step, speed=speed)
+
+                # Toggle stance for alternating gaits
+                if motion_name in toggle_motions:
+                    self.stand_position = (self.stand_position + 1) & 1
+
+                # Angle-based motions (methods, not properties)
+                if motion_name in angle_motions:
+                    angle = kwargs.get("angle", 0)
+                    method = getattr(self.move_list, motion_name.replace(" ", "_"))
+                    action = method(angle)
+
+                # Normal motions (properties)
                 else:
                     action = self.move_list[motion_name]
-                    for _step in action:  # spyder motion
-                        self.do_step(_step, speed=speed)
+
+                # Execute each step frame
+                for _step in action:
+                    self.do_step(_step, speed=speed)
+
         except AttributeError:
+            # Fallback to custom user-defined motions
             try:
                 for _ in range(step):
                     action_add = self.move_list_add[motion_name]
@@ -177,25 +207,43 @@ class Picrawler(Robot):
         return list.copy(translate_list)
 
     def do_step(self, _step, speed=50, israise=False):
+        """
+        Execute a single step frame.
 
-        step_temp = []
-        if isinstance(_step,str):
-            if _step in self.step_list.keys():
-                step_temp  = list(self.step_list[_step])
+        _step may be:
+        • a string referring to a named step in step_list
+        • a list of 4 coordinate triplets [[x,y,z], ...]
+        """
+
+        # Resolve named step → coordinate list
+        if isinstance(_step, str):
+            if _step in self.step_list:
+                step_temp = list(self.step_list[_step])
             else:
                 print("The name of gait is not in the default gait dictionary")
-        elif isinstance(_step,list):
-            step_temp = _step
-        else:
-            print("The \"_step\" parameter is wrong.")
-            return
+                return None
 
+        elif isinstance(_step, list):
+            step_temp = _step
+
+        else:
+            print('The "_step" parameter is wrong.')
+            return None
+
+        # Prepare for IK conversion
+        self.coord_temp = []
         angles_temp = []
-        self.coord_temp = [] # do not use list.clear()
-        for coord in step_temp: # each servo motion
+
+        # Convert each leg coordinate → polar angles
+        for coord in step_temp:
             alpha, beta, gamma = self.coord2polar(coord)
+
+            # Picrawler expects [beta, alpha, gamma] ordering
             angles_temp.append([beta, alpha, gamma])
-        return list.copy(self.set_angle(angles_temp, speed, israise))
+
+        # Apply angle limits, update current_coord, and move servos
+        return list(self.set_angle(angles_temp, speed, israise))
+
 
     def current_step_all_leg_angle(self):
         return list.copy(self.servo_positions)
@@ -241,7 +289,11 @@ class Picrawler(Robot):
             coord[1] = max(-20, min(20, coord[1]))
             coord[2] = max(-50, min(-10, coord[2]))
         self.do_step(self.current_coord, speed=100)
-        current_position = list.copy(self.do_step(self.current_coord, speed=100))
+
+        current_position = self.do_step(self.current_coord, speed=100)
+        if current_position is None:
+            return  # or handle error
+        current_position = current_position.copy()
         if enter == 1:
             tmp = [current_position[i] - cali_position[i] + offset[i] for i in range(len(current_position))]
             offset[leg*3:(leg + 1)*3] = tmp[leg*3:(leg + 1)*3]
@@ -310,6 +362,7 @@ class Picrawler(Robot):
             # print(x3,y3)
             return [x1,y1,x2,y2,x3,y3]
 
+        @staticmethod
         def check_stand(func):
             def wrapper(self):
                 _action = []
@@ -319,6 +372,7 @@ class Picrawler(Robot):
                 return _action
             return wrapper
 
+        @staticmethod
         def normal_action(mode):
             def wrapper1(func):
                 def wrapper2(self):

@@ -1,19 +1,21 @@
 from crawler.pwm import PWM
 from crawler.pin import Pin
 import time
-# Import RGB_LED and PWM class
+
 
 class Searchlight:
-    """Minimal driver using MotorPort2 (PWM12, GPIO24) only."""
-    # def __init__(self, pwm_pin="P12", dir_pin="D5", freq=100):  # Motorport 2
-    def __init__(self, pwm_pin="P13", dir_pin="D4", freq=100):  # Motorport 1
+    """Minimal driver using MotorPort (PWM + DIR pin)."""
+
+    def __init__(self, pwm_pin="P13", dir_pin="D4", freq=100):
+        # Hardware objects
         self.pwm = PWM(pwm_pin)
         self.dir = Pin(dir_pin)
 
+        # Internal state
         self.freq = freq
         self._brightness = 0
 
-        # INIT DIR PIN
+        # Direction pin is always ON for a light
         self.dir.value(True)
 
         # PWM setup
@@ -22,35 +24,43 @@ class Searchlight:
         self.pwm.freq(self.freq)
         self.pwm.pulse_width_percent(0)
 
+    # ---------------------------------------------------------
+    # Brightness property
+    # ---------------------------------------------------------
 
-    def brightness(self, value: int = 0):
-        """Set brightness 0-100%. If None, returns current."""
-        if value is None:
-            return self._brightness
+    @property
+    def brightness(self) -> int:
+        """Current brightness (0–100%)."""
+        return self._brightness
 
-        # Clamp and store value
-        value = max(0, min(100, value))
+    @brightness.setter
+    def brightness(self, value: int) -> None:
+        """Set brightness (0–100%)."""
+        value = max(0, min(100, int(value)))
         self._brightness = value
 
-        # MotorPort2 mode 1 only
+        # Apply PWM duty cycle
         self.pwm.pulse_width_percent(value)
-        self.dir.value(True)  # Always ON direction for light
 
+        # Direction stays ON for light
+        self.dir.value(True)
+
+
+# ---------------------------------------------------------
+# Standalone test
+# ---------------------------------------------------------
 
 if __name__ == "__main__":
-    import time
-
-    print("[Test] Initializing LightDriver on Motor Port 1 (P13/D4)...")
+    print("[Test] Initializing Searchlight on Motor Port 1 (P13/D4)...")
     led = Searchlight(pwm_pin="P13", dir_pin="D4")
 
     print("[Test] Setting brightness to 10%")
-    led.brightness(10)
-
+    led.brightness = 10
     time.sleep(2)
 
     print("[Test] Setting brightness to 100%")
-    led.brightness(100)
-
+    led.brightness = 100
     time.sleep(2)
+
     print("[Test] Turning off")
-    led.brightness(0)
+    led.brightness = 0

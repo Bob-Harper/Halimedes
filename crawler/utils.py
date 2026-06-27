@@ -69,24 +69,36 @@ def mapping(x, in_min, in_max, out_min, out_max):
 
 def get_ip(ifaces=['wlan0', 'eth0']):
     """
-    Get IP address
-
-    :param ifaces: interfaces to check
-    :type ifaces: list
-    :return: IP address or False if not found
-    :rtype: str/False
+    Get IPv4 address for the first interface that has one.
+    Returns the IP as a string, or False if none found.
     """
+    import socket
+    import fcntl
+    import struct
+
     if isinstance(ifaces, str):
         ifaces = [ifaces]
-    for iface in list(ifaces):
-        search_str = 'ip addr show {}'.format(iface)
-        result = os.popen(search_str).read()
-        com = re.compile(r'(?<=inet )(.*)(?=\/)', re.M)
-        ipv4 = re.search(com, result)
-        if ipv4:
-            ipv4 = ipv4.groups()[0]
-            return ipv4
+
+    def _get_iface_ip(iface):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            return socket.inet_ntoa(
+                fcntl.ioctl(
+                    sock.fileno(),
+                    0x8915,  # SIOCGIFADDR
+                    struct.pack('256s', iface.encode('utf-8'))
+                )[20:24]
+            )
+        except OSError:
+            return None
+
+    for iface in ifaces:
+        ip = _get_iface_ip(iface)
+        if ip:
+            return ip
+
     return False
+
 
 
 def reset_mcu():

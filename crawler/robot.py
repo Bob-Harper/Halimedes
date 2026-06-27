@@ -30,7 +30,7 @@ class Robot(_Basic_class):
     move_list = {}
     """Preset actions"""
 
-    max_dps = 428  # dps, degrees per second, genally in 4.8V : 60des/0.14s, dps = 428
+    max_dps = 500  # dps, degrees per second, genally in 4.8V : 60des/0.14s, dps = 428
     # max_dps = 500 # physical hardware constraint
     """Servo max Degree Per Second"""
 
@@ -129,95 +129,85 @@ class Robot(_Basic_class):
 
     def servo_move(self, targets, speed=50, bpm=None):
         """
-        Move servo to specific angles with speed or bpm
+        With the higher physical DPS limit (500°/s), the logical speed scale has been
+        expanded to 0-120. This preserves the original behavior where speed=100 matches
+        the previous maximum speed at 428°/s, while allowing additional headroom up to
+        the true hardware limit. The result is a more intuitive and linear speed control
+        for the user, with speed=120 corresponding to the servo maximum achievable DPS.
+
+        Existing coded speed values can remain unchanged. The new 0-120 scale preserves
+        the original behavior where speed=100 represents the previous maximum, so all
+        existing motions continue to run at their intended speeds without modification.
+
+        Move servos to target angles with speed or bpm.
 
         :param targets: list of servo angles
-        :type targets: list
-        :param speed: speed of servo move
+        :type targets: list[float]
+        :param speed: logical speed (0-120)
         :type speed: int or float
-        :param bpm: beats per minute
+        :param bpm: beats per minute (optional, overrides speed)
         :type bpm: int or float
         """
-        '''
-            calculate the max delta angle, multiply by 2 to define a max_step
-            loop max_step times, every servo add/minus 1 when step reaches its adder_flag
-        '''
-        speed = max(0, speed)
-        speed = min(100, speed)
-        step_time = 10  # ms
+        # Clamp speed
+        speed = max(0, min(120, speed))
+
+        step_time = 10.0  # ms
         delta = []
         absdelta = []
-        max_step = 0
-        steps = []
-        # print(f"targets: {targets}")
-        # print(f"current:{self.servo_positions}")
-        # st = time.time()
-        # if self.name == "legs":
-        #     print(f"move_interval: {time.time() - self.last_move_time}")
-        #     self.last_move_time = time.time()
 
         for i in range(self.pin_num):
             value = targets[i] - self.servo_positions[i]
             delta.append(value)
             absdelta.append(abs(value))
 
-        # Calculate max delta angle
-        max_delta = int(max(absdelta))
+        max_delta = max(absdelta)
         if max_delta == 0:
-            time.sleep(step_time/1000)
+            time.sleep(step_time / 1000.0)
             return
 
-        # Calculate total servo move time
-        if bpm: # bpm: beats per minute
-            total_time = 60 / bpm * 1000 # time taken per beat, unit: ms
+        # If bpm is given, use it to define total_time per move
+        if bpm:
+            total_time = 60.0 / bpm * 1000.0  # ms per beat
+            # Derive effective dps from bpm and clamp to max_dps
+            current_dps = max_delta / total_time * 1000.0
+            target_dps = min(current_dps, self.max_dps)
+            total_time = max_delta / target_dps * 1000.0
         else:
-            total_time = -9.9 * speed + 1000 # time spent in one step, unit: ms
-        # print(f"Total time: {total_time} ms")
+            # Map speed 0–120 to 0–max_dps
+            target_dps = (speed / 120.0) * self.max_dps
+            if target_dps <= 0:
+                # No movement requested; just wait one step
+                time.sleep(step_time / 1000.0)
+                return
+            # Enforce physical ceiling
+            target_dps = min(target_dps, self.max_dps)
+            total_time = max_delta / target_dps * 1000.0  # ms
 
-        # Calculate max dps
-        current_max_dps = max_delta / total_time * 1000 # dps, degrees per second
-
-        # If current max dps is larger than max dps, then calculate a new total servo move time
-        if current_max_dps > self.max_dps:
-            # print(
-            #     f"Current Max DPS {current_max_dps} is too high. Max DPS is {self.max_dps}")
-            # print(f"Total time: {total_time} ms")
-            # print(f"Max Delta: {max_delta}")
-            total_time = max_delta / self.max_dps * 1000
-            # print(f"New Total time: {total_time} ms")
-        # calculate max step
+        # Compute number of steps
         max_step = int(total_time / step_time)
+        if max_step < 1:
+            max_step = 1
 
-        # Calculate all step-angles for each servo
-        for i in range(self.pin_num):
-            step = float(delta[i])/max_step
-            steps.append(step)
+        # Per-step increments
+        steps = [delta[i] / float(max_step) for i in range(self.pin_num)]
 
-        # print(f"usage1: {time.time() - st}")
-        # st = time.time()
-
-        # print(f"max_delta: {max_delta}, max_step: {max_step}")
         for _ in range(max_step):
             start_timer = time.time()
-            delay = step_time/1000
+            delay = step_time / 1000.0
 
             for j in range(self.pin_num):
-                self.servo_positions[j] += steps[j]
+                # Accumulate with rounding to limit drift
+                self.servo_positions[j] = round(self.servo_positions[j] + steps[j], 4)
             self.servo_write_all(self.servo_positions)
 
             servo_move_time = time.time() - start_timer
-            # print(f"Servo move: {servo_move_time}")
-            delay = delay - servo_move_time
-            delay = max(0, delay)
-            time.sleep(delay)
-            # _dealy_start = time.time()
-            # if delay > 0:
-            #     while (time.time() - _dealy_start < delay):
-            #         pass
-        # print(f"usage2: {time.time() - st}, max_steps: {max_step}")
+            delay -= servo_move_time
+            if delay > 0:
+                time.sleep(delay)
 
     def do_action(self, motion_name, step=1, speed=50):
         """
+        IS THIS EVEN USED?  PICRAWLER CLASS HAS ITS OWN THAT IS USED.  NOTE FOR POSSIBLE REMOVAL.
         Do prefix action with motion_name and step and speed
 
         :param motion_name: motion

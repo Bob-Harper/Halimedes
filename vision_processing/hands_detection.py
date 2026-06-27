@@ -1,43 +1,45 @@
 #!/usr/bin/env python3
+from typing import Any, cast, List, Tuple
 import cv2
-import mediapipe as mp
-from ast import literal_eval
-
-mp_drawing = mp.solutions.drawing_utils
-# mp_drawing_styles = mp.solutions.drawing_styles
-mp_hands = mp.solutions.hands
+import mediapipe.python.solutions.hands as mp_hands
+import mediapipe.python.solutions.drawing_utils as mp_drawing
 
 class DetectHands():
     def __init__(self):
-        self.hands = mp_hands.Hands(max_num_hands = 1,
-                                    min_detection_confidence=0.5,
-                                    min_tracking_confidence=0.5)
-    
-    def work(self,image):
-        joints = []
-        if len(image) != 0:
-            # To improve performance, optionally mark the image as not writeable to
-            # pass by reference.
-            image.flags.writeable = False
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            results = self.hands.process(image)
+        self.hands = mp_hands.Hands(
+            max_num_hands=1,
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5
+        )
 
-            # Draw the hand annotations on the image.
+    def work(self, image):
+        joints = []
+        if image is not None and image.size != 0:
+            image.flags.writeable = False
+            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+            # 1. Cast results to Any so Pylance stops complaining about NamedTuple
+            results = cast(Any, self.hands.process(image_rgb))
+
             image.flags.writeable = True
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
             if results.multi_hand_landmarks:
+                # 2. Cast HAND_CONNECTIONS to a list to satisfy the type checker
+                connections = cast(List[Tuple[int, int]], mp_hands.HAND_CONNECTIONS)
+
                 for hand_landmarks in results.multi_hand_landmarks:
                     mp_drawing.draw_landmarks(
                         image,
                         hand_landmarks,
-                        mp_hands.HAND_CONNECTIONS,)
-                        # mp_drawing_styles.get_default_hand_landmarks_style(),
-                        # mp_drawing_styles.get_default_hand_connections_style())
-            joints = str(results.multi_hand_landmarks).replace('\n','').replace(' ','').replace('landmark',',').replace(',','',1)
-            joints = joints.replace('{x:','[').replace('y:',',').replace('z:',',').replace('}',']')
-            try:
-                joints = literal_eval(joints)
-            except Exception as e:
-                raise(e)
-            return image,joints
+                        connections
+                    )
 
+                    # 3. Safely extract numerical values into a list of [x, y, z]
+                    for landmark in hand_landmarks.landmark:
+                        joints.append([
+                            landmark.x,
+                            landmark.y,
+                            landmark.z
+                        ])
+
+        return image, joints
