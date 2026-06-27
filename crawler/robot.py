@@ -87,7 +87,8 @@ class Robot(_Basic_class):
             self.servo_list.append(Servo(pin))
             self.servo_positions[i] = init_angles[i]
         for i in init_order:
-            self.servo_list[i].angle(self.offset[i]+self.servo_positions[i])
+            self.servo_list[i].angle = self.offset[i] + self.servo_positions[i]
+
             time.sleep(0.15)
 
         self.last_move_time = time.time()
@@ -112,7 +113,7 @@ class Robot(_Basic_class):
         :type angle_list: list
         """
         for i in range(self.pin_num):
-            self.servo_list[i].angle(angle_list[i])
+            self.servo_list[i].angle = angle_list[i]
 
     def servo_write_all(self, angles):
         """
