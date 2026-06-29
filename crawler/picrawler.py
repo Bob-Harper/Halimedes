@@ -129,8 +129,8 @@ class Picrawler(Robot):
         and angle-based motions (turn left angle, turn right angle).
         """
 
-        # Normalize speed to 0–120 (new timing model)
-        speed = max(0, min(120, speed))
+        # Normalize speed to 0–200 (new timing model)
+        speed = max(0, min(200, speed))
 
         # Motions that toggle stand_position each cycle
         toggle_motions = {
