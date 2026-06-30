@@ -2,6 +2,8 @@ from struct import pack_into
 import reflex.bno08x as bno08x
 from adafruit_bus_device import i2c_device
 from reflex.bno08x  import BNO08X, DATA_BUFFER_SIZE, Packet, PacketError
+import board
+import busio
 
 _BNO08X_DEFAULT_ADDRESS = (0x4B)
 
@@ -41,7 +43,8 @@ class BNO08X_I2C(BNO08X):
     """
 
     def __init__(self, i2c_bus, reset=None, address=_BNO08X_DEFAULT_ADDRESS, debug=False):
-        self.bus_device_obj = i2c_device.I2CDevice(i2c_bus, address)
+        i2c = busio.I2C(board.SCL, board.SDA)
+        self.bus_device_obj = i2c_device.I2CDevice(i2c, address)
         super().__init__(reset, debug)
 
     def _send_packet(self, channel, data):

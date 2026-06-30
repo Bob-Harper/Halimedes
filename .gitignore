@@ -21,3 +21,4 @@ vision_components/
 vision_processing/face_recognition_models/
 **/hal_code_dump.txt
 libcamera-apps/
+data/imu_stream.txt
