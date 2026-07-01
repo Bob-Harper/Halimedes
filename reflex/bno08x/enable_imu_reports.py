@@ -10,7 +10,13 @@ features = {
     0x1A: "FLIP_DETECTOR",
     0x1B: "PICKUP_DETECTOR",
     0x20: "TILT_DETECTOR",
-}
+    0x01: "ACCELEROMETER",
+    0x02: "GYROSCOPE",
+    0x03: "MAGNETIC_FIELD",
+    0x04: "LINEAR_ACCELERATION",
+    0x05: "ROTATION_VECTOR",
+    0x06: "GRAVITY",
+    }
 
 def configure_imu(interval_us=10000):
     imu = IMUDriver(i2c_bus=1, address=0x4B)
