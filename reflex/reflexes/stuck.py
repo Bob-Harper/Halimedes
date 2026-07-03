@@ -1,26 +1,23 @@
 from reflex.reflexive_layer import Reflex
+from cortex.behavior_plan import BehaviorPlan
+
 
 class StuckReflex(Reflex):
     priority = 80
 
     def should_trigger(self, perception, world_state, internal_state, hardware_state):
-        sensor_status = perception["sensor_status"]
-        imu = sensor_status["imu"]
-        accel = imu["accel"]  # tuple (x, y, z)
+        commanded = hardware_state.status.get("motion", {}).get("commanded_delta")
+        actual = perception.get("imu", {}).get("linear_accel_mag")
 
-        if imu is None:
+        if commanded is None or actual is None:
             return False
 
-        if accel is None:
-            return False
-
-        x, y, z = accel
-
-        # crude: if commanded to move but accel is near zero
-        if internal_state.commanded_motion and abs(x) < 0.01 and abs(y) < 0.01:
-            return True
-
-        return False
+        return actual < commanded * 0.2
 
     def execute(self):
-        return {"intent": "request_help_stuck"}
+        plan = BehaviorPlan()
+
+        plan.actions.append({"category": "full-body", "type": "stop"})
+        plan.nonverbal["sounds"].append({"category": "help"})
+
+        return plan

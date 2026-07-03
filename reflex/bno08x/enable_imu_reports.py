@@ -1,5 +1,6 @@
 from reflex.bno08x.i2c import IMUDriver
 
+
 features = {
     0x03: "MAGNETIC_FIELD",
     0x08: "GAME_ROTATION_VECTOR",
@@ -18,8 +19,7 @@ features = {
     0x06: "GRAVITY",
     }
 
-def configure_imu(interval_us=10000):
-    imu = IMUDriver(i2c_bus=1, address=0x4B)
+def configure_imu(imu, interval_us=10000):
     for fid, name in features.items():
         print("Enabling", name)
         imu.send_feature(fid, interval_us)
@@ -27,4 +27,5 @@ def configure_imu(interval_us=10000):
     return imu
 
 if __name__ == "__main__":
-    configure_imu()
+    imu = IMUDriver(i2c_bus=1, address=0x4B)
+    configure_imu(imu)

@@ -30,7 +30,7 @@ class Robot(_Basic_class):
     move_list = {}
     """Preset actions"""
 
-    max_dps = 700
+    max_dps = 720
     """
     Servo max Degree Per Second
     dps, degrees per second, genally in 4.8V : 60des/0.14s, dps = 428 is original sunfounder value based on original calculated math.

@@ -75,8 +75,9 @@ class ActiveLoop:
         perception.sensor_status["imu"] = imu.read()
 
     def _update_perception_no_audio(self):
-        imu = self.globals["imu"]
-        self.globals["perception"].sensor_status["imu"] = imu.read()
+        sensor_state = self.globals["sensor_state"]
+        snapshot = sensor_state.snapshot()
+        self.globals["perception"].sensor_status["imu"] = snapshot["imu"]
 
     async def _send_to_server(self, event, inference_type):
         g = self.globals
@@ -110,15 +111,10 @@ class ActiveLoop:
         return await self._handle_reflex(result)
 
 
-    async def _handle_reflex(self, reflex_result):
-        action = reflex_result.get("action")
-        if not action:
-            return
-
-        motor = self.globals["motor_controller"]
-        await motor.execute(action)
+    async def _handle_reflex(self, reflex_plan):
+        executor = self.globals["action_executor"]
+        await executor.execute(reflex_plan)
         return True
-
 
     async def _run_autonomous_behaviors(self):
         pass # stub for now to allow for autonomous behaviors in the future without blocking reflexes or speech processing
@@ -134,12 +130,17 @@ class ActiveLoop:
 
         self.hotswap.process(g)
 
+        # --- REFLEX PASS ---
+        reflex_fired = await self._run_reflexes()
+        if reflex_fired:
+            await self._handle_reflex(reflex_fired)
+            return
+
         pcm_audio = await audio_input.capture_audio()
         if pcm_audio is None or pcm_audio.size == 0:
-
             self._update_perception_no_audio()
             await self._run_reflexes()
-            await self._run_autonomous_behaviors()  # stub for now
+            await self._run_autonomous_behaviors()
             return
 
         # --- Valid speech, set as Busy ---
@@ -168,12 +169,6 @@ class ActiveLoop:
             transcription,
             truncated
         )
-
-        # --- REFLEX PASS ---
-        reflex_fired = await self._run_reflexes()
-        if reflex_fired:
-            # reflex took over → skip cognition
-            return
 
         # --- Build Event ---
         event = event_builder.build_event(

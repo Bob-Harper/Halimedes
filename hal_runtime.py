@@ -10,13 +10,10 @@ print("[Startup] Importing Hardware Modules.")
 from crawler.picrawler import Picrawler
 from crawler.picrawler_extended import PicrawlerExtended
 from crawler.searchlight import Searchlight
-from body.unified_motors import UnifiedMotors
+from body.posture_manager import PostureManager
 from body.hardware_state_manager import HardwareStateManager
 from body.sensor_state_manager import SensorStateManager
 from body.indicators_manager import IndicatorsManager
-from reflex.reflexes import load_all_reflexes
-from reflex.reflexive_layer import ReflexEngine
-from reflex.imu_bno08x import IMU
 print("[Startup] Importing Helper Modules.")
 from helpers.api_server import create_hal_api
 from helpers.global_config import LED_INDICATOR, UNIFIED_API_GATEWAY
@@ -34,6 +31,14 @@ from audio_output.emotional_sounds_manager import EmotionalSoundsManager
 from audio_output.response_manager import Response_Manager
 print("[Startup] Importing Vision Modules.")
 from vision_processing.vision_manager import VisionManager
+print("[Startup] Importing Reflex Modules.")
+from crawler.ultrasonic import UltrasonicDriver
+from reflex.bno08x.i2c import IMUDriver
+imu = IMUDriver(i2c_bus=1, address=0x4B)
+from reflex.bno08x.enable_imu_reports import configure_imu
+configure_imu(imu)  # Initialize IMU reports
+from reflex.reflexes import load_all_reflexes
+from reflex.reflexive_layer import ReflexEngine
 
 from activeloop import ActiveLoop
 
@@ -56,16 +61,16 @@ class Hal:
         # --- body / hardware ---
         self.picrawler_instance = Picrawler()
         self.picrawler_extended = PicrawlerExtended(self.picrawler_instance)
-        self.motors = UnifiedMotors(self.picrawler_instance, self.picrawler_extended)
+        self.posture = PostureManager(self.picrawler_instance, self.picrawler_extended)
         self.actions_manager = self.picrawler_instance
         self.hardware_state = HardwareStateManager()
-        self.sensor_state = SensorStateManager()
-        self.imu = IMU()
-        self.sensor_state.imu_driver = self.imu
+        self.sensor_state = SensorStateManager(imu_driver=self.imu)
+        self.ultrasonic_driver = UltrasonicDriver(self.picrawler_instance)
         self.searchlight = Searchlight()
         self.indicators = IndicatorsManager(LED_INDICATOR)
         self.reflexes = load_all_reflexes()
         self.reflex_engine = ReflexEngine(self.reflexes)
+        self.imu = imu  # Store the IMU instance in the Hal class
         # --- cortex / memory ---
         print("[Startup] Initializing Cognitive Memory.")
         self.semantic = self.hotswap.load_module("cortex.semantic_memory", "SemanticMemory")(self.server_host)
@@ -116,7 +121,7 @@ class Hal:
         )
         self.action_executor = self.hotswap.load_module("cortex.action_executor", "ActionExecutor")(
             internal_state=self.internal_state,
-            motors=self.motors,
+            posture=self.posture,
             searchlight=self.searchlight,
             audio=self.response_manager,
             gaze_channel=self.gaze_channel,
@@ -147,7 +152,7 @@ class Hal:
         self.loop = ActiveLoop(self.hotswap, self._build_globals_dict())
 
     def _build_globals_dict(self):
-        # This mirrors your old globals() usage, but under Hal’s control.
+        # Now everyone can access the HAL's components via the ActiveLoop's globals dictionary.
         print("[Startup] Building globals dictionary.")
 
         return {
@@ -181,7 +186,10 @@ class Hal:
             "event_builder": self.event_builder,
             "reflex_engine": self.reflex_engine,
             "reflexes": self.reflexes,
+            "sensor_state": self.sensor_state,
+            # direct drivers (legacy, optional) until we have sensor state manager fully integrated
             "imu": self.imu,
+            "ultrasonic": self.ultrasonic_driver,
         }
 
     async def start_api(self):

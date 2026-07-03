@@ -8,10 +8,10 @@ class ActionExecutor:
     This is the ONLY layer that touches hardware.
     """
 
-    def __init__(self, internal_state, motors=None, searchlight=None, audio=None, gaze_channel=None, expression_channel=None):
+    def __init__(self, internal_state, posture=None, searchlight=None, audio=None, gaze_channel=None, expression_channel=None):
 
         self.internal_state = internal_state
-        self.motors = motors
+        self.posture = posture
         self.searchlight = searchlight
         self.audio = audio
         self.gaze = gaze_channel
@@ -96,7 +96,6 @@ class ActionExecutor:
             try:
                 await asyncio.to_thread(func, *args, **kwargs)
             finally:
-                # >>> ADD THIS LINE <<<
                 self.internal_state.commanded_motion = False
 
     def _execute_actions(self, actions_list):
@@ -110,19 +109,44 @@ class ActionExecutor:
                     self.searchlight.speed(level)
 
             # Subtle idle movement
-            elif category == "subtle" and self.motors:
-                if hasattr(self.motors, "do_idle_fidget"):
-                    asyncio.create_task(self._run_movement(self.motors.do_idle_fidget))
+            elif category == "subtle" and self.posture:
+                if hasattr(self.posture, "do_idle_fidget"):
+                    asyncio.create_task(self._run_movement(self.posture.do_idle_fidget))
 
             # Expressive gesture
-            elif category == "expressive" and self.motors:
-                if hasattr(self.motors, "do_expressive_motion"):
-                    asyncio.create_task(self._run_movement(self.motors.do_expressive_motion))
+            elif category == "expressive" and self.posture:
+                if hasattr(self.posture, "do_expressive_motion"):
+                    asyncio.create_task(self._run_movement(self.posture.do_expressive_motion))
 
             # Full-body movement
-            elif category == "full-body" and self.motors:
-                if hasattr(self.motors, "do_full_body_motion"):
-                    asyncio.create_task(self._run_movement(self.motors.do_full_body_motion))
+            elif category == "full-body" and self.posture:
+                if hasattr(self.posture, "do_full_body_motion"):
+                    asyncio.create_task(self._run_movement(self.posture.do_full_body_motion))
+
+            elif category == "locomotion":
+                lm = self.internal_state.locomotion_manager
+                motion = act.get("type")
+
+                if motion == "step_back":
+                    asyncio.create_task(lm.step_back())
+
+                elif motion == "back_up":
+                    asyncio.create_task(lm.back_up())
+
+                elif motion == "turn_away_left":
+                    asyncio.create_task(lm.turn_away_left())
+
+                elif motion == "turn_away_right":
+                    asyncio.create_task(lm.turn_away_right())
+
+                elif motion == "recover_posture":
+                    asyncio.create_task(lm.recover_posture())
+
+                elif motion == "brace":
+                    asyncio.create_task(lm.brace())
+
+                elif motion == "stop":
+                    asyncio.create_task(lm.stop())
 
     # ------------------------------------------------------------------
     # SOUNDS (non-speech)

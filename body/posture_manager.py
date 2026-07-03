@@ -1,4 +1,4 @@
-class UnifiedMotors:
+class PostureManager:
     def __init__(self, base, extended):
         self.base = base
         self.ext = extended

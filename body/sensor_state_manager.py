@@ -15,23 +15,18 @@ class SensorStateManager:
     Note that the RADAR module has been removed.  It is unlikely to be added, there is nowhere to mount one.
     """
 
-    def __init__(self):
-        # ------------------------------
-        # Flattened sensor readings
-        # ------------------------------
-        self.status = {
-            "ultrasonic": None,
-            "grayscale": [],
-            "cliff": [],
-        }
-
+    def __init__(self, imu_driver=None):
         # ------------------------------
         # Hardware driver objects
-        # (singular: one driver, many readings)
         # ------------------------------
+        self.imu = imu_driver
+        self.imu_data = None
+        self.status = {
+            "ultrasonic": None,
+            "cliff": [],
+            "imu": None,
+        }
         self.ultrasonic_driver = None
-        self.imu_driver: Any = None
-        self.grayscale_driver = None
         self.cliff_driver = None
 
     async def start(self):
@@ -64,23 +59,6 @@ class SensorStateManager:
             return "CAUTION"
         return "CLEAR"
 
-    def _update_imu(self):
-        if self.imu_driver:
-            try:
-                return self.imu_driver.read()
-
-            except Exception:
-                return None
-        return None
-
-    # NOT CURRENTLY IMPLEMENTED, but placeholder for future grayscale sensor array
-    def _update_grayscale(self):
-        if self.grayscale_driver:
-            try:
-                return self.grayscale_driver.read_values()
-            except Exception:
-                return []
-        return []
 
     # NOT CURRENTLY IMPLEMENTED, but placeholder for future cliff sensor array
     def _update_cliff(self):
@@ -96,19 +74,16 @@ class SensorStateManager:
     # ------------------------------
 
     def update(self):
-        """Poll all sensors and update self.status."""
         # Ultrasonic
         raw = self._update_ultrasonic()
         self.status["ultrasonic"] = self._interpret_ultrasonic(raw)
 
-        # IMU
-        self.status["imu"] = self._update_imu()
-
-        # Grayscale
-        self.status["grayscale"] = self._update_grayscale()
-
         # Cliff sensors
         self.status["cliff"] = self._update_cliff()
+
+        if self.imu:
+            self.imu_data = self.imu.get_latest()
+            self.status["imu"] = self.imu_data
 
     # ------------------------------
     # Snapshot

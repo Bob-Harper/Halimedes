@@ -4,11 +4,13 @@ from adafruit_bus_device import i2c_device
 from reflex.bno08x  import BNO08X, DATA_BUFFER_SIZE, Packet, PacketError
 import board
 import busio
+from reflex.bno08x.imu_interpreter import IMUInterpreter
 
 _BNO08X_DEFAULT_ADDRESS = (0x4B)
 
 class IMUDriver:
     def __init__(self, i2c_bus, address=0x4B):
+        self.interpreter = IMUInterpreter()
         # Use the patched transport layer
         self.dev = BNO08X_I2C(i2c_bus, address=address, debug=False)
 
@@ -34,6 +36,13 @@ class IMUDriver:
             return self.dev._read_packet()
         except Exception:
             return None
+
+    def read(self):
+        pkt = self.read_packet()
+        if not pkt:
+            return None
+        return self.interpreter.interpret(pkt)
+    
 
 class BNO08X_I2C(BNO08X):
     """Library for the BNO08x IMUs from Hillcrest Laboratories

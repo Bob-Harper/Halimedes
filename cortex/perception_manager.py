@@ -35,7 +35,7 @@ class PerceptionManager:
         # Self
         "last_action": None,
 
-        # ISensors
+        # Sensors
         "sensor_status": {},
 
         # --- NEW FIELDS replacing server intent ---

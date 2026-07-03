@@ -10,11 +10,19 @@ class UltrasonicReflex(Reflex):
         if us is None:
             return False
 
-        # Only trigger on meaningful states
-        # Note that the ultrasonic module is forward facing only.
         return us in ("DANGER", "TOO_CLOSE", "BAD_TOUCH")
 
-    def execute(self):
-        # Map states to intents
-        # Reflex layer doesn't need the raw state; HAL's behavior layer will interpret the intent.
-        return {"intent": "ultrasonic_alert"}
+    def execute(self, perception, world_state, internal_state, hardware_state):
+        us = perception["sensor_status"]["ultrasonic"]
+
+        if us == "DANGER":
+            return {"category": "locomotion", "type": "step_back"}
+
+        if us == "TOO_CLOSE":
+            return {"category": "locomotion", "type": "back_up"}
+
+        if us == "BAD_TOUCH":
+            return {"category": "locomotion", "type": "back_up"}
+
+        # fallback
+        return None
