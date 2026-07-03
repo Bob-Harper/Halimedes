@@ -19,11 +19,11 @@ class LLMMessageBuilder:
             "content": user_content
         }
 
-        perception_message = {
-            "role": "tool",
-            "name": "perception_snapshot",
-            "content": event["perception"]
-        }
+        # perception_message = {
+        #     "role": "tool",
+        #     "name": "perception_snapshot",
+        #     "content": event["perception"]
+        # }
 
         working_memory_message = {
             "role": "tool",
@@ -36,7 +36,7 @@ class LLMMessageBuilder:
         return {
             "messages": [
                 user_message,
-                perception_message,
+                # perception_message,
                 working_memory_message
             ]
         }
