@@ -8,7 +8,7 @@ class Reflex:
     def should_trigger(self, perception, world_state, internal_state, hardware_state):
         raise NotImplementedError
 
-    def execute(self):
+    def execute(self, perception, world_state, internal_state, hardware_state):
         raise NotImplementedError
 
 
@@ -19,7 +19,14 @@ class ReflexEngine:
     async def check_and_execute(self, perception, world_state, internal_state, hardware_state, executor):
         for reflex in self.reflexes:
             if reflex.should_trigger(perception, world_state, internal_state, hardware_state):
-                plan = reflex.execute()
-                await executor.run_plan(plan)
+
+                plan = reflex.execute(
+                    perception,
+                    world_state,
+                    internal_state,
+                    hardware_state
+                )
+
+                await executor.execute(plan)
                 return plan
         return False

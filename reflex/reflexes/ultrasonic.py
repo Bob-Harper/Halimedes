@@ -1,4 +1,5 @@
 from reflex.reflexive_layer import Reflex
+from cortex.behavior_plan import BehaviorPlan
 
 class UltrasonicReflex(Reflex):
     priority = 80   # lower than fall detection, higher than gait decisions
@@ -12,17 +13,22 @@ class UltrasonicReflex(Reflex):
 
         return us in ("DANGER", "TOO_CLOSE", "BAD_TOUCH")
 
+
     def execute(self, perception, world_state, internal_state, hardware_state):
         us = perception["sensor_status"]["ultrasonic"]
 
+        plan = BehaviorPlan()
+
         if us == "DANGER":
-            return {"category": "locomotion", "type": "step_back"}
+            plan.actions.append({"category": "locomotion", "type": "step_back"})
+            return plan
 
         if us == "TOO_CLOSE":
-            return {"category": "locomotion", "type": "back_up"}
+            plan.actions.append({"category": "locomotion", "type": "back_up"})
+            return plan
 
         if us == "BAD_TOUCH":
-            return {"category": "locomotion", "type": "back_up"}
+            plan.actions.append({"category": "locomotion", "type": "back_up"})
+            return plan
 
-        # fallback
         return None

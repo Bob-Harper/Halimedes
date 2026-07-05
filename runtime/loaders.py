@@ -22,12 +22,6 @@ class HotSwapLoader:
                 "args": [],
                 "kwargs": {}
             },
-            "perception_manager": {
-                "path": "cortex.perception_manager",
-                "class": "PerceptionManager",
-                "args": ["hardware_state", "emotion_categorizer", "vision"],
-                "kwargs": {}
-            },
             "action_executor": {
                 "path": "cortex.action_executor",
                 "class": "ActionExecutor",

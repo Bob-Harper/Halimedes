@@ -19,14 +19,15 @@ class ActiveLoop:
         self.globals = globals_dict
 
     async def run(self):
+        # start concurrent loops
+        asyncio.create_task(self._sensor_loop())
+        # asyncio.create_task(self._audio_loop())
+
         while True:
             # 1. Hot‑swap first
             self.hotswap.process(self.globals)
 
-            # 2. Run the loop body (speech, vision, sensors, etc.)
-            await self.loop_body()
-
-            # 3. Tick pacing
+            # 2. Tick pacing
             await asyncio.sleep(active_loop_config["tick_rate"])
 
     async def _process_audio(self, pcm_audio):
@@ -119,7 +120,24 @@ class ActiveLoop:
     async def _run_autonomous_behaviors(self):
         pass # stub for now to allow for autonomous behaviors in the future without blocking reflexes or speech processing
 
-    async def loop_body(self):
+    async def _sensor_loop(self):
+        g = self.globals
+        sensor_state = g["sensor_state"]
+
+        while True:
+            sensor_state.update()
+            snapshot = sensor_state.snapshot()
+            g["perception"].sensor_status.update(snapshot)
+
+            # --- REFLEX PASS ---
+            reflex_fired = await self._run_reflexes()
+            if reflex_fired:
+                print(f"[Reflex Fired] {reflex_fired}  # keep this, it has a job when we are ready")
+
+            await asyncio.sleep(0.05)
+
+
+    async def _audio_loop(self):
         print("[ActiveLoop] Hal Listening.")
         g = self.globals
         audio_input = g["audio_input"]
@@ -130,18 +148,12 @@ class ActiveLoop:
 
         self.hotswap.process(g)
 
-        # --- REFLEX PASS ---
-        reflex_fired = await self._run_reflexes()
-        if reflex_fired:
-            await self._handle_reflex(reflex_fired)
-            return
-
         pcm_audio = await audio_input.capture_audio()
-        if pcm_audio is None or pcm_audio.size == 0:
-            self._update_perception_no_audio()
-            await self._run_reflexes()
-            await self._run_autonomous_behaviors()
-            return
+        # if pcm_audio is None or pcm_audio.size == 0:
+        #     self._update_perception_no_audio()
+        #     await self._run_reflexes()
+        #     await self._run_autonomous_behaviors()
+        #     return
 
         # --- Valid speech, set as Busy ---
         indicators.set_mode("busy")

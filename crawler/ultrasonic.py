@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# crawler/ultrasonic.py
 from crawler.pin import Pin
 from crawler.pwm import PWM
 from crawler.adc import ADC
@@ -6,6 +6,7 @@ from crawler.i2c import I2C
 import time
 from crawler.basic import _Basic_class
 from typing import Union, List, Tuple, Optional
+
 
 class Ultrasonic():
     SOUND_SPEED = 343.3 # ms
@@ -53,20 +54,13 @@ class Ultrasonic():
                 return a
         return -1
 
+
+
 class UltrasonicDriver:
-    """
-    Thin wrapper around Ultrasonic() that integrates with Picrawler pins
-    and exposes a clean read_distance() method for SensorStateManager.
-    """
-
-    def __init__(self, picrawler, trig_pin="D2", echo_pin="D3"):
-        # Picrawler gives you the correct Pin objects
-        trig = picrawler.get_pin(trig_pin)
-        echo = picrawler.get_pin(echo_pin)
-
-        # Wrap the existing Ultrasonic class
+    def __init__(self, trig_pin="D2", echo_pin="D3"):
+        trig = Pin(trig_pin, mode=Pin.OUT)
+        echo = Pin(echo_pin, mode=Pin.IN, pull=Pin.PULL_DOWN)
         self.sensor = Ultrasonic(trig, echo)
 
     def read_distance(self):
-        # Raw cm value, exactly what SensorStateManager expects
         return self.sensor.read()

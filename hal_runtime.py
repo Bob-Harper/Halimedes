@@ -1,46 +1,48 @@
 # hal_runtime.py
+# OGO:  refers to Out Of Grouped Order.  Keeping all linked modules together is not always possible.  Do not move these without careful consideration.
 print("[Startup] Importing System Modules.")
 import os
 import warnings
 import asyncio
 from aiohttp import web
-from crawler.utils import reset_mcu
-from runtime.loaders import HotSwapLoader
-print("[Startup] Importing Hardware Modules.")
+from crawler.utils import reset_mcu # OGO: to reset mcu in case of prior crash and lockup
+from runtime.loaders import HotSwapLoader # Allows non hardware modules to be updated without needing to restart the main process.
+from cortex.perception_manager import PerceptionManager # OGO: In cortex module but talks directly to hardware_manager and cannot be hotswapped
+print("[Startup] Importing Hardware Modules.") # Servos, indicators, and other hardware not otherwise grouped together by function
 from crawler.picrawler import Picrawler
 from crawler.picrawler_extended import PicrawlerExtended
 from crawler.searchlight import Searchlight
 from body.posture_manager import PostureManager
 from body.hardware_state_manager import HardwareStateManager
-from body.sensor_state_manager import SensorStateManager
 from body.indicators_manager import IndicatorsManager
 print("[Startup] Importing Helper Modules.")
 from helpers.api_server import create_hal_api
 from helpers.global_config import LED_INDICATOR, UNIFIED_API_GATEWAY
-print("[Startup] Importing Eye Display Modules.")
+print("[Startup] Importing Eye Display Modules.") # Eyes refer to LCD module, not vision processing
 from eyes.EyeConfig import EyeConfig
 from eyes.EyeFrameComposer import EyeFrameComposer
 from eyes.EyeGazeInterpolator import GazeInterpolator
 from eyes.EyeExpressionManager import EyeExpressionManager
 from eyes.eye_channels import GazeChannel, ExpressionChannel
-print("[Startup] Importing Audio Modules.")
+print("[Startup] Importing Audio Modules.") # Audio modules for handling audio input and output
 from audio_input.audio_preprocessor import AudioPreprocessor
 from audio_input.audio_input_manager import AudioInputManager
 from audio_input.voice_recognition_manager import VoiceRecognitionManager
 from audio_output.emotional_sounds_manager import EmotionalSoundsManager
 from audio_output.response_manager import Response_Manager
-print("[Startup] Importing Vision Modules.")
+print("[Startup] Importing Vision Modules.") # Camera and Vision processing modules and tools.
 from vision_processing.vision_manager import VisionManager
 print("[Startup] Importing Reflex Modules.")
-from crawler.ultrasonic import UltrasonicDriver
+from crawler.ultrasonic import UltrasonicDriver # OGO: In crawer module but is a sensor used for reflexes
 from reflex.bno08x.i2c import IMUDriver
-imu = IMUDriver(i2c_bus=1, address=0x4B)
+imu = IMUDriver(i2c_bus=1, address=0x4B)  # OGO:hardware driver Needs to be initialized before configureing IMU or loading Sensor State Manaager
 from reflex.bno08x.enable_imu_reports import configure_imu
 configure_imu(imu)  # Initialize IMU reports
 from reflex.reflexes import load_all_reflexes
 from reflex.reflexive_layer import ReflexEngine
+from body.sensor_state_manager import SensorStateManager # OGO: In body module but is grouped with sensors at this is what manages them.  Loads last to give IMU time to init.
 
-from activeloop import ActiveLoop
+from activeloop import ActiveLoop # Main loop call that starts and maintains treads for individual processing loops.
 
 warnings.simplefilter("ignore")
 import faulthandler
@@ -56,21 +58,21 @@ class Hal:
         self.server_host = UNIFIED_API_GATEWAY
         print("[Startup] Initializing System Modules.")
         # --- core helpers ---
-        self.hotswap = HotSwapLoader()  # DANGER ZONE: DO NOT HOTSWAP ENABLE HARDWARE.  ONLY ENABLE PURE SOFTWARE SYSTEMS.
+        self.hotswap = HotSwapLoader()  # DANGER ZONE: DO NOT HOTSWAP ENABLE HARDWARE.  ONLY ENABLE PURE SOFTWARE SYSTEMS.  Do NOT enable PerceptionManager as it DOES directly affect hardware_state.
         print("[Startup] Initializing Hardware.")
         # --- body / hardware ---
-        self.picrawler_instance = Picrawler()
+        self.picrawler_instance = Picrawler() # ALWAYS init picrawler before any other hardware to pass instance to every module that uses it.  Allowing any module to create it's own instance will result in hardware conflicts.
         self.picrawler_extended = PicrawlerExtended(self.picrawler_instance)
         self.posture = PostureManager(self.picrawler_instance, self.picrawler_extended)
         self.actions_manager = self.picrawler_instance
         self.hardware_state = HardwareStateManager()
-        self.sensor_state = SensorStateManager(imu_driver=self.imu)
-        self.ultrasonic_driver = UltrasonicDriver(self.picrawler_instance)
+        self.imu = imu  # Store the IMU instance in the Hal class
+        self.ultrasonic_driver = UltrasonicDriver()
+        self.sensor_state = SensorStateManager(imu_driver=self.imu,ultrasonic_driver=self.ultrasonic_driver)
         self.searchlight = Searchlight()
         self.indicators = IndicatorsManager(LED_INDICATOR)
         self.reflexes = load_all_reflexes()
         self.reflex_engine = ReflexEngine(self.reflexes)
-        self.imu = imu  # Store the IMU instance in the Hal class
         # --- cortex / memory ---
         print("[Startup] Initializing Cognitive Memory.")
         self.semantic = self.hotswap.load_module("cortex.semantic_memory", "SemanticMemory")(self.server_host)
@@ -88,7 +90,6 @@ class Hal:
         self.expression_manager.setup(self.composer)
         self.gaze_channel = GazeChannel(self.gaze_interpolator)
         self.expression_channel = ExpressionChannel(self.expression_manager)
-        self.internal_state = self.hotswap.load_module("cortex.internal_state_manager", "InternalStateManager")()
 
         print("[Startup] Initializing Vision.")
         self.vision = VisionManager()
@@ -103,16 +104,17 @@ class Hal:
         # --- cortex (hotswapped) ---  # HOTSWAP SAFETY ZONE: CORTEX, HELPERS, AND ACTIVELOOP ONLY.  NEVER HOTSWAP ANYTHING THAT EVEN KNOWS HARDWARE EXISTS.
         print("[Startup] Initializing Cortex.")
         #
-        self.world_state = self.hotswap.load_module("cortex.world_state_manager", "WorldStateManager")()
-        self.initiative_manager = self.hotswap.load_module("cortex.initiative_manager", "InitiativeManager")()
-        self.emotion_categorizer = self.hotswap.load_module("cortex.emotions_manager", "EmotionCategorizer")()
-        self.context_builder = self.hotswap.load_module("cortex.context_builder", "ContextBuilder")(self.working_memory)
-        self.perception = self.hotswap.load_module("cortex.perception_manager", "PerceptionManager")(
+        self.perception = PerceptionManager( # OGO: only cortex module that talks directly to hardware and cannot be hotswapped
             hardware_state=self.hardware_state,
             sensor_state=self.sensor_state,
             emotion_categorizer=self.emotion_categorizer,
             vision=self.vision
         )
+        self.internal_state = self.hotswap.load_module("cortex.internal_state_manager", "InternalStateManager")()
+        self.world_state = self.hotswap.load_module("cortex.world_state_manager", "WorldStateManager")()
+        self.initiative_manager = self.hotswap.load_module("cortex.initiative_manager", "InitiativeManager")()
+        self.emotion_categorizer = self.hotswap.load_module("cortex.emotions_manager", "EmotionCategorizer")()
+        self.context_builder = self.hotswap.load_module("cortex.context_builder", "ContextBuilder")(self.working_memory)
         self.behavior_manager = self.hotswap.load_module("cortex.behavior_manager", "BehaviorManager")()
         DecisionManagerClass = self.hotswap.load_module("cortex.decision_manager", "DecisionManager")
         self.decision_manager = DecisionManagerClass(

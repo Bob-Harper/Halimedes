@@ -15,7 +15,8 @@ class SensorStateManager:
     Note that the RADAR module has been removed.  It is unlikely to be added, there is nowhere to mount one.
     """
 
-    def __init__(self, imu_driver=None):
+    def __init__(self, imu_driver=None, ultrasonic_driver=None):
+
         # ------------------------------
         # Hardware driver objects
         # ------------------------------
@@ -26,7 +27,8 @@ class SensorStateManager:
             "cliff": [],
             "imu": None,
         }
-        self.ultrasonic_driver = None
+        self.ultrasonic_driver = ultrasonic_driver
+
         self.cliff_driver = None
 
     async def start(self):
@@ -76,13 +78,14 @@ class SensorStateManager:
     def update(self):
         # Ultrasonic
         raw = self._update_ultrasonic()
+        print("ULTRASONIC RAW →", raw)   # ← THIS LINE
         self.status["ultrasonic"] = self._interpret_ultrasonic(raw)
 
         # Cliff sensors
         self.status["cliff"] = self._update_cliff()
 
         if self.imu:
-            self.imu_data = self.imu.get_latest()
+            self.imu_data = self.imu.read()
             self.status["imu"] = self.imu_data
 
     # ------------------------------
