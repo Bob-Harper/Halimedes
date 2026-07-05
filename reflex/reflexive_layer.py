@@ -26,6 +26,7 @@ class ReflexEngine:
                     hardware_state
                 )
 
-                executor.execute_reflex(plan)
+                # executor.execute_reflex(plan)
+                print(f"Reflex executed: {reflex.__class__.__name__} with plan: {plan}")
                 return plan
         return False
