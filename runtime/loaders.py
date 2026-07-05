@@ -22,12 +22,6 @@ class HotSwapLoader:
                 "args": [],
                 "kwargs": {}
             },
-            "action_executor": {
-                "path": "cortex.action_executor",
-                "class": "ActionExecutor",
-                "args": ["actions_manager", "expression_manager", "searchlight", "response_manager"],
-                "kwargs": {}
-            },
             "cognition_loop": {
                 "path": "cortex.cognition_loop",
                 "class": "CognitionLoop",

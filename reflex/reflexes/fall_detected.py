@@ -5,7 +5,7 @@ from cortex.behavior_plan import BehaviorPlan
 class FallDetectedReflex(Reflex):
     priority = 90
 
-    def should_trigger(self, perception, world_state, internal_state, hardware_state):
+    def should_trigger(self, perception, world_state, hardware_state):
         event = perception.get("imu", {}).get("fall_detected")
         return event == 1
 

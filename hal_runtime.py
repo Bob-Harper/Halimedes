@@ -8,10 +8,12 @@ from aiohttp import web
 from crawler.utils import reset_mcu # OGO: to reset mcu in case of prior crash and lockup
 from runtime.loaders import HotSwapLoader # Allows non hardware modules to be updated without needing to restart the main process.
 from cortex.perception_manager import PerceptionManager # OGO: In cortex module but talks directly to hardware_manager and cannot be hotswapped
+from cortex.action_executor import ActionExecutor # OGO: In cortex module but talks directly to hardware modules and cannot be hotswapped
 print("[Startup] Importing Hardware Modules.") # Servos, indicators, and other hardware not otherwise grouped together by function
 from crawler.picrawler import Picrawler
 from crawler.picrawler_extended import PicrawlerExtended
 from crawler.searchlight import Searchlight
+from body.locomotion_manager import LocomotionManager
 from body.posture_manager import PostureManager
 from body.hardware_state_manager import HardwareStateManager
 from body.indicators_manager import IndicatorsManager
@@ -63,7 +65,8 @@ class Hal:
         # --- body / hardware ---
         self.picrawler_instance = Picrawler() # ALWAYS init picrawler before any other hardware to pass instance to every module that uses it.  Allowing any module to create it's own instance will result in hardware conflicts.
         self.picrawler_extended = PicrawlerExtended(self.picrawler_instance)
-        self.posture = PostureManager(self.picrawler_instance, self.picrawler_extended)
+        self.locomotion_manager = LocomotionManager(self.picrawler_instance, self.picrawler_extended)
+        self.posture_manager = PostureManager(self.picrawler_instance, self.picrawler_extended)
         self.actions_manager = self.picrawler_instance
         self.hardware_state = HardwareStateManager()
         self.imu = imu  # Store the IMU instance in the Hal class
@@ -99,36 +102,39 @@ class Hal:
         self.audio_input = AudioInputManager(self.picrawler_instance)
         self.voice_recognition = VoiceRecognitionManager()
         self.emotion_sound_manager = EmotionalSoundsManager()
-        self.response_manager = Response_Manager(self.picrawler_instance, self.actions_manager, self.internal_state, working_memory=self.working_memory)
 
         # --- cortex (hotswapped) ---  # HOTSWAP SAFETY ZONE: CORTEX, HELPERS, AND ACTIVELOOP ONLY.  NEVER HOTSWAP ANYTHING THAT EVEN KNOWS HARDWARE EXISTS.
         print("[Startup] Initializing Cortex.")
-        #
-        self.perception = PerceptionManager( # OGO: only cortex module that talks directly to hardware and cannot be hotswapped
-            hardware_state=self.hardware_state,
-            sensor_state=self.sensor_state,
-            emotion_categorizer=self.emotion_categorizer,
-            vision=self.vision
-        )
+        # Start these first so they can be fed to the managers
         self.internal_state = self.hotswap.load_module("cortex.internal_state_manager", "InternalStateManager")()
         self.world_state = self.hotswap.load_module("cortex.world_state_manager", "WorldStateManager")()
         self.initiative_manager = self.hotswap.load_module("cortex.initiative_manager", "InitiativeManager")()
         self.emotion_categorizer = self.hotswap.load_module("cortex.emotions_manager", "EmotionCategorizer")()
         self.context_builder = self.hotswap.load_module("cortex.context_builder", "ContextBuilder")(self.working_memory)
         self.behavior_manager = self.hotswap.load_module("cortex.behavior_manager", "BehaviorManager")()
+        self.response_manager = Response_Manager(self.picrawler_instance, self.actions_manager, self.internal_state, working_memory=self.working_memory)
+
+        self.perception = PerceptionManager( # OGO: only cortex module that talks directly to hardware and cannot be hotswapped
+            hardware_state=self.hardware_state,
+            sensor_state=self.sensor_state,
+            emotion_categorizer=self.emotion_categorizer,
+            vision=self.vision
+        )
+
         DecisionManagerClass = self.hotswap.load_module("cortex.decision_manager", "DecisionManager")
         self.decision_manager = DecisionManagerClass(
             internal_state_manager=self.internal_state,
             behavior_manager=self.behavior_manager
         )
-        self.action_executor = self.hotswap.load_module("cortex.action_executor", "ActionExecutor")(
-            internal_state=self.internal_state,
-            posture=self.posture,
+        self.action_executor = ActionExecutor(
+            globals_dict={"locomotion_manager": self.locomotion_manager},
+            posture=self.posture_manager,
             searchlight=self.searchlight,
             audio=self.response_manager,
             gaze_channel=self.gaze_channel,
             expression_channel=self.expression_channel,
         )
+
         self.behavior_executor = self.hotswap.load_module("cortex.behavior_executor", "BehaviorExecutor")(self.action_executor, self.response_manager)
         CognitiveRelayClass = self.hotswap.load_module("cortex.cognitive_relay", "CognitiveRelay")
         self.cortex = CognitiveRelayClass(
@@ -189,6 +195,7 @@ class Hal:
             "reflex_engine": self.reflex_engine,
             "reflexes": self.reflexes,
             "sensor_state": self.sensor_state,
+            "locomotion_manager": self.locomotion_manager,
             # direct drivers (legacy, optional) until we have sensor state manager fully integrated
             "imu": self.imu,
             "ultrasonic": self.ultrasonic_driver,

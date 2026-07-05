@@ -5,7 +5,7 @@ from cortex.behavior_plan import BehaviorPlan
 class StuckReflex(Reflex):
     priority = 80
 
-    def should_trigger(self, perception, world_state, internal_state, hardware_state):
+    def should_trigger(self, perception, world_state, hardware_state):
         commanded = hardware_state.status.get("motion", {}).get("commanded_delta")
         actual = perception.get("imu", {}).get("linear_accel_mag")
 

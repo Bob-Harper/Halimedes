@@ -8,9 +8,9 @@ class ActionExecutor:
     This is the ONLY layer that touches hardware.
     """
 
-    def __init__(self, internal_state, posture=None, searchlight=None, audio=None, gaze_channel=None, expression_channel=None):
-
-        self.internal_state = internal_state
+    def __init__(self, globals_dict,  posture=None, searchlight=None, audio=None, gaze_channel=None, expression_channel=None):
+        self.globals = globals_dict
+        self.locomotion = self.globals["locomotion_manager"]
         self.posture = posture
         self.searchlight = searchlight
         self.audio = audio
@@ -35,8 +35,33 @@ class ActionExecutor:
         nonverbal = plan.nonverbal or {}
         self._execute_gaze(nonverbal.get("gaze", []))
         self._execute_expression(nonverbal.get("expression", []))
-        self._execute_actions(nonverbal.get("actions", []))
         self._execute_sounds(nonverbal.get("sounds", []))
+        self._execute_actions(plan.actions)
+
+    # ------------------------------------------------------------------
+    # REFLEXES
+    # ------------------------------------------------------------------
+    def execute_reflex(self, plan):
+        # ONLY locomotion actions.  Byoasses the async executor, since reflexes are urgent and must be executed immediately.
+        for act in plan.actions:
+            if act.get("category") == "locomotion":
+                lm = self.locomotion
+                motion = act.get("type")
+
+                if motion == "back_up":
+                    lm.back_up()
+                elif motion == "step_back":
+                    lm.step_back()
+                elif motion == "turn_away_left":
+                    lm.turn_away_left()
+                elif motion == "turn_away_right":
+                    lm.turn_away_right()
+                elif motion == "recover_posture":
+                    lm.recover_posture()
+                elif motion == "brace":
+                    lm.brace()
+                elif motion == "stop":
+                    lm.stop()
 
     # ------------------------------------------------------------------
     # GAZE
@@ -85,7 +110,7 @@ class ActionExecutor:
                 await self._current_movement_task
             except asyncio.CancelledError:
                 pass
-        self.internal_state.commanded_motion = True
+        # self.internal_state.commanded_motion = True
         # Start new movement
         self._current_movement_task = asyncio.create_task(
             self._movement_serialized(func, *args, **kwargs)
@@ -96,7 +121,8 @@ class ActionExecutor:
             try:
                 await asyncio.to_thread(func, *args, **kwargs)
             finally:
-                self.internal_state.commanded_motion = False
+                # self.internal_state.commanded_motion = False
+                pass
 
     def _execute_actions(self, actions_list):
         for act in actions_list:
@@ -124,7 +150,7 @@ class ActionExecutor:
                     asyncio.create_task(self._run_movement(self.posture.do_full_body_motion))
 
             elif category == "locomotion":
-                lm = self.internal_state.locomotion_manager
+                lm = self.globals["locomotion_manager"]
                 motion = act.get("type")
 
                 if motion == "step_back":

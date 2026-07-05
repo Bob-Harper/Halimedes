@@ -5,7 +5,7 @@ from reflex.reflexive_layer import Reflex
 class BatteryCriticalReflex(Reflex):
     priority = 100
 
-    def should_trigger(self, perception, world_state, internal_state, hardware_state):
+    def should_trigger(self, perception, world_state, hardware_state):
         status = hardware_state.status.get("battery", {}).get("status")
         return status == "Critical"
 

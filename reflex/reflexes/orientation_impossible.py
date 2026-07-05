@@ -4,7 +4,7 @@ from cortex.behavior_plan import BehaviorPlan
 class OrientationImpossibleReflex(Reflex):
     priority = 999
 
-    def should_trigger(self, perception, world_state, internal_state, hardware_state):
+    def should_trigger(self, perception, world_state, hardware_state):
         tilt = perception.get("imu", {}).get("tilt_deg")
         roll = perception.get("imu", {}).get("roll_deg")
         pitch = perception.get("imu", {}).get("pitch_deg")
@@ -21,4 +21,4 @@ class OrientationImpossibleReflex(Reflex):
         plan.nonverbal["expression"].append({"mood": "alarmed"})
         plan.nonverbal["sounds"].append({"category": "alert"})
 
-        return 
+        return

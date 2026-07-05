@@ -4,7 +4,7 @@ from cortex.behavior_plan import BehaviorPlan
 class UltrasonicReflex(Reflex):
     priority = 80   # lower than fall detection, higher than gait decisions
 
-    def should_trigger(self, perception, world_state, internal_state, hardware_state):
+    def should_trigger(self, perception, world_state, hardware_state):
         sensor_status = perception["sensor_status"]
         us = sensor_status.get("ultrasonic")
 
@@ -14,7 +14,7 @@ class UltrasonicReflex(Reflex):
         return us in ("DANGER", "TOO_CLOSE", "BAD_TOUCH")
 
 
-    def execute(self, perception, world_state, internal_state, hardware_state):
+    def execute(self, perception, world_state, hardware_state):
         us = perception["sensor_status"]["ultrasonic"]
 
         plan = BehaviorPlan()

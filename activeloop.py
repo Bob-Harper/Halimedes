@@ -95,46 +95,44 @@ class ActiveLoop:
 
         return await unified_server.send_perception(payload, endpoint)
 
+    # ------------------------------
+    # REFLEX LOOP BEGIN
+
     async def _run_reflexes(self):
         reflex_engine = self.globals["reflex_engine"]
-
         result = await reflex_engine.check_and_execute(
             perception=self.globals["perception"].snapshot(),
             world_state=self.globals["world_state"],
-            internal_state=self.globals["internal_state"],
             hardware_state=self.globals["hardware_state"],
             executor=self.globals["action_executor"],
         )
-
         if not result:
             return False
-
         return await self._handle_reflex(result)
-
 
     async def _handle_reflex(self, reflex_plan):
         executor = self.globals["action_executor"]
-        await executor.execute(reflex_plan)
-        return True
-
-    async def _run_autonomous_behaviors(self):
-        pass # stub for now to allow for autonomous behaviors in the future without blocking reflexes or speech processing
+        executor.execute_reflex(reflex_plan)
+        return reflex_plan
 
     async def _sensor_loop(self):
         g = self.globals
         sensor_state = g["sensor_state"]
-
         while True:
             sensor_state.update()
             snapshot = sensor_state.snapshot()
             g["perception"].sensor_status.update(snapshot)
-
-            # --- REFLEX PASS ---
+            # --- ACTUAL REFLEX PASS ---
             reflex_fired = await self._run_reflexes()
             if reflex_fired:
-                print(f"[Reflex Fired] {reflex_fired}  # keep this, it has a job when we are ready")
-
+                print(f"[Reflex Plan Fired] {reflex_fired}")
             await asyncio.sleep(0.05)
+
+    # REFLEX LOOP END
+    # ------------------------------
+
+    async def _run_autonomous_behaviors(self):
+        pass # stub for now to allow for autonomous behaviors in the future without blocking reflexes or speech processing
 
 
     async def _audio_loop(self):

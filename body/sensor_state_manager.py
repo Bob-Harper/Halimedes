@@ -78,7 +78,6 @@ class SensorStateManager:
     def update(self):
         # Ultrasonic
         raw = self._update_ultrasonic()
-        print("ULTRASONIC RAW →", raw)   # ← THIS LINE
         self.status["ultrasonic"] = self._interpret_ultrasonic(raw)
 
         # Cliff sensors

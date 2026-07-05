@@ -21,9 +21,9 @@ features = {
 
 def configure_imu(imu, interval_us=10000):
     for fid, name in features.items():
-        print("Enabling", name)
+        print("[Startup] Enabling", name)
         imu.send_feature(fid, interval_us)
-    print("IMU FEATURES ENABLED")
+    print("[Startup] IMU FEATURES ENABLED")
     return imu
 
 if __name__ == "__main__":
