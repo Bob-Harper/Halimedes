@@ -5,11 +5,15 @@ from cortex.behavior_plan import BehaviorPlan
 class FallDetectedReflex(Reflex):
     priority = 90
 
-    def should_trigger(self, perception, world_state, hardware_state):
-        event = perception.get("imu", {}).get("fall_detected")
-        return event == 1
+    def should_trigger(self, sensor_state, world_state, hardware_state):
+        # STUFF NO IDEA NOTHING WORKS THIS IS BULLSHIT
 
-    def execute(self):
+        return False
+
+
+    def return_plan(self, sensor_state, world_state, hardware_state):
+        us = sensor_state["sensor_status"]["ultrasonic"]
+
         plan = BehaviorPlan()
 
         plan.actions.append({"category": "full-body", "type": "stop"})

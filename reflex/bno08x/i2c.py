@@ -38,11 +38,28 @@ class IMUDriver:
             return None
 
     def read(self):
-        pkt = self.read_packet()
-        if not pkt:
+        reports = []
+
+        while True:
+            pkt = self.read_packet()
+            if not pkt:
+                break
+
+            decoded = self.interpreter.interpret(pkt)
+            if decoded is None:
+                continue
+
+            if isinstance(decoded, list):
+                reports.extend(decoded)
+            else:
+                reports.append(decoded)
+
+        if not reports:
             return None
-        return self.interpreter.interpret(pkt)
-    
+        if len(reports) == 1:
+            return reports[0]
+        return reports
+
 
 class BNO08X_I2C(BNO08X):
     """Library for the BNO08x IMUs from Hillcrest Laboratories

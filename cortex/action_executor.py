@@ -1,10 +1,11 @@
 # cortex/action_executor.py
 import asyncio
-
+import os
 
 class ActionExecutor:
     """
-    Executes a BehaviorPlan produced by the DecisionManager.
+    Executes a BehaviorPlan produced by higher order layers and managers.
+    All hardware control is funneled through this layer, so that higher order layers can remain hardware-agnostic.
     This is the ONLY layer that touches hardware.
     """
 
@@ -25,8 +26,7 @@ class ActionExecutor:
     async def execute(self, plan):
         """
         Execute nonverbal actions, and world/memory updates.
-        NOTE: BehaviorExecutor will call the channel methods directly,
-        but this remains for compatibility if needed.
+        NOTE: servo actions are not classes as nonverbal actions, but are executed here as well.
         """
         if not plan:
             return
@@ -41,6 +41,22 @@ class ActionExecutor:
     # ------------------------------------------------------------------
     # REFLEXES
     # ------------------------------------------------------------------
+    @staticmethod
+    def get_filename_movement(): # used by test_reflex, the filename itself is the name of the action to test. can be renamed while on the fly as the function retrieves the filename at the time of execution.
+        path = "/home/msutt/hal/reflex_test_move"
+        files = os.listdir(path)
+        return files[0] if files else None
+
+    def test_reflex(self, plan):
+        # bypasses all reflexes to use the one retturned by get_filename_movement, for testing movements under full load by using them as ultrasonic reflex results.
+        for act in plan.actions:
+            if act.get("category") == "locomotion":
+                lm = self.locomotion
+                motion = self.get_filename_movement()
+                if not isinstance(motion, str):
+                    return
+                getattr(lm, motion)()
+
     def execute_reflex(self, plan):
         # ONLY locomotion actions.  Byoasses the async executor, since reflexes are urgent and must be executed immediately.
         for act in plan.actions:
@@ -62,7 +78,6 @@ class ActionExecutor:
                     lm.brace()
                 elif motion == "stop":
                     lm.stop()
-
     # ------------------------------------------------------------------
     # GAZE
     # ------------------------------------------------------------------
@@ -149,7 +164,7 @@ class ActionExecutor:
                 if hasattr(self.posture, "do_full_body_motion"):
                     asyncio.create_task(self._run_movement(self.posture.do_full_body_motion))
 
-            elif category == "locomotion":
+            elif category == "locomotion":  # locomotion_manager has moves, update to let lm handle here instead of redefining in this code
                 lm = self.globals["locomotion_manager"]
                 motion = act.get("type")
 

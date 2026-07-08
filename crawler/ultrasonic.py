@@ -55,7 +55,6 @@ class Ultrasonic():
         return -1
 
 
-
 class UltrasonicDriver:
     def __init__(self, trig_pin="D2", echo_pin="D3"):
         trig = Pin(trig_pin, mode=Pin.OUT)
@@ -63,4 +62,39 @@ class UltrasonicDriver:
         self.sensor = Ultrasonic(trig, echo)
 
     def read_distance(self):
-        return self.sensor.read()
+        distance= self.sensor.read()
+        # print(f"[UltrasonicDriver] Reading distance: {distance}")
+        return distance
+
+    def test_interpret(self, units): # used for test_reflexes in the action_exectuor to test new movements under load by setting them up to trigger as an ultrasonic reflex.
+        # print(f"[UltrasonicDriver] Interpreting units: {units}")
+        if units is None or units < 0:
+            return "NO_ECHO"
+        if units <10:
+            print(f"[UltrasonicDriver] BAD_TOUCH: {units}")
+            return "BAD_TOUCH"
+        return "CLEAR"
+
+    def interpret(self, units):
+        # print(f"[UltrasonicDriver] Interpreting units: {units}")
+        if units is None or units < 0:
+            return "NO_ECHO"
+        if units < 5:
+            print(f"[UltrasonicDriver] BAD_TOUCH: {units}")
+            return "BAD_TOUCH"
+        if units < 7.5:
+            print(f"[UltrasonicDriver] TOO_CLOSE: {units}")
+            return "TOO_CLOSE"
+        if units < 15:
+            print(f"[UltrasonicDriver] DANGER: {units}")
+            return "DANGER"
+        if units < 25:
+            return "CAUTION"
+        return "CLEAR"
+
+if __name__ == "__main__":
+    ultrasonic_driver = UltrasonicDriver(trig_pin="D2", echo_pin="D3")
+    while True:
+        distance = ultrasonic_driver.read_distance()
+        print(f"Distance: {distance} cm, interpreted as: {ultrasonic_driver.interpret(distance)}")
+        time.sleep(0.5)

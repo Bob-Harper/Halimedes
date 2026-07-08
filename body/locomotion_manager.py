@@ -5,8 +5,7 @@ class LocomotionManager:
         self.picrawler = picrawler
         self.ext = picrawler_extended
 
-        self.speed_default = 100
-        self.speed_turbo = 200
+        self.speed_default = 80
         self.speed = self.speed_default
 
     def _do(self, target, motion_name, step=1, speed=None, **kwargs):
@@ -47,7 +46,7 @@ class LocomotionManager:
         self._do("pic", "stand", step=1)
 
     def brace(self):
-        self.ext.stand_tall()
+        self._do("pic", "sit", step=1)
 
     def investigate_forward(self):
         self._do("pic", "forward", step=1)

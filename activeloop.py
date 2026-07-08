@@ -21,7 +21,7 @@ class ActiveLoop:
     async def run(self):
         # start concurrent loops
         asyncio.create_task(self._sensor_loop())
-        # asyncio.create_task(self._audio_loop())
+        # asyncio.create_task(self._audio_loop())  # Disabled to test reflex loop
 
         while True:
             # 1. Hot‑swap first
@@ -98,35 +98,43 @@ class ActiveLoop:
     # ------------------------------
     # REFLEX LOOP BEGIN
 
-    async def _run_reflexes(self):
-        reflex_engine = self.globals["reflex_engine"]
-        result = await reflex_engine.check_and_execute(
-            perception=self.globals["perception"].snapshot(),
-            world_state=self.globals["world_state"],
-            hardware_state=self.globals["hardware_state"],
-            executor=self.globals["action_executor"],
-        )
-        if not result:
-            return False
-        return await self._handle_reflex(result)
-
-    async def _handle_reflex(self, reflex_plan):
-        executor = self.globals["action_executor"]
-        executor.execute_reflex(reflex_plan)
-        return reflex_plan
-
     async def _sensor_loop(self):
         g = self.globals
         sensor_state = g["sensor_state"]
         while True:
             sensor_state.update()
+
             snapshot = sensor_state.snapshot()
-            g["perception"].sensor_status.update(snapshot)
-            # --- ACTUAL REFLEX PASS ---
-            reflex_fired = await self._run_reflexes()
+
+            # Perception can still store a copy
+            # but reflexes should NOT depend on perception anymore.
+            # g["perception"].sensor_status.update(snapshot)
+
+            reflex_fired = await self._run_reflexes(snapshot)
             if reflex_fired:
-                print(f"[Reflex Plan Fired] {reflex_fired}")
+                print(f"[Reflex Plan Performed] {reflex_fired}")
+
             await asyncio.sleep(0.05)
+
+    async def _run_reflexes(self, sensor_snapshot):
+        reflex_engine = self.globals["reflex_engine"]
+        result = await reflex_engine.check_and_plan(
+            sensor_state=sensor_snapshot,
+            world_state=self.globals["world_state"],
+            hardware_state=self.globals["hardware_state"],
+            executor=self.globals["action_executor"],
+        )
+
+        if not result:
+            return False
+        return await self._handle_reflex(result)
+
+
+    async def _handle_reflex(self, reflex_plan):
+        executor = self.globals["action_executor"]
+        # print(f"[ActiveLoop] reflex_plan: {reflex_plan}")  # Debug print to verify sensor snapshot structure
+        executor.execute_reflex(reflex_plan)
+        return reflex_plan # return plan after executing allows to store the event and related data in longterm memories.
 
     # REFLEX LOOP END
     # ------------------------------
@@ -147,7 +155,7 @@ class ActiveLoop:
         self.hotswap.process(g)
 
         pcm_audio = await audio_input.capture_audio()
-        # if pcm_audio is None or pcm_audio.size == 0:
+        # if pcm_audio is None or pcm_audio.size == 0: # Audio loop should not determine if any other loop should be running.
         #     self._update_perception_no_audio()
         #     await self._run_reflexes()
         #     await self._run_autonomous_behaviors()

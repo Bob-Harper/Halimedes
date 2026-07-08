@@ -27,31 +27,48 @@ class AudioInputManager:
         silence_after_speech: float = 2,
         max_utterance_length: float = 20.0
     ):
+        print("[AudioDebug] ")
+        print("[AudioDebug] Initializing AudioInputManager...")
         self.picrawler_instance = picrawler_instance
+        print("[AudioDebug] self.picrawler_instance = picrawler_instance")
         self.hal_voiceprint = VOICEPRINT_HALIMEDES_NAME
+        print("[AudioDebug] self.hal_voiceprint = VOICEPRINT_HALIMEDES_NAME")
         # Device setup
         self.input_device_index = self._detect_input_device()
+        print("[AudioDebug] self.input_device_index = self._detect_input_device()")
         dev = cast(Dict[str, Any], sd.query_devices(self.input_device_index))
+        print("[AudioDebug] dev = cast(Dict[str, Any], sd.query_devices(self.input_device_index))")
         if dev["max_input_channels"] < 1:
+            print("[AudioDebug] if dev[\"max_input_channels\"] < 1:")
             raise RuntimeError(
                 f"Selected device {self.input_device_index} has no input channels "
                 f"(max_input_channels={dev['max_input_channels']})"
             )
         self.input_channels = dev["max_input_channels"]  # lock in actual channel count
+        print("[AudioDebug]  self.input_channels = dev[\"max_input_channels\"] ")
         sd.default.device = (self.input_device_index, None)  # type: ignore[arg-type]
+        print("[AudioDebug] sd.default.device = (self.input_device_index, None) ")
 
         # Hardware rate (mic only supports 44100)
         self.hw_sample_rate = 44100
+        print("[AudioDebug] self.hw_sample_rate = 44100")
 
         # VAD rate (WebRTC supports 48k)
         self.vad_sample_rate = 48000
+        print("[AudioDebug] self.vad_sample_rate = 48000")
         self.vad = webrtcvad.Vad(vad_level)
+        print("[AudioDebug] self.vad = webrtcvad.Vad(vad_level)")
         self.frame_ms = int(frame_ms)
+        print("[AudioDebug] self.frame_ms = int(frame_ms)")
         self.silence_after_speech = float(silence_after_speech)
+        print("[AudioDebug] self.silence_after_speech = float(silence_after_speech)")
         self.max_utterance_length = float(max_utterance_length)
+        print("[AudioDebug] self.max_utterance_length = float(max_utterance_length)")
         # Frame sizes
         self.hw_frame_samples = int(self.hw_sample_rate * self.frame_ms / 1000)
+        print("[AudioDebug] self.hw_frame_samples = int(self.hw_sample_rate * self.frame_ms / 1000)")
         self.vad_frame_samples = int(self.vad_sample_rate * self.frame_ms / 1000)
+        print("[AudioDebug] self.vad_frame_samples = int(self.vad_sample_rate * self.frame_ms / 1000)")
 
     def _detect_input_device(self):
         # Pylance-friendly: query each device by index so the return type is a dict

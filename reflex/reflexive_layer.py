@@ -5,28 +5,32 @@ from typing import List
 class Reflex:
     priority = 0  # higher = more urgent
 
-    def should_trigger(self, perception, world_state, hardware_state):
+    def should_trigger(self, sensor_state, world_state, hardware_state):
+        # print("ShouldTrigger: fired")
         raise NotImplementedError
 
-    def execute(self, perception, world_state, hardware_state):
+    def return_plan(self, sensor_state, world_state, hardware_state):
+        # print("ReturnPlan: fired")
         raise NotImplementedError
 
 
 class ReflexEngine:
     def __init__(self, reflexes: List[Reflex]):
         self.reflexes = sorted(reflexes, key=lambda r: r.priority, reverse=True)
+        # print("[Startup] Loaded reflexes:", [r.__class__.__name__ for r in self.reflexes])
 
-    async def check_and_execute(self, perception, world_state, hardware_state, executor):
+    async def check_and_plan(self, sensor_state, world_state, hardware_state, executor):
+        # print("Loaded reflexes:", [r.__class__.__name__ for r in self.reflexes])
         for reflex in self.reflexes:
-            if reflex.should_trigger(perception, world_state, hardware_state):
+                if reflex.should_trigger(sensor_state, world_state, hardware_state):
 
-                plan = reflex.execute(
-                    perception,
-                    world_state,
-                    hardware_state
-                )
+                    plan = reflex.return_plan(
+                        sensor_state,
+                        world_state,
+                        hardware_state
+                    )
 
-                # executor.execute_reflex(plan)
-                print(f"Reflex executed: {reflex.__class__.__name__} with plan: {plan}")
-                return plan
+                    # print(f"Reflex plan created: {reflex.__class__.__name__} with plan: {plan}")
+                    return plan
+        # print("No reflex triggered.")
         return False

@@ -30,11 +30,11 @@ class Robot(_Basic_class):
     move_list = {}
     """Preset actions"""
 
-    max_dps = 720
+    max_dps = 420
     """
     Servo max Degree Per Second
     dps, degrees per second, genally in 4.8V : 60des/0.14s, dps = 428 is original sunfounder value based on original calculated math.
-    max_dps currently constrained to 700 as a known working high speed stable value.  DPS has been observed as high as 800 but will crash the pi if used directly without ramping up first.
+    max_dps currently constrained to 720 as a known working high speed stable value.  DPS has been observed as high as 800 but will crash the pi if used directly without ramping up first.
     Scaling speed to 200 in do_action in picrawler.py through this: speed = max(0, min(200, speed))
     Old math dps calculations vs new math dps calculations plus higher dps means scale of 0-200 leaves call sites untouched when passing existing values calibrated as 0-100 while
     allowing for speed boosts when higher values are passed through or creating new motions that require more speed and faster reaction events.

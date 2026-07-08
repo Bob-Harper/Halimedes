@@ -18,4 +18,3 @@ class GyroDecoder:
             'y': y,
             'z': z
         }
-

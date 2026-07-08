@@ -29,25 +29,34 @@ class PicrawlerExtended():
         self.current_positions['y'] = steps[-1][0][1]
         self.current_positions['z'] = steps[-1][0][2]
 
-    def sit_down(self):
+    def retract_all_legs(self, speed=20): # do not use until we can figure out a way to keep the pi from undervoltage
         sit_down_steps = [[50, 90, 90], [50, 90, 90], [50, 90, 90], [50, 90, 90]]
-        self.picrawler.do_step(sit_down_steps, speed=1)
-        sit_down_steps = [[50, 60, 60], [50, 60, 60], [0, 60, 60], [0, 60, 60]]
-        self.picrawler.do_step(sit_down_steps, speed=1)
-        sit_down_steps = [[50, 30, 30], [50, 30, 30], [0, 30, 30], [0, 30, 30]]
-        self.picrawler.do_step(sit_down_steps, speed=1)
+        self.picrawler.do_step(sit_down_steps, speed)
+        sit_down_steps = [[25, 45, 45], [25, 45, 45], [25, 45, 45], [25, 45, 45]]
+        self.picrawler.do_step(sit_down_steps, speed)
         sit_down_steps = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
-        self.picrawler.do_step(sit_down_steps, speed=1)
+        self.picrawler.do_step(sit_down_steps, speed)
+
+    def sit_down(self): # do not use until we can figure out a way to keep the pi from undervoltage
+        speed = 25
+        sit_down_steps = [[50, 90, 90], [50, 90, 90], [50, 90, 90], [50, 90, 90]]
+        self.picrawler.do_step(sit_down_steps, speed)
+        sit_down_steps = [[50, 60, 60], [50, 60, 60], [0, 60, 60], [0, 60, 60]]
+        self.picrawler.do_step(sit_down_steps, speed)
+        sit_down_steps = [[50, 30, 30], [50, 30, 30], [0, 30, 30], [0, 30, 30]]
+        self.picrawler.do_step(sit_down_steps, speed)
+        sit_down_steps = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
+        self.picrawler.do_step(sit_down_steps, speed)
 
     def sway_all_legs(self):  # legs_list = ['right front', 'left front', 'left rear', 'right rear']
         tap_front_right = [[45, 45, -44], [45, 45, -30], [45, 45, -30], [45, 45, -30]]
         tap_front_left = [[45, 45, -30], [45, 45, -44], [45, 45, -30], [45, 45, -30]]
         tap_rear_left = [[45, 45, -30], [45, 45, -30], [45, 45, -44], [45, 45, -30]]
         tap_rear_right = [[45, 45, -30], [45, 45, -30], [45, 45, -30], [45, 45, -44]]
-        self.picrawler.do_step(tap_front_right, speed=80)
-        self.picrawler.do_step(tap_front_left, speed=80)
-        self.picrawler.do_step(tap_rear_left, speed=80)
-        self.picrawler.do_step(tap_rear_right, speed=80)
+        self.picrawler.do_step(tap_front_right, speed=50)
+        self.picrawler.do_step(tap_front_left, speed=50)
+        self.picrawler.do_step(tap_rear_left, speed=50)
+        self.picrawler.do_step(tap_rear_right, speed=50)
 
     def tap_front_right(self):  # ['right front', 'left front', 'left rear', 'right rear']
         lift_front_right = [[45, 45, 90], [45, 45, -30], [45, 45, -30], [45, 45, -30]]
@@ -114,7 +123,7 @@ class PicrawlerExtended():
 
     def stretch_out(self):
         stretch_out = [[90, 10, -60], [90, 10, -60], [25, 65, -60], [25, 65, -60]]
-        self.picrawler.do_step(stretch_out, speed=50)    
+        self.picrawler.do_step(stretch_out, speed=50)
 
     def pushup(self, count, speed):
         for _ in range(count):
@@ -146,7 +155,7 @@ class PicrawlerExtended():
         two_hand = self.picrawler.mix_step(left_hand,1,[0,50,80])
 
         self.picrawler.do_step('sit',speed)
-        sleep(0.6)    
+        sleep(0.6)
         self.picrawler.do_step(left_hand,speed)
         sleep(0.6)
         self.picrawler.do_step(two_hand,speed)
@@ -155,11 +164,11 @@ class PicrawlerExtended():
         sleep(0.6)
         self.picrawler.do_step('sit',speed)
         sleep(0.6)
- 
-    async def wiggle(self):
+
+    async def wiggle(self): # NOTE THIS IS ASYNC
         """Perform a smooth wiggle motion."""
         new_step = [[50, 50, -80], [50, 50, -80], [50, 50, -80], [50, 50, -80]]
-        speed = 99
+        speed = 60
 
         while True:  # Continuous loop, can be broken externally if needed
             for i in range(4):  # Cycle through legs
@@ -171,9 +180,9 @@ class PicrawlerExtended():
                     new_step[(i + 1) % 4] = rise
                     new_step[(i - 1) % 4] = drop
                     await asyncio.to_thread(self.picrawler.do_step, new_step, speed)
-                    await asyncio.sleep(0.05)  # Small delay for smoother animation    
+                    await asyncio.sleep(0.05)  # Small delay for smoother animation
 
-    async def run_wiggle_for_seconds(self, duration=3):
+    async def run_wiggle_for_seconds(self, duration=3): # NOTE THIS IS ASYNC
         """Starts wiggle for `duration` seconds, then stops it."""
         wiggle_task = asyncio.create_task(self.wiggle())  # Start wiggle
         await asyncio.sleep(duration)  # Let it run for X seconds
@@ -183,17 +192,17 @@ class PicrawlerExtended():
         except asyncio.CancelledError:
             pass  # Suppress expected cancellation error
 
-    async def glance(self, direction="center", angle=30, speed=99):
+    async def glance(self, direction="center", angle=30, speed=60): # NOTE THIS IS ASYNC
         """
         Perform a smooth glance motion in the specified direction.
-        
+
         Parameters:
             direction (str): "left", "right", or "center".
             angle (int): The angle to turn for glancing.
             speed (int): Speed of the movement.
         """
         print(f"Glancing {direction} at {angle} degrees.")
-        
+
         # Define the base position (stable, elevated posture)
         base_position = [[90, 10, -60], [90, 10, -60], [25, 65, -60], [25, 65, -60]]
 

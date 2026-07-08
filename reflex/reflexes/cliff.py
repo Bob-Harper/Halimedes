@@ -5,11 +5,11 @@ from cortex.behavior_plan import BehaviorPlan
 class CliffReflex(Reflex):
     priority = 95
 
-    def should_trigger(self, perception, world_state, hardware_state):
-        event = perception.get("cliff", {}).get("cliff_detected")
+    def should_trigger(self, sensor_state, world_state, hardware_state):
+        event = sensor_state.get("cliff", {}).get("cliff_detected")
         return event == 1
 
-    def execute(self):
+    def return_plan(self, sensor_state, world_state, hardware_state):
         plan = BehaviorPlan()
 
         # stop motion
