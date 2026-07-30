@@ -2,7 +2,6 @@
 from crawler.pin import Pin
 from crawler.pwm import PWM
 from crawler.adc import ADC
-from crawler.i2c import I2C
 import time
 from crawler.basic import _Basic_class
 from typing import Union, List, Tuple, Optional
@@ -71,22 +70,25 @@ class UltrasonicDriver:
         if units is None or units < 0:
             return "NO_ECHO"
         if units <10:
-            print(f"[UltrasonicDriver] BAD_TOUCH: {units}")
+            # print(f"[UltrasonicDriver] BAD_TOUCH: {units}")
             return "BAD_TOUCH"
         return "CLEAR"
 
     def interpret(self, units):
+        test_status = True
+        if test_status:
+            return "CLEAR" # software disable by setting fixed return vale
         # print(f"[UltrasonicDriver] Interpreting units: {units}")
         if units is None or units < 0:
             return "NO_ECHO"
         if units < 5:
-            print(f"[UltrasonicDriver] BAD_TOUCH: {units}")
+            # print(f"[UltrasonicDriver] BAD_TOUCH: {units}")
             return "BAD_TOUCH"
         if units < 7.5:
-            print(f"[UltrasonicDriver] TOO_CLOSE: {units}")
+            # print(f"[UltrasonicDriver] TOO_CLOSE: {units}")
             return "TOO_CLOSE"
         if units < 15:
-            print(f"[UltrasonicDriver] DANGER: {units}")
+            # print(f"[UltrasonicDriver] DANGER: {units}")
             return "DANGER"
         if units < 25:
             return "CAUTION"
@@ -96,5 +98,5 @@ if __name__ == "__main__":
     ultrasonic_driver = UltrasonicDriver(trig_pin="D2", echo_pin="D3")
     while True:
         distance = ultrasonic_driver.read_distance()
-        print(f"Distance: {distance} cm, interpreted as: {ultrasonic_driver.interpret(distance)}")
+        # print(f"Distance: {distance} cm, interpreted as: {ultrasonic_driver.interpret(distance)}")
         time.sleep(0.5)

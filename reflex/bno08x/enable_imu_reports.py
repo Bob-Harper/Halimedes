@@ -4,12 +4,6 @@ from reflex.bno08x.i2c import IMUDriver
 features = {
     0x03: "MAGNETIC_FIELD",
     0x08: "GAME_ROTATION_VECTOR",
-    0x10: "TAP_DETECTOR",
-    0x13: "STABILITY_CLASSIFIER",
-    0x19: "SHAKE_DETECTOR",
-    0x1A: "FLIP_DETECTOR",
-    0x1B: "PICKUP_DETECTOR",
-    0x20: "TILT_DETECTOR",
     0x01: "ACCELEROMETER",
     0x02: "GYROSCOPE",
     0x04: "LINEAR_ACCELERATION",
@@ -21,6 +15,7 @@ def configure_imu(imu, interval_us=10000):
     for fid, name in features.items():
         print("[Startup] Enabling", name)
         imu.send_feature(fid, interval_us)
+        imu.enabled_reports.append(fid)  
     print("[Startup] IMU FEATURES ENABLED")
     return imu
 

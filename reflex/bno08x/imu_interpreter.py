@@ -5,119 +5,107 @@ from .decoders.linear_accel import LinearAccelDecoder
 from .decoders.gyro import GyroDecoder
 from .decoders.accel import AccelDecoder
 from .decoders.mag import MagDecoder
-from .decoders.stability import StabilityDecoder
-from .decoders.tilt import TiltDecoder
-from .decoders.shake import ShakeDecoder
-from .decoders.flip import FlipDecoder
-from .decoders.pickup import PickupDecoder
-from .decoders.tap import TapDecoder
+import time
 
-        # NOTE:
-        # The SH-2 IMU can emit multi-report frames, where a BASE_TIMESTAMP (0xFB)
-        # packet contains more than one logical sensor report. This interpreter
-        # intentionally decodes only the first meaningful report after the timestamp
-        # header (buf[6:]).
-        #
-        # Additional embedded reports may be present in the remaining bytes, and
-        # the IMUInterpreter class is designed to decode all of them, returning a
-        # list of decoded reports if multiple are found.
+
+REPORT_LENGTHS = {
+    0x01: 10,  # Accelerometer
+    0x02: 10,  # Gyroscope Calibrated
+    0x03: 10,  # Magnetic Field Calibrated
+    0x04: 10,  # Linear Acceleration
+    0x05: 14,  # Rotation Vector
+    0x06: 10,  # Gravity
+    0x08: 12,  # Game Rotation Vector
+}
 
 class IMUInterpreter:
+    def __init__(self):
+        self.log_data = False
+
     def interpret(self, pkt):
-        # Defensive: malformed packet → ignore
-        try:
+        # Normalize Packet → bytes
+        if hasattr(pkt, "data"):
             buf = pkt.data
-        except Exception:
+        else:
+            buf = pkt
+
+        # Optional logging of raw FB packets
+        if self.log_data and buf and buf[0] == 0xFB:
+            import time
+            with open("data/sensor_packet.log", "a") as f:
+                ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + f".{int(time.time() * 1000) % 1000:03d}"
+                f.write("\n\n==================== BEGIN PACKET ====================\n")
+                f.write(f"{ts}\n")
+                f.write(" ".join(f"{b:02X}" for b in buf))
+                f.write("\n==================== END PACKET ====================\n\n")
+
+        # --- Strict timestamp stripping ---
+
+        # Require FB at start; if not, packet is unusable
+        if not buf or buf[0] != 0xFB or len(buf) < 5:
             return None
 
-        if not buf or len(buf) < 2:
-            return None
+        # Strip FB (5 bytes)
+        buf = buf[5:]
 
-        # Unwrap BASE_TIMESTAMP packets
-        if buf[0] == 0xFB:
-            if len(buf) < 7:
+        # If FA is present next, strip it too (5 bytes)
+        if buf and buf[0] == 0xFA:
+            if len(buf) < 5:
                 return None
-            buf = buf[6:]  # skip timestamp header
+            buf = buf[5:]
 
-        # After unwrap, buf may contain multiple reports
-        reports = []
-        idx = 0
+        # Now buf[0] MUST be a valid report ID
+        if not buf:
+            return None
+
+        report_id = buf[0]
+        if report_id not in REPORT_LENGTHS:
+            return None
+
         length = len(buf)
+        idx = 0
+        reports = []
 
+        # Multi-report loop, but strictly from the start, no scanning
         while idx < length:
-            # Each report must have at least 2 bytes: id + seq
-            if idx + 2 > length:
+            report_id = buf[idx]
+
+            # If we hit something that isn't a known report, stop
+            if report_id not in REPORT_LENGTHS:
                 break
 
-            report_id = buf[idx]
-            seq = buf[idx + 1]
+            payload_size = REPORT_LENGTHS[report_id]
+            end = idx + payload_size
 
-            # Determine payload size based on report_id
-            # All your decoders use fixed 8‑byte payloads (except quaternions: 10 bytes)
-            # We map them directly.
-
-            if report_id in (0x01, 0x02, 0x03, 0x04, 0x06, 0x13, 0x19, 0x1A, 0x1B, 0x10, 0x20):
-                payload_size = 8  # accel, gyro, mag, linear, gravity, stability, shake, flip, pickup, tap, tilt
-
-            elif report_id in (0x05, 0x08):
-                payload_size = 10  # rotation_vector, game_rotation_vector
-
-            else:
-                # Unknown report → skip 1 byte and continue
-                idx += 1
-                continue
-
-            # Ensure payload fits
-            end = idx + 2 + payload_size
+            # If we don't have enough bytes for this report, stop
             if end > length:
                 break
 
-            # Slice the report
             report_buf = buf[idx:end]
 
-            # Decode safely
             decoded = None
-            try:
-                if report_id == 0x05:
-                    decoded = RotationVectorDecoder.decode(report_buf)
-                elif report_id == 0x08:
-                    decoded = GameRotationVectorDecoder.decode(report_buf)
-                elif report_id == 0x06:
-                    decoded = GravityDecoder.decode(report_buf)
-                elif report_id == 0x04:
-                    decoded = LinearAccelDecoder.decode(report_buf)
-                elif report_id == 0x02:
-                    decoded = GyroDecoder.decode(report_buf)
-                elif report_id == 0x01:
-                    decoded = AccelDecoder.decode(report_buf)
-                elif report_id == 0x03:
-                    decoded = MagDecoder.decode(report_buf)
-                elif report_id == 0x13:
-                    decoded = StabilityDecoder.decode(report_buf)
-                elif report_id == 0x20:
-                    decoded = TiltDecoder.decode(report_buf)
-                elif report_id == 0x19:
-                    decoded = ShakeDecoder.decode(report_buf)
-                elif report_id == 0x1A:
-                    decoded = FlipDecoder.decode(report_buf)
-                elif report_id == 0x1B:
-                    decoded = PickupDecoder.decode(report_buf)
-                elif report_id == 0x10:
-                    decoded = TapDecoder.decode(report_buf)
-            except Exception:
-                decoded = None
+            if report_id == 0x01:
+                decoded = AccelDecoder.decode(report_buf)
+            elif report_id == 0x02:
+                decoded = GyroDecoder.decode(report_buf)
+            elif report_id == 0x03:
+                decoded = MagDecoder.decode(report_buf)
+            elif report_id == 0x04:
+                decoded = LinearAccelDecoder.decode(report_buf)
+            elif report_id == 0x05:
+                decoded = RotationVectorDecoder.decode(report_buf)
+            elif report_id == 0x06:
+                decoded = GravityDecoder.decode(report_buf)
+            elif report_id == 0x08:
+                decoded = GameRotationVectorDecoder.decode(report_buf)
 
             if decoded is not None:
                 reports.append(decoded)
 
-            # Advance to next embedded report
             idx = end
 
-        # If only one report, return it directly
         if len(reports) == 1:
             return reports[0]
-
-        # If multiple reports, return list
         if len(reports) > 1:
             return reports
 

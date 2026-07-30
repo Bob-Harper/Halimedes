@@ -28,15 +28,10 @@ from eyes.EyeExpressionManager import EyeExpressionManager
 from eyes.eye_channels import GazeChannel, ExpressionChannel
 print("[Startup] Importing Audio Modules.") # Audio modules for handling audio input and output
 from audio_input.audio_preprocessor import AudioPreprocessor
-print("[Debug] from audio_input.audio_preprocessor import AudioPreprocessor")
 from audio_input.audio_input_manager import AudioInputManager
-print("[Debug] from audio_input.audio_input_manager import AudioInputManager")
 from audio_input.voice_recognition_manager import VoiceRecognitionManager
-print("[Debug] from audio_input.voice_recognition_manager import VoiceRecognitionManager")
 from audio_output.emotional_sounds_manager import EmotionalSoundsManager
-print("[Debug] from audio_output.emotional_sounds_manager import EmotionalSoundsManagerr")
 from audio_output.response_manager import Response_Manager
-print("[Debug] from audio_output.response_manager import Response_Manager")
 print("[Startup] Importing Vision Modules.") # Camera and Vision processing modules and tools.
 from vision_processing.vision_manager import VisionManager
 print("[Startup] Importing Reflex Modules.")
@@ -104,13 +99,9 @@ class Hal:
 
         print("[Startup] Initializing Audio systems.")
         self.preprocessor = AudioPreprocessor()
-        print("[Debug] self.preprocessor = AudioPreprocessor().")
         self.audio_input = AudioInputManager(self.picrawler_instance)
-        print("[Debug] self.audio_input = AudioInputManager(self.picrawler_instance).")
         self.voice_recognition = VoiceRecognitionManager()
-        print("[Debug] self.voice_recognition = VoiceRecognitionManager().")
         self.emotion_sound_manager = EmotionalSoundsManager()
-        print("[Debug] self.emotion_sound_manager = EmotionalSoundsManager().")
 
         # --- cortex (hotswapped) ---  # HOTSWAP SAFETY ZONE: CORTEX, HELPERS, AND ACTIVELOOP ONLY.  NEVER HOTSWAP ANYTHING THAT EVEN KNOWS HARDWARE EXISTS.
         print("[Startup] Initializing Cortex.")

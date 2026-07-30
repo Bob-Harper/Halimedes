@@ -13,12 +13,6 @@ class SensorStateManager:
         self.state: dict[str, Any] = {
             "game_rotation_vector": None,
             "magnetic_field": None,
-            "stability_classifier": None,
-            "tap_detector": None,
-            "shake_detector": None,
-            "flip_detector": None,
-            "pickup_detector": None,
-            "tilt_detector": None,
             "accelerometer": None,
             "gyroscope": None,
             "linear_acceleration": None,
@@ -40,7 +34,7 @@ class SensorStateManager:
     def snapshot(self):
         return dict(self.state)
 
-    def update(self):
+    async def update(self):
 
         # Ultrasonic
         if self.ultrasonic:
@@ -53,12 +47,13 @@ class SensorStateManager:
             cliff_vals = self.cliff.read_values()  # dict: fr, fl, rr, rl
             for suffix, value in cliff_vals.items():
                 self.state[f"cliff_{suffix}"] = value
-                
-        # IMU produces multiple reports per tick
+
+        # IMU may produce multiple reports per tick.  return all valid reports found .
         if self.imu:
             reports = self.imu.read()
 
-            if reports is None:
+            # No new IMU data → keep previous values
+            if not reports:
                 return
 
             if isinstance(reports, dict):
@@ -70,23 +65,8 @@ class SensorStateManager:
                 if rtype == "accel":
                     self.state["accelerometer"] = report
 
-                elif rtype == "tilt":
-                    self.state["tilt_detector"] = report
-
-                elif rtype == "tap":
-                    self.state["tap_detector"] = report
-
-                elif rtype == "stability":
-                    self.state["stability_classifier"] = report
-
-                elif rtype == "shake":
-                    self.state["shake_detector"] = report
-
                 elif rtype == "rotation_vector":
                     self.state["rotation_vector"] = report
-
-                elif rtype == "pickup":
-                    self.state["pickup_detector"] = report
 
                 elif rtype == "mag":
                     self.state["magnetic_field"] = report
@@ -102,9 +82,3 @@ class SensorStateManager:
 
                 elif rtype == "game_rotation_vector":
                     self.state["game_rotation_vector"] = report
-
-                elif rtype == "flip":
-                    self.state["flip_detector"] = report
-
-        # Camera (placeholder)
-        # camera driver will eventually push reports the same way

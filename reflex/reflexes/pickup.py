@@ -4,9 +4,9 @@ from cortex.behavior_plan import BehaviorPlan
 
 class PickupReflex(Reflex):
     priority = 95
-
+    # NO MORE PICKUP DETECTION, MUST CALCULATE
     def should_trigger(self, sensor_state, world_state, hardware_state):
-        event = sensor_state.get("imu", {}).get("pickup")
+        event = sensor_state.get("pickup_detector")
         return event == 1
 
     def return_plan(self, sensor_state, world_state, hardware_state):
