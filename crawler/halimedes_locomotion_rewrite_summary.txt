@@ -1,0 +1,426 @@
+HALIMEDES LOCOMOTION REWRITE PROJECT
+===================================
+
+Date: 2026-08-03
+
+PURPOSE
+-------
+This document captures the reasoning, conclusions, architecture decisions, and next steps from the design session that began as a discussion about changing Halimedes' heading orientation and evolved into a full locomotion architecture redesign.
+
+ORIGINAL PROBLEM
+----------------
+The initial goal was:
+
+- Make Hal travel along the long axis of the body.
+- Current Picrawler locomotion effectively treats a different axis as forward.
+- Attempts to rotate heading, swap legs, and adjust movement logic repeatedly failed.
+
+Key realization:
+
+The issue is not simply a heading problem.
+
+The issue is that the original Sunfounder architecture combines:
+
+- Body coordinate assumptions
+- Leg geometry
+- Servo orientation
+- Gait generation
+- Inverse kinematics
+
+into a single tightly-coupled system.
+
+Trying to change heading alone breaks assumptions throughout the stack.
+
+MAJOR BREAKTHROUGH
+------------------
+The question changed from:
+
+"How do I rotate Hal 90 degrees?"
+
+to:
+
+"Why is Hal defined this way at all?"
+
+This led to the conclusion that the project is not really:
+
+- Rewrite forward()
+- Rewrite turn_left()
+- Swap some legs
+
+Instead it is:
+
+BUILD A BODY-CENTRIC LOCOMOTION SYSTEM.
+
+SUNFOUNDER VS HALIMEDES
+-----------------------
+Sunfounder assumptions:
+
+- Fixed forward direction
+- Fixed gait tables
+- Stability prioritized above everything
+- One leg lifted at a time
+- Three feet always on ground
+- Configuration designed for beginners
+- Robot treated as a kit crawler
+
+Halimedes requirements:
+
+- Sensor-driven behavior
+- Autonomous navigation
+- Future local AI
+- Body-centric movement
+- Strafe movement
+- Curved movement
+- Dynamic heading
+- Multiple gait possibilities
+- IMU-aware locomotion
+
+The conclusion reached was:
+
+The original code is not wrong.
+
+It was written for a different robot than Hal has become.
+
+CURRENT PHYSICAL REALITY OF HAL
+-------------------------------
+Characteristics:
+
+- Upgraded Robot HAT
+- BNO08x fusion IMU
+- Depth mapper
+- Radar
+- Dual displays
+- Additional power systems
+- Lower center of gravity focus
+- Future traction feet planned
+
+Physical design philosophy:
+
+- Heavy components near center
+- IMU near center
+- Battery near center
+- Symmetry preferred unless asymmetry serves a purpose
+
+IMPORTANT DISCOVERY
+-------------------
+Body center and coordinate origin should be:
+
+Center of Raspberry Pi
+
+Benefits:
+
+- Close to geometric center
+- Close to center of mass
+- IMU already located there
+- Simplifies future calculations
+
+BODY COORDINATE SYSTEM DECISION
+-------------------------------
+New body frame:
+
++X = Eyes / sensors / intended front
+-X = Rear
+
++Y = Left
+-Y = Right
+
+All future movement calculations should assume this.
+
+Very important:
+
+The coordinate system should match the direction the robot perceives the world.
+
+GEOMETRY FILE PURPOSE
+---------------------
+A major design decision was to separate:
+
+WHAT HAL IS
+
+from
+
+HOW HAL MOVES
+
+hal_geometry.py should contain physical facts only.
+
+Examples:
+
+- Segment lengths
+- Leg locations
+- Servo directions
+- Mount angles
+- Body dimensions
+
+It should NOT contain:
+
+- Gaits
+- Walking logic
+- Turning logic
+- Movement assumptions
+
+CURRENT GEOMETRY STRUCTURE
+--------------------------
+
+@dataclass
+class LegDefinition:
+    name: str
+    mount_x: float
+    mount_y: float
+    mount_angle: float
+    coxa_dir: int
+    femur_dir: int
+    tibia_dir: int
+
+Known linkage lengths:
+
+COXA = 33
+FEMUR = 48
+TIBIA = 78
+
+CURRENT LEG DEFINITIONS
+-----------------------
+
+LF
+mount_angle = 135
+coxa_dir = -1
+
+RF
+mount_angle = 45
+coxa_dir = 1
+
+RR
+mount_angle = -45
+coxa_dir = -1
+
+LR
+mount_angle = -135
+coxa_dir = 1
+
+The exact angle values can be reviewed later.
+
+The important point is that mount geometry and servo direction are explicitly represented.
+
+HIP LOCATIONS
+-------------
+Working estimate:
+
+LF = (+55, +40)
+RF = (+55, -40)
+RR = (-55, -40)
+LR = (-55, +40)
+
+These are placeholders based on available references.
+
+Future measurements may refine them.
+
+IMPORTANT NOTE
+--------------
+Leg coordinates belonging to a leg should live INSIDE the leg definition.
+
+One source of truth.
+
+Avoid:
+
+mount_x = 0
+inside the structure
+
+then
+
+mount_x = 55
+elsewhere.
+
+PHASED ARCHITECTURE PLAN
+------------------------
+Phase 1
+=======
+Create geometry description.
+
+Goals:
+
+- Define robot physically
+- Define coordinate system
+- Define leg positions
+- Define servo directions
+
+No new IK yet.
+
+No gait rewriting yet.
+
+Success condition:
+
+"Could future me rebuild locomotion from this file alone?"
+
+Phase 2
+=======
+Create new movement framework.
+
+Replace:
+
+forward()
+backward()
+turn_left()
+turn_right()
+
+with:
+
+move(forward, strafe, rotate)
+
+Example:
+
+move(50, 0, 0)
+
+Forward.
+
+move(0, 50, 0)
+
+Strafe left.
+
+move(0, -50, 0)
+
+Strafe right.
+
+move(50, 0, 10)
+
+Forward while turning.
+
+Phase 3
+=======
+Create foot target planner.
+
+Motion commands generate foot targets.
+
+Foot targets feed existing IK.
+
+Phase 4
+=======
+Evaluate replacement IK.
+
+Coordinate conversion layer may ultimately replace Sunfounder assumptions.
+
+BUT:
+
+coord2polar()
+polar2coord()
+
+currently work.
+
+Conclusion:
+
+Do not rewrite functioning math and architecture simultaneously.
+
+Keep solver alive initially.
+
+Phase 5
+=======
+Advanced locomotion.
+
+Possible additions:
+
+- Trot gait
+- Dynamic gait selection
+- Curved walking
+- Diagonal movement
+- Heading-independent navigation
+
+Phase 6
+=======
+Balance system.
+
+Leverage BNO08x.
+
+Examples:
+
+- Roll correction
+- Pitch correction
+- Dynamic stance adjustments
+
+Phase 7
+=======
+Physical improvements.
+
+Examples:
+
+- Silicone feet
+- Larger contact patch
+- Greater traction
+- Better support for faster gaits
+
+STRAFING DISCOVERY
+------------------
+One of the biggest outcomes of the discussion:
+
+A body-centric locomotion model automatically enables:
+
+- Strafe left
+- Strafe right
+- Diagonal movement
+- Curved paths
+- Heading-independent travel
+
+This directly benefits future reflex systems.
+
+Example:
+
+Current style:
+
+Obstacle ahead
+-> turn
+-> move
+-> turn back
+
+Future style:
+
+Obstacle ahead
+-> strafe left
+
+Much closer to biological behavior.
+
+GAIT DISCUSSION
+---------------
+Current Sunfounder gait:
+
+- One foot lifted at a time
+- Extremely stable
+- Difficult to tip over
+- Slow
+
+Future possibilities:
+
+- Alternating diagonal pairs
+- Trot-style movement
+- Faster traversal
+
+This would be assisted by:
+
+- Better feet
+- IMU feedback
+- Known center of mass
+
+PHILOSOPHICAL CONCLUSION
+------------------------
+The biggest realization of the day was not technical.
+
+It was recognizing the difference between:
+
+"How Sunfounder chose to describe the robot"
+
+and
+
+"What the robot physically is"
+
+The project is now focused on:
+
+1. Defining Hal as a machine.
+2. Capturing physical reality in code.
+3. Building movement from those facts.
+
+rather than modifying assumptions inherited from the original kit.
+
+FINAL TAKEAWAY
+--------------
+The project is no longer:
+
+"Rotate the robot 90 degrees."
+
+The project is:
+
+"Create a body-centric locomotion architecture for Halimedes based on documented physical geometry, with support for arbitrary movement vectors, future imbalance correction, and future advanced gaits."

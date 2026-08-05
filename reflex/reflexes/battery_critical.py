@@ -10,4 +10,14 @@ class BatteryCriticalReflex(Reflex):
         return status == "Critical"
 
     def return_plan(self, sensor_state, world_state, hardware_state):
-        return {"intent": "emergency_return_to_charger"}
+
+        plan.actions.append({
+            "category": "locomotion",
+            "type": "stabilize"
+        })
+
+        # optional nonverbal cue
+        plan.nonverbal.setdefault("expression", [])
+        plan.nonverbal["expression"].append({"mood": "surprised"})
+
+        return plan

@@ -28,10 +28,16 @@ class Picrawler(Robot):
         }
 
         self.stand_position = 0
+        # self.direction = [
+        #     1,1,-1,
+        #     1,1,1,
+        #     1,1,-1,
+        #     1,1,1,
+        # ]
         self.direction = [
-            1,1,-1,
             1,1,1,
-            1,1,-1,
+            1,1,1,
+            1,1,1,
             1,1,1,
         ]
 
@@ -136,6 +142,7 @@ class Picrawler(Robot):
         toggle_motions = {
             "forward", "backward",
             "turn left", "turn right",
+            "strafe_left", "strafe_right",
             "turn left angle", "turn right angle"
         }
 
@@ -440,6 +447,84 @@ class Picrawler(Robot):
             tmp = self.z_current == self.Z_DEFAULT
             # print("is stand? %s"%tmp)
             return tmp
+
+        @property
+        @check_stand
+        @normal_action(0)
+        def strafe_left(self):
+            return [
+                # Frame 1: lift leg1 (front-right)
+                [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                [self.X_START,   self.Y_TURN,    self.Z_UP],
+                [self.X_DEFAULT, self.Y_START,   self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
+
+                # Frame 2: move leg1
+                [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT*2, self.z_current],
+                [self.X_DEFAULT, self.Y_START,     self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT,   self.z_current]],
+
+                # Frame 3: stance shift
+                [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT*2, self.z_current],
+                [self.X_DEFAULT, self.Y_START,     self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT,   self.z_current]],
+
+                # Frame 4: lift leg3 (rear-right)
+                [[self.X_DEFAULT, self.Y_START,     self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT,   self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT*2,   self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT*2, self.Z_UP]],
+
+                # Frame 5: move leg3
+                [[self.X_DEFAULT, self.Y_START,     self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT,   self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT*2,   self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT*2, self.z_current]],
+
+                # Frame 6: reset stance
+                [[self.X_DEFAULT, self.Y_START,     self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT,   self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT,   self.z_current],
+                [self.X_START,   self.Y_TURN,      self.Z_UP]],
+
+                # Frame 7: neutral
+                [[self.X_DEFAULT, self.Y_START,     self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT,   self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT,   self.z_current],
+                [self.X_DEFAULT, self.Y_START,     self.z_current]],
+            ]
+
+
+
+
+        @property
+        @check_stand
+        @normal_action(0)
+        def strafe_right(self):
+            return [
+                [[self.X_DEFAULT*2, self.Y_DEFAULT, self.Z_UP],
+                [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
+
+                [[self.X_DEFAULT*2, self.Y_DEFAULT, self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT, self.z_current]],
+
+                [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                [self.X_DEFAULT*2, self.Y_DEFAULT, self.Z_UP]],
+
+                [[self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                [self.X_DEFAULT, self.Y_DEFAULT, self.z_current],
+                [self.X_DEFAULT*2, self.Y_DEFAULT, self.z_current]],
+            ]
+
 
         @property
         @check_stand

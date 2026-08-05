@@ -18,13 +18,6 @@ class Robot(_Basic_class):
     This class is for makeing a servo robot with Robot HAT
 
     There are servo initialization, all servo move in specific speed. servo offset and stuff. make it easy to make a robot.
-    All Pi-series robot from SunFounder use this class. Check them out for more details.
-
-    PiSloth: https://github.com/sunfounder/pisloth
-
-    PiArm: https://github.com/sunfounder/piarm
-
-    PiCrawler: https://github.com/sunfounder/picrawler
     """
 
     move_list = {}
@@ -137,13 +130,13 @@ class Robot(_Basic_class):
 
     def servo_move(self, targets, speed=50, bpm=None):
         """
-        With the higher physical DPS limit (500°/s), the logical speed scale has been
-        expanded to 0-120. This preserves the original behavior where speed=100 matches
+        With the higher physical DPS limit (720°/s), the logical speed scale has been
+        expanded to 0-200. This preserves the original behavior where speed=100 matches
         the previous maximum speed at 428°/s, while allowing additional headroom up to
         the true hardware limit. The result is a more intuitive and linear speed control
-        for the user, with speed=120 corresponding to the servo maximum achievable DPS.
+        for the user, with speed=200 corresponding to the servo maximum achievable DPS.
 
-        Existing coded speed values can remain unchanged. The new 0-120 scale preserves
+        Existing coded speed values can remain unchanged. The new scale preserves
         the original behavior where speed=100 represents the previous maximum, so all
         existing motions continue to run at their intended speeds without modification.
 
