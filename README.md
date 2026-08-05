@@ -1,48 +1,92 @@
 # Halimedes: The Crawling Curiosity
+
 ## 2 Year Update
-Halimedes is no longer a toy robot. He started as a PiCrawler, but two years later he has a cortex, a perception pipeline, a decision architecture, a behavior system, and a personality that occasionally concerns the dog.
-This project documents the ongoing construction of a small autonomous agent with expressive behavior, social awareness, and a modular cognitive stack.
 
-## What Is This
-Halimedes is a four-legged Raspberry Pi–powered crawler bot redesigned for long-term autonomous operation. He can:
+Halimedes is no longer a toy robot.
 
-- Track and follow human faces with smooth, natural eye movement
-- Interpret audio input, identify speakers, and decide whether to respond
-- Generate expressive voice, gaze, and facial actions through a unified tag-based output system
-- Maintain internal emotional state and use it to drive tone, motion, and behavior
-- Run a full cognition loop that interprets perception, builds context, evaluates decisions, and executes behavior plans
+He began life as a SunFounder PiCrawler, but after two years of hardware and software development, little remains of the original platform beyond the core frame and servo layout.
 
-This is not a scripted robot. This is a layered cognitive architecture running on a Pi.
+Halimedes now includes a custom cognition system, perception pipeline, behavioral architecture, expressive face and voice systems, environmental sensing, and an ongoing locomotion redesign intended to move beyond the limitations of the original kit.
+
+Occasionally this concerns the dog.
+
+## What Is This?
+
+Halimedes is a four-legged autonomous robotics platform built around a Raspberry Pi and an increasingly unreasonable collection of sensors.
+
+The project combines:
+
+- Robotics
+- AI
+- Autonomous behavior
+- Perception systems
+- Locomotion research
+- Human-robot interaction
+- Too many zip ties
+
+Unlike the original PiCrawler, Halimedes is being developed as a long-term experimental platform rather than a predefined educational kit.
+
+## Current Development Focus
+
+Current work is centered around Locomotion V2.
+
+The original PiCrawler movement system assumes:
+
+- Fixed heading
+- Fixed gait definitions
+- Static stability
+- One-leg-at-a-time movement
+
+Halimedes is transitioning toward a body-centric locomotion architecture designed around:
+
+- Physical robot geometry
+- Dynamic movement vectors
+- Long-axis travel
+- Strafing
+- Curved movement
+- Sensor-directed navigation
+- Future gyro-assisted balance correction
+- Future gait switching and experimentation
+
+The long-term objective is to allow movement to be generated from physical robot geometry and desired motion rather than predefined movement routines.
 
 ## Features
-- Cognition Loop: Perception → Context → Decision → Behavior → Action, running continuously
-- Decision Manager: Primary driver of behavior selection, independent of the LLM
-- Neural Policy Layer (in progress): Future reinforcement-style decision evaluation
-- Perception Manager: Handles audio, visual, and internal state inputs
-- Speaker recognition: Identifies known humans and ignores Hal’s own voice
-- Emotion system: Internal mood influences voice, motion, and idle behavior
-- LLM-powered dialogue: Structured responses with defined tags
-- LCD Eye animation engine: Blinks, saccades, expressions, and gaze tracking
-- High-intensity LED “photon projector”: Because a laser was a lawsuit waiting to happen
 
-Upcoming: Memory embeddings, short and long-term recall, environmental awareness, more sensors, autonomous roaming
+- Cognition Loop: Perception → Context → Decision → Behavior → Action
+- Decision Manager independent from the LLM
+- Neural Policy Layer (in progress)
+- Perception Manager
+- Speaker Recognition
+- Emotional State System
+- Structured LLM Dialogue
+- LCD Eye Animation Engine
+- Sensor Fusion
+- Environmental Awareness
+- Locomotion Research Platform
+- High-Intensity LED Photon Projector (because "laser" sounded like paperwork)
 
-## Setup
-Documentation is being considered. For now, assume:
-- Python everywhere
-- More sensors and hardware components than intended
-- Brass replacement risers because white/black/gold colour scheme makes Halimedes a handsome boi.
-- A Pi that is doing far more than it was ever expected to do at one time
-- A collection of software modules that form a functional cortex
-- Occasional blood, zip ties, heatshrink tubing, and a willingness to debug at 3 AM
+## Upcoming
 
-
+- Memory embeddings
+- Short and long-term recall
+- Body-centric locomotion system
+- Geometry-based movement generation
+- Strafing and vector movement
+- Dynamic gait experimentation
+- Adaptive balance control
+- Environmental mapping
+- Autonomous roaming
 
 ## Philosophy
-Build it modular. Build it strange. Build it like something that might one day decide to explore the hallway on its own.
+
+Build it modular.
+
+Build it strange.
+
+Build it like something that might one day decide to explore the hallway on its own.
+
+Build it from physical reality first and software assumptions second.
 
 ---
 
-> “He doesn’t just stare into your soul. He animates the whole experience.”
-— Someone who accidentally made eye contact
-
+> "He doesn't just stare into your soul. He updates the movement architecture while doing it."
