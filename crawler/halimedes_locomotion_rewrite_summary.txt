@@ -424,3 +424,413 @@ The project is no longer:
 The project is:
 
 "Create a body-centric locomotion architecture for Halimedes based on documented physical geometry, with support for arbitrary movement vectors, future imbalance correction, and future advanced gaits."
+
+
+HAL IK DEBUG NOTES
+==================
+
+CURRENT STATUS
+--------------
+
+We are no longer debugging Sunfounder.
+
+We are debugging HalCrawler.
+
+The original crawler.py still exists intact and serves as a working reference.
+
+Current issue:
+
+- Robot responds to movement commands.
+- Servos move.
+- Some movement is predictable.
+- Actual movement does not match intended movement.
+- One leg/servo behaves semi-predictably.
+- Other legs frequently produce extreme or nonsensical poses.
+
+The important observation:
+
+The robot does NOT appear to be acting randomly.
+
+It appears to be acting consistently within a coordinate system that may not be the coordinate system we think we are providing.
+
+--------------------------------------------------
+
+IMPORTANT REALIZATION
+---------------------
+
+Original Sunfounder coordinate system:
+
+Each leg treated its coxa pivot as the origin.
+
+Example:
+
+    [60, 0, -30]
+
+meant:
+
+    60 mm from THAT LEG'S coxa pivot
+
+not:
+
+    60 mm from robot center.
+
+--------------------------------------------------
+
+New Hal design:
+
+Coordinates are intended to be body-centric.
+
+Example:
+
+    Origin = center of Pi
+           = IMU location
+
+A coordinate should mean:
+
+    60 mm from robot center
+
+NOT
+
+    60 mm from leg center
+
+This means that every command must eventually pass through:
+
+    Body Space
+        ↓
+    Leg Space
+        ↓
+    IK
+        ↓
+    Servos
+
+--------------------------------------------------
+
+CURRENT BIG QUESTION
+--------------------
+
+For a given target:
+
+    (x, y, z)
+
+what coordinate system is actually reaching the IK solver?
+
+Possibilities:
+
+A)
+
+    Body coordinates
+
+B)
+
+    Leg-local coordinates
+
+C)
+
+    Body coordinates transformed incorrectly
+
+D)
+
+    Body coordinates transformed twice
+
+--------------------------------------------------
+
+OBSERVED BEHAVIOR
+-----------------
+
+Changing X:
+
+Expected:
+
+    Foot moves forward/backward relative to body.
+
+Reality:
+
+    Coxa rotates.
+
+    Femur barely changes.
+
+    Tibia barely changes.
+
+This is suspicious.
+
+If X represents a position in space, changing X should often affect:
+
+    Coxa
+    Femur
+    Tibia
+
+because the foot is changing position.
+
+If only coxa changes:
+
+Possible explanation:
+
+    X is being interpreted as a heading/bearing.
+
+rather than
+
+    X is being interpreted as distance/reach.
+
+--------------------------------------------------
+
+PRIMARY SUSPECTS
+----------------
+
+#1
+
+Leg-local coordinate system does not match physical leg orientation.
+
+--------------------------------------------------
+
+#2
+
+Mount angles are incorrect.
+
+Example:
+
+    135
+    45
+    -45
+    -135
+
+may contain:
+
+    wrong sign
+    wrong reference orientation
+    incorrect assumed forward
+
+--------------------------------------------------
+
+#3
+
+Coordinate transforms are correct mathematically
+but are based on incorrect assumptions.
+
+Example:
+
+    "forward" for the body
+
+does not equal
+
+    "forward" for the leg.
+
+--------------------------------------------------
+
+#4
+
+Limiters may be hiding the real problem.
+
+Example:
+
+Raw angles:
+
+    femur = 142°
+    tibia = 118°
+
+After limiting:
+
+    femur = 90°
+    tibia = 90°
+
+Robot appears to "fight itself."
+
+Actual issue was upstream.
+
+--------------------------------------------------
+
+WHAT TO TEST NEXT
+-----------------
+
+DO NOT TEST:
+
+- Walking
+- Standing
+- Gaits
+- Four legs at once
+
+Test ONE leg.
+
+ONE.
+
+Single-leg testing only.
+
+--------------------------------------------------
+
+Add Debug Prints
+----------------
+
+Immediately before:
+
+    coxa_rad = math.atan2(ly, lx)
+
+print:
+
+    leg name
+    world coordinates
+    local coordinates
+
+Example:
+
+    print(
+        f"{leg.name} "
+        f"world={coord} "
+        f"local=({lx:.2f},{ly:.2f},{lz:.2f})"
+    )
+
+--------------------------------------------------
+
+Also Print
+----------
+
+World coordinate:
+
+    x y z
+
+Mount point:
+
+    mount_x mount_y
+
+Local coordinate:
+
+    lx ly lz
+
+Raw IK angles:
+
+    coxa
+    femur
+    tibia
+
+Limited angles:
+
+    coxa
+    femur
+    tibia
+
+--------------------------------------------------
+
+LOOK FOR THIS
+-------------
+
+If:
+
+World X increases
+
+AND
+
+Local LY increases
+
+instead of
+
+Local LX increasing
+
+then body-space and leg-space disagree.
+
+This would strongly explain:
+
+    coxa rotates
+    leg does not extend correctly
+
+--------------------------------------------------
+
+CRITICAL QUESTION
+-----------------
+
+When world X changes:
+
+Does local X change?
+
+or
+
+Does local Y change?
+
+Determine this before changing more math.
+
+--------------------------------------------------
+
+COORDINATE SYSTEM CHECK
+-----------------------
+
+Every time an X/Y/Z value appears, ask:
+
+What coordinate system is this?
+
+Body coordinates?
+
+Leg coordinates?
+
+Servo coordinates?
+
+Relative to robot center?
+
+Relative to coxa pivot?
+
+Relative to neutral pose?
+
+Do NOT assume.
+
+Verify.
+
+--------------------------------------------------
+
+IMPORTANT MENTAL MODEL
+----------------------
+
+Do not debug the robot.
+
+Debug the coordinate systems.
+
+The servos are only messengers.
+
+The robot is almost certainly following a coordinate system.
+
+The current challenge is determining whether it is following the coordinate system we intended.
+
+--------------------------------------------------
+
+MOST LIKELY BREAKTHROUGH
+------------------------
+
+Expected future discovery:
+
+    "World forward is becoming leg sideways."
+
+or
+
+    "This coordinate is already in leg space."
+
+or
+
+    "This transform is being applied twice."
+
+or
+
+    "This function still assumes the coxa pivot is the origin."
+
+The current behavior feels much more like:
+
+    Wrong coordinate frame
+
+than:
+
+    Broken trigonometry.
+
+--------------------------------------------------
+
+FINAL NOTE
+----------
+
+The most important observation made tonight:
+
+The robot's behavior is coherent.
+
+It is not random chaos.
+
+Coherent-but-wrong behavior usually indicates:
+
+    Incorrect assumptions
+    Incorrect reference frame
+    Incorrect transform
+
+Random behavior would suggest bad math.
+
+Current evidence points more strongly toward a coordinate-space issue than an IK equation issue.
