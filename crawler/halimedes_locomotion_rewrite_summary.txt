@@ -424,6 +424,8 @@ The project is no longer:
 The project is:
 
 "Create a body-centric locomotion architecture for Halimedes based on documented physical geometry, with support for arbitrary movement vectors, future imbalance correction, and future advanced gaits."
+---------------------------------------------------------------------------------------------------------------------------------------------------
+
 
 
 HAL IK DEBUG NOTES
@@ -834,6 +836,10 @@ Coherent-but-wrong behavior usually indicates:
 Random behavior would suggest bad math.
 
 Current evidence points more strongly toward a coordinate-space issue than an IK equation issue.
+
+---------------------------------------------------------------------------------------------------------------------------------------------------
+
+
 HAL STATUS SUMMARY — AUG 6
 
 • Physical zero is now fixed by hardware:
@@ -862,3 +868,299 @@ HAL STATUS SUMMARY — AUG 6
   – All servos now have a meaningful physical zero.
   – IK will work cleanly once each leg’s global → local transform is applied.
   – Next steps are finishing the last femur and implementing the per‑leg transforms.
+
+---------------------------------------------------------------------------------------------------------------------------------------------------
+
+IK DEBUG NOTES - AUG 6 EVENING
+=============================
+
+CURRENT STATUS
+--------------
+
+Physical zero appears to be solved.
+
+Completed:
+
+- Coxa neutral physically aligned with SunFounder 45° outward position.
+- Tibia neutral physically aligned with femur at approximately 90°.
+- Hat zero and physical zero now agree.
+- Robot now has a meaningful mechanical reference position.
+- Global body coordinate system has been defined.
+- Hip mount locations have been defined.
+- Global → local transform architecture exists in code.
+
+This is a major milestone.
+
+The robot now has a known physical reference frame.
+
+--------------------------------------------------
+
+IMPORTANT OBSERVATION
+---------------------
+
+Robot motion is not random.
+
+Robot motion is coherent but incorrect.
+
+This is encouraging.
+
+Random behavior suggests broken math.
+
+Coherent-but-wrong behavior suggests:
+
+- Wrong coordinate frame
+- Wrong transform
+- Wrong orientation assumption
+- Wrong mount-angle interpretation
+
+--------------------------------------------------
+
+LIKELY FAILURE LOCATION
+-----------------------
+
+Current probability estimate:
+
+10%
+Bad trigonometry
+
+30%
+Incorrect mount-angle signs
+
+60%
+Local leg coordinate systems do not match
+the physical direction each leg considers
+"forward"
+
+--------------------------------------------------
+
+KEY QUESTION
+------------
+
+For a given target:
+
+    (world_x, world_y, world_z)
+
+what does the leg actually see after transforms?
+
+Need to verify:
+
+    world
+        ↓
+    subtract hip
+        ↓
+    rotate into leg frame
+        ↓
+    local coordinate
+
+The most likely problem is somewhere in this chain.
+
+--------------------------------------------------
+
+TEST PLAN
+---------
+
+DO NOT TEST:
+
+- Walking
+- Standing
+- Neutral pose
+- Four legs simultaneously
+
+Test one leg only.
+
+Preferably LF.
+
+--------------------------------------------------
+
+DEBUG OUTPUT TO ADD
+-------------------
+
+For each target:
+
+Print:
+
+    Leg Name
+
+    World Target
+
+    DX
+    DY
+
+    Local X
+    Local Y
+    Local Z
+
+    Raw Coxa
+    Raw Femur
+    Raw Tibia
+
+    Limited Coxa
+    Limited Femur
+    Limited Tibia
+
+--------------------------------------------------
+
+SPECIFIC TEST
+-------------
+
+For LF:
+
+Use target values such as:
+
+    (110, 80, -20)
+
+or similar known coordinates.
+
+Print:
+
+    world=(x,y,z)
+
+    dx=(...)
+    dy=(...)
+
+    lx=(...)
+    ly=(...)
+
+Questions:
+
+1. Is local X positive?
+
+2. Is local Y close to zero?
+
+3. Does local X correspond to:
+       "extend away from body"
+
+   or
+
+       "rotate around body"
+
+--------------------------------------------------
+
+LOOK FOR THIS
+-------------
+
+If:
+
+    World X increases
+
+and
+
+    Local Y increases
+
+instead of
+
+    Local X increasing
+
+then the leg frame is rotated relative
+to the body frame.
+
+This would explain:
+
+    - coxa movement
+    - poor extension
+    - strange poses
+    - excessive limiter activity
+
+--------------------------------------------------
+
+MOUNT ANGLES
+------------
+
+Current assumptions:
+
+    LF = 135
+    RF = 45
+    RR = -45
+    LR = -135
+
+These are still suspects.
+
+Not because they're known wrong.
+
+Because they are not yet verified.
+
+A sign error here would create:
+
+    mathematically valid transforms
+
+but
+
+    physically incorrect movement.
+
+--------------------------------------------------
+
+LIMITER CHECK
+-------------
+
+Verify that limiters are not hiding
+the actual issue.
+
+Example:
+
+Raw:
+
+    Coxa  = 12
+    Femur = 143
+    Tibia = 118
+
+Limited:
+
+    Coxa  = 12
+    Femur = 90
+    Tibia = 90
+
+The robot would appear to be fighting itself,
+but the real issue is upstream.
+
+Always compare:
+
+    Raw Angles
+    vs
+    Limited Angles
+
+--------------------------------------------------
+
+MOST IMPORTANT QUESTION
+-----------------------
+
+Does local +X represent:
+
+    "extend the leg away from the body"
+
+or
+
+    "rotate around the body"
+
+If the answer is wrong,
+everything downstream will be wrong.
+
+--------------------------------------------------
+
+CURRENT THEORY
+--------------
+
+The physical side is mostly solved.
+
+The likely remaining problem is not:
+
+    "How should the leg move?"
+
+but:
+
+    "What coordinate system does the leg think it lives in?"
+
+The next breakthrough will probably come from
+discovering a mismatch between:
+
+    Body Forward
+
+and
+
+    Leg Forward
+
+or from finding a transform being applied
+with an incorrect sign or orientation.
+
+Current evidence points toward
+a coordinate-frame issue rather than
+an inverse-kinematics equation issue.
