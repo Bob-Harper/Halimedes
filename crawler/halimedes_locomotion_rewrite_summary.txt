@@ -834,3 +834,31 @@ Coherent-but-wrong behavior usually indicates:
 Random behavior would suggest bad math.
 
 Current evidence points more strongly toward a coordinate-space issue than an IK equation issue.
+HAL STATUS SUMMARY — AUG 6
+
+• Physical zero is now fixed by hardware:
+  – Coxa at the SunFounder 45° outward mid‑range.
+  – Tibia at 90° relative to femur, tips just touching the ground.
+  – Femurs remounted so the resting stance is stable (three done, one pending replacement).
+  – Hat ZERO pose and our physical zero now match.
+
+• Global coordinate system:
+  – Body center is (0,0,0).
+  – +X is forward, –X is backward.
+  – +Y is left, –Y is right.
+  – Legs live at hip positions: LF(+40,+40), RF(+40,–40), LR(–40,–40), RR(–40,+40).
+
+• Local coordinate system per leg:
+  – Each leg gets its own “graph paper” with origin at its hip.
+  – The grid is rotated so the leg’s X‑axis aligns with its forward direction.
+  – IK only sees local coordinates.
+
+• Transform flow:
+  – Global target → subtract hip position → rotate into leg’s local frame.
+  – Run IK on that local vector.
+  – Add the leg’s fixed mount angle (the 45° outward) when converting coxa to servo angle.
+
+• Result:
+  – All servos now have a meaningful physical zero.
+  – IK will work cleanly once each leg’s global → local transform is applied.
+  – Next steps are finishing the last femur and implementing the per‑leg transforms.

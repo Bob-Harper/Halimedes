@@ -1,6 +1,6 @@
 import math
-from crawler.hal_geometry import COXA_LEN, FEMUR_LEN, TIBIA_LEN, NEUTRAL
-from crawler.hal_leg_config import LEGS
+from crawler.hal_leg_hardware import COXA_LEN, FEMUR_LEN, TIBIA_LEN, NEUTRAL
+from crawler.hal_leg_hardware import LEGS, LEG_MAP
 from crawler.robot import Robot
 
 
@@ -25,33 +25,34 @@ class Halcrawler(Robot):
         self.C = coxa_len
         self.A = femur_len
         self.B = tibia_len
-        self.legs = { leg.name: leg for leg in LEGS }
+        self.legs = LEGS
+        self.leg_map = LEG_MAP
 
 
     def coord2polar(self, leg, coord):
-        print("coord2polar USING:", leg.name, leg.mount_angle)
-
         # world → leg-local
         dx = coord[0] - leg.mount_x
         dy = coord[1] - leg.mount_y
         dz = coord[2]
 
-        theta = -math.radians(leg.mount_angle)
+        # rotate into leg frame
+        theta = math.radians(leg.mount_angle)
         lx = dx * math.cos(theta) + dy * math.sin(theta)
         ly = -dx * math.sin(theta) + dy * math.cos(theta)
         lz = dz
 
         # coxa yaw
-        coxa_rad = math.atan2(ly, lx)
+        raw_coxa = math.atan2(ly, lx)
+        coxa_rad = raw_coxa
 
         # femur/tibia plane
-        px = lx - self.C
+        px = math.sqrt(lx*lx + ly*ly) - self.C
         pz = lz
         d = math.sqrt(px*px + pz*pz)
         if d < 1.0:
             d = 1.0
 
-        # tibia via law of cosines
+        # tibia
         cos_tibia = (self.A*self.A + self.B*self.B - d*d) / (2.0 * self.A * self.B)
         cos_tibia = max(-1.0, min(1.0, cos_tibia))
         tibia_rad = math.acos(cos_tibia)
@@ -63,16 +64,12 @@ class Halcrawler(Robot):
         femur_rad = angle_to_target + math.acos(cos_femur)
 
         # to degrees
-        coxa_deg  = math.degrees(coxa_rad)
-        femur_deg = math.degrees(femur_rad)
-        tibia_deg = math.degrees(tibia_rad)
-
-        # apply directions
-        coxa_deg  *= leg.coxa_dir
-        femur_deg *= leg.femur_dir
-        tibia_deg *= leg.tibia_dir
+        coxa_deg  = math.degrees(coxa_rad)  * leg.coxa_dir
+        femur_deg = math.degrees(femur_rad) * leg.femur_dir
+        tibia_deg = math.degrees(tibia_rad) * leg.tibia_dir
 
         return [round(coxa_deg, 4), round(femur_deg, 4), round(tibia_deg, 4)]
+
 
 
     def polar2coord(self, leg, angles):
@@ -136,22 +133,25 @@ class Halcrawler(Robot):
         return [coxa_deg, femur_deg, tibia_deg]
 
     def set_leg_angles(self, leg_name, angles):
-        leg = self.legs[leg_name]
+        leg = self.leg_map[leg_name]
         coxa, femur, tibia = angles
+        print(f"{leg_name} SET:",
+            f"coxa={coxa:.1f}",
+            f"femur={femur:.1f}",
+            f"tibia={tibia:.1f}")
+        self.servo_positions[leg.pin_coxa]  = coxa
+        self.servo_positions[leg.pin_femur] = femur
+        self.servo_positions[leg.pin_tibia] = tibia
 
-        # Write into the correct servo slots
-        self.servo_positions[leg.coxa_pin]  = coxa
-        self.servo_positions[leg.femur_pin] = femur
-        self.servo_positions[leg.tibia_pin] = tibia
-
-        # Push to hardware
         self.servo_write_all(self.servo_positions)
 
+
     def move_leg_to(self, leg_name, coord):
-        leg = self.legs[leg_name]
+        leg = self.leg_map[leg_name]
         angles = self.coord2polar(leg, coord)
         limited = self.limit_angle(angles)
         self.set_leg_angles(leg_name, limited)
+
 
 
     def assume_neutral(self):
@@ -159,11 +159,11 @@ class Halcrawler(Robot):
             self.move_leg_to(leg_name, coord)
 
     def move_leg_smooth(self, leg_name, target, steps=20):
-        leg = self.legs[leg_name]
+        leg = self.leg_map[leg_name]
         current = self.polar2coord(leg, (
-            self.servo_positions[leg.coxa_pin],
-            self.servo_positions[leg.femur_pin],
-            self.servo_positions[leg.tibia_pin]
+            self.servo_positions[leg.pin_coxa],
+            self.servo_positions[leg.pin_femur],
+            self.servo_positions[leg.pin_tibia]
         ))
 
         for i in range(steps):

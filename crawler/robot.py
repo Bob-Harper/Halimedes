@@ -51,8 +51,12 @@ class Robot(_Basic_class):
         :type init_angles: list
         """
         super().__init__(**kwargs)
-        self.servo_list = []
-        self.pin_num = len(pin_list)
+        self.pin_list = pin_list
+
+        # self.servo_list = []
+        self.servo_list = [None] * 16
+        # self.pin_num = len(pin_list)
+        self.pin_num = 16
 
         if name == None:
             self.name = 'other'
@@ -67,6 +71,9 @@ class Robot(_Basic_class):
         temp_str = str(raw)
         temp = [float(i.strip()) for i in temp_str.strip("[]").split(",") if i.strip()]
         self.offset: list[float] = temp
+        while len(self.offset) < 16:
+            self.offset.append(0.0)
+
         # parameter init
         self.servo_positions = self.new_list(0)
         self.origin_positions = self.new_list(0)
@@ -81,51 +88,39 @@ class Robot(_Basic_class):
                 raise ValueError('init angles numbers do not match pin numbers ')
 
         if init_order == None:
-            init_order = range(self.pin_num)
+            init_order = pin_list
 
         for i, pin in enumerate(pin_list):
-            self.servo_list.append(Servo(pin))
-            self.servo_positions[i] = init_angles[i]
-        for i in init_order:
-            self.servo_list[i].angle = self.offset[i] + self.servo_positions[i]
-
+            # self.servo_list.append(Servo(pin))
+            # self.servo_positions[i] = init_angles[i]
+            self.servo_list[pin] = Servo(pin)
+            self.servo_positions[pin] = init_angles[i]
+        # for i in init_order:
+        #     self.servo_list[i].angle = self.offset[i] + self.servo_positions[i]
+        for pin in init_order:
+            self.servo_list[pin].angle = self.offset[pin] + self.servo_positions[pin]
             time.sleep(0.15)
 
         self.last_move_time = time.time()
 
     def new_list(self, default_value):
-        """
-        Create a list of servo angles with default value
+        return [default_value] * 16
 
-        :param default_value: default value of servo angles
-        :type default_value: int or float
-        :return: list of servo angles
-        :rtype: list
-        """
-        _ = [default_value] * self.pin_num
-        return _
 
     def servo_write_raw(self, angle_list):
-        """
-        Set servo angles to specific raw angles
+        for pin in self.pin_list:
+            self.servo_list[pin].angle = angle_list[pin]
 
-        :param angle_list: list of servo angles
-        :type angle_list: list
-        """
-        for i in range(self.pin_num):
-            self.servo_list[i].angle = angle_list[i]
 
     def servo_write_all(self, angles):
-        """
-        Set servo angles to specific angles with original angle and offset
+        print("WRITE_ALL:", angles)  # ← ADD THIS
 
-        :param angles: list of servo angles
-        :type angles: list
-        """
-        rel_angles = []  # ralative angle to home
-        for i in range(self.pin_num):
-            rel_angles.append(
-                self.direction[i] * (self.origin_positions[i] + angles[i] + self.offset[i]))
+        rel_angles = []
+        for i in range(16):
+            rel_angles.append(self.origin_positions[i] + angles[i] + self.offset[i])
+
+        print("REL:", rel_angles)    # ← AND THIS
+
         self.servo_write_raw(rel_angles)
 
     def servo_move(self, targets, speed=50, bpm=None):
@@ -144,13 +139,13 @@ class Robot(_Basic_class):
 
         :param targets: list of servo angles
         :type targets: list[float]
-        :param speed: logical speed (0-120)
+        :param speed: logical speed (0-200)
         :type speed: int or float
         :param bpm: beats per minute (optional, overrides speed)
         :type bpm: int or float
         """
         # Clamp speed
-        speed = max(0, min(120, speed))
+        speed = max(0, min(200, speed))
 
         step_time = 10.0  # ms
         delta = []
@@ -174,8 +169,8 @@ class Robot(_Basic_class):
             target_dps = min(current_dps, self.max_dps)
             total_time = max_delta / target_dps * 1000.0
         else:
-            # Map speed 0–120 to 0–max_dps
-            target_dps = (speed / 120.0) * self.max_dps
+            # Map speed 0–200 to 0–max_dps
+            target_dps = (speed / 200.0) * self.max_dps
             if target_dps <= 0:
                 # No movement requested; just wait one step
                 time.sleep(step_time / 1000.0)
