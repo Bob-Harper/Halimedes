@@ -111,7 +111,7 @@ class Halcrawler(Robot):
 
         return [round(world_x,4), round(world_y,4), round(world_z,4)]
 
-    def apply_calibration(leg, joint, logical_angle):
+    def apply_calibration(self, leg, joint, logical_angle):
         zero = leg.joint_zero[joint]
         lo, hi = leg.joint_range[joint]
         angle = logical_angle + zero
@@ -147,15 +147,23 @@ class Halcrawler(Robot):
     def set_leg_angles(self, leg_name, angles):
         leg = self.leg_map[leg_name]
         coxa, femur, tibia = angles
+
+        # apply calibration before writing to servo_positions
+        coxa  = self.apply_calibration(leg, "coxa", coxa)
+        femur = self.apply_calibration(leg, "femur", femur)
+        tibia = self.apply_calibration(leg, "tibia", tibia)
+
         print(f"{leg_name} SET:",
             f"coxa={coxa:.1f}",
             f"femur={femur:.1f}",
             f"tibia={tibia:.1f}")
+
         self.servo_positions[leg.pin_coxa]  = coxa
         self.servo_positions[leg.pin_femur] = femur
         self.servo_positions[leg.pin_tibia] = tibia
 
         self.servo_write_all(self.servo_positions)
+
 
     def move_leg_to(self, leg_name, coord):
         leg = self.leg_map[leg_name]

@@ -1164,3 +1164,46 @@ with an incorrect sign or orientation.
 Current evidence points toward
 a coordinate-frame issue rather than
 an inverse-kinematics equation issue.
+
+
+------------------------------------------------------------------------------------------------\\
+
+The math is solid for X‑axis motion, but the frame rotation needs a cleanup before HAL can handle Y and Z properly. That’s a tomorrow job — fresh eyes, clean head.
+
+When you pick it up again, the fix will be straightforward: normalize each leg’s local frame before feeding it into the IK, so every leg’s “forward” points along its own X. Once that’s done, diagonal and vertical moves will behave instead of mangling.\\\
+
+
+# HAL Progress Summary – August 7, 2026
+
+## Geometry and Hardware
+- `hal_leg_hardware.py` converted to a dataclass structure for `LegHardware`.
+- Added calibration fields:
+  - `joint_zero` → per‑joint servo offsets.
+  - `joint_range` → physical motion limits.
+- Each leg (LF, RF, RR, LR) now has measured zero and range values applied.
+- Mount angles corrected: LF uses –135° to align forward motion with physical orientation.
+
+## Servo Pipeline
+- `apply_calibration()` added to normalize logical angles before PWM output.
+- Integrated calibration into `set_leg_angles()` so all servo writes respect offsets and limits.
+- Verified servo mapping and pin assignments remain consistent.
+
+## Behavior Tests
+- Test sequence (`move_leg_to("LF", (-90,0,0))`, etc.) confirmed X‑axis motion works correctly.
+- Observed physical motion:
+  - Leg sweeps forward, femur straightens, tibia drops then raises.
+  - Confirms calibration and axis math are functioning for X‑axis.
+- Identified issue: non‑X movements distort due to incomplete frame normalization.
+
+## Next Steps
+- Normalize coordinate transforms per leg:
+  - Rotate both X and Y by each leg’s `mount_angle` before IK.
+  - Keep Z unchanged.
+- Validate diagonal and vertical moves after normalization.
+- Once verified, expand testing to all four legs for synchronized gait.
+
+## Current Status
+Geometry calibrated
+Servo pipeline functional
+X‑axis motion verified
+ Frame rotation fix pending

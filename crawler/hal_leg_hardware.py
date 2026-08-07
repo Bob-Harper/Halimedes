@@ -34,7 +34,7 @@ LR_X, LR_Y =  -40, +40
 
 LF = LegHardware(
     name="LF",
-    mount_x=40, mount_y=40, mount_angle=135,
+    mount_x=40, mount_y=40, mount_angle=-135,
     coxa_dir=-1, femur_dir=1, tibia_dir=1,
     pin_coxa=5, pin_femur=4, pin_tibia=3
 )
@@ -126,6 +126,6 @@ LR
     pin_coxa=2, -45 straight left, 60 straight back.
     pin_femur=1, -45 straight up, 90 (45 degrees downward)
     pin_tibia=0, 90 fully inward, -90 fully extended
-	
+
 
 """
