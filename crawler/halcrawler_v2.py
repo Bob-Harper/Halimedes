@@ -37,8 +37,8 @@ class Halcrawler(Robot):
 
         # rotate into leg frame
         theta = math.radians(leg.mount_angle)
-        lx = dx * math.cos(theta) + dy * math.sin(theta)
-        ly = -dx * math.sin(theta) + dy * math.cos(theta)
+        lx = dx * math.cos(theta) - dy * math.sin(theta)
+        ly = dx * math.sin(theta) + dy * math.cos(theta)
         lz = dz
 
         # coxa yaw
@@ -98,15 +98,24 @@ class Halcrawler(Robot):
 
         # rotate back into world frame
         theta = math.radians(leg.mount_angle)
-        wx =  x * math.cos(theta) - y * math.sin(theta)
-        wy =  x * math.sin(theta) + y * math.cos(theta)
-        wz =  z
 
-        # translate back to world
-        wx += leg.mount_x
-        wy += leg.mount_y
+        # inverse rotation: local → world
+        wx = lx * math.cos(theta) + ly * math.sin(theta)
+        wy = -lx * math.sin(theta) + ly * math.cos(theta)
+        wz = lz
 
-        return [round(wx,4), round(wy,4), round(wz,4)]
+        # add hip offset
+        world_x = wx + leg.mount_x
+        world_y = wy + leg.mount_y
+        world_z = wz
+
+        return [round(world_x,4), round(world_y,4), round(world_z,4)]
+
+    def apply_calibration(leg, joint, logical_angle):
+        zero = leg.joint_zero[joint]
+        lo, hi = leg.joint_range[joint]
+        angle = logical_angle + zero
+        return max(lo, min(hi, angle))
 
     def limit(self, min_val, max_val, x):
         if x > max_val:
@@ -115,20 +124,23 @@ class Halcrawler(Robot):
             return min_val
         return x
 
-    def limit_angle(self, angles):
+    def limit_angle(self, leg, angles):
         coxa_deg, femur_deg, tibia_deg = angles
 
-        t = self.limit(-90, 90, coxa_deg)
-        if t != coxa_deg:
-            coxa_deg = t
+        # Coxa: ±45° around mount angle
+        coxa_min = leg.mount_angle - 45
+        coxa_max = leg.mount_angle + 45
+        coxa_deg = self.limit(coxa_min, coxa_max, coxa_deg)
 
-        t = self.limit(-90, 90, femur_deg)
-        if t != femur_deg:
-            femur_deg = t
+        # Femur: ±45° around new zero
+        femur_min = -45
+        femur_max = 45
+        femur_deg = self.limit(femur_min, femur_max, femur_deg)
 
-        t = self.limit(-90, 90, tibia_deg)
-        if t != tibia_deg:
-            tibia_deg = t
+        # Tibia: nearly full 180° range
+        tibia_min = 10
+        tibia_max = 160
+        tibia_deg = self.limit(tibia_min, tibia_max, tibia_deg)
 
         return [coxa_deg, femur_deg, tibia_deg]
 
@@ -145,14 +157,11 @@ class Halcrawler(Robot):
 
         self.servo_write_all(self.servo_positions)
 
-
     def move_leg_to(self, leg_name, coord):
         leg = self.leg_map[leg_name]
         angles = self.coord2polar(leg, coord)
-        limited = self.limit_angle(angles)
+        limited = self.limit_angle(leg, angles)
         self.set_leg_angles(leg_name, limited)
-
-
 
     def assume_neutral(self):
         for leg_name, coord in NEUTRAL.items():

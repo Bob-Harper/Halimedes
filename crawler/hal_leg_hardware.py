@@ -19,6 +19,12 @@ class LegHardware:
     pin_femur: int
     pin_tibia: int
 
+    joint_zero = {"coxa": 0.0, "femur": 0.0, "tibia": 0.0}
+    joint_range = {
+        "coxa": (-45.0, 45.0),
+        "femur": (-75.0, 90.0),
+        "tibia": (-90.0, 90.0),
+    }
 
 # Physical hip locations (mm)
 LF_X, LF_Y =  +40, +40
@@ -30,30 +36,37 @@ LF = LegHardware(
     name="LF",
     mount_x=40, mount_y=40, mount_angle=135,
     coxa_dir=-1, femur_dir=1, tibia_dir=1,
-    pin_coxa=3, pin_femur=4, pin_tibia=5
+    pin_coxa=5, pin_femur=4, pin_tibia=3
 )
+LF.joint_zero = {"coxa": 7.0, "femur": -15.0, "tibia": 0.0}
+LF.joint_range = {"coxa": (-40, 55), "femur": (-75, 90), "tibia": (-90, 90)}
 
 RF = LegHardware(
     name="RF",
     mount_x=40, mount_y=-40, mount_angle=45,
     coxa_dir=1, femur_dir=1, tibia_dir=1,
-    pin_coxa=9, pin_femur=10, pin_tibia=11
+    pin_coxa=11, pin_femur=10, pin_tibia=9
 )
+RF.joint_zero = {"coxa": 0.0, "femur": 0.0, "tibia": 0.0}
+RF.joint_range = {"coxa": (-45, 45), "femur": (-75, 90), "tibia": (-90, 90)}
 
 RR = LegHardware(
     name="RR",
     mount_x=-40, mount_y=-40, mount_angle=-45,
     coxa_dir=-1, femur_dir=1, tibia_dir=1,
-    pin_coxa=6, pin_femur=7, pin_tibia=8
+    pin_coxa=8, pin_femur=7, pin_tibia=6
 )
+RR.joint_zero = {"coxa": 0.0, "femur": -20.0, "tibia": 0.0}
+RR.joint_range = {"coxa": (-45, 45), "femur": (-75, 90), "tibia": (-90, 90)}
 
 LR = LegHardware(
     name="LR",
     mount_x=-40, mount_y=40, mount_angle=-135,
     coxa_dir=1, femur_dir=1, tibia_dir=1,
-    pin_coxa=0, pin_femur=1, pin_tibia=2
+    pin_coxa=2, pin_femur=1, pin_tibia=0
 )
-
+LR.joint_zero = {"coxa": 7.0, "femur": 10.0, "tibia": 0.0}
+LR.joint_range = {"coxa": (-45, 60), "femur": (-45, 90), "tibia": (-90, 90)}
 
 LEGS = [LF, RF, RR, LR]
 LEG_MAP = { leg.name: leg for leg in LEGS }
@@ -78,3 +91,41 @@ NEUTRAL = {
     "RR": RR_NEUTRAL,
     "LR": LR_NEUTRAL
 }
+
+
+"""
+
+  -------- PiCrawler Servo Layout ---------
+	Arrows indicate which side of the servo block the pivot point is on
+
+	            Front
+       .......          .......
+    <=|  LF   |-U----U-|  RF   |=>
+       ``````` |      | ```````
+  L    ....... |      | .......    R
+    <=|  LR   |--------|  RR   |=>
+       ```````          ```````
+	             BACK
+
+RF
+    pin_coxa=11, 45 straight forward, -45 straight right,
+    pin_femur=10, # unknown, servo awaiting replacement
+    pin_tibia=9, 90 fully inward, -90 fully extended
+
+RR
+    pin_coxa=8, -45 straight back,  45 straight right,
+    pin_femur=7,-75 straight up, 90 (30 degrees downward)
+    pin_tibia=6, 90 fully inward, -90 fully extended
+
+LF
+    pin_coxa=5, 55 straight left, -40 straight forward
+    pin_femur=4,-75 straight up, 90 (45 degrees downward)
+    pin_tibia=3, 90 fully inward, -90 fully extended
+
+LR
+    pin_coxa=2, -45 straight left, 60 straight back.
+    pin_femur=1, -45 straight up, 90 (45 degrees downward)
+    pin_tibia=0, 90 fully inward, -90 fully extended
+	
+
+"""
