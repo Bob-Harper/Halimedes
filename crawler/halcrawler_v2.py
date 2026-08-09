@@ -46,7 +46,7 @@ class Halcrawler(Robot):
         coxa_rad = raw_coxa
 
         # femur/tibia plane
-        px = math.sqrt(lx*lx + ly*ly) - self.C
+        px = lx - self.C
         pz = lz
         d = math.sqrt(px*px + pz*pz)
         if d < 1.0:

@@ -34,8 +34,8 @@ LR_X, LR_Y =  -40, +40
 
 LF = LegHardware(
     name="LF",
-    mount_x=40, mount_y=40, mount_angle=-135,
-    coxa_dir=-1, femur_dir=1, tibia_dir=1,
+    mount_x=40, mount_y=40, mount_angle=-45,
+    coxa_dir=1, femur_dir=-1, tibia_dir=-1,
     pin_coxa=5, pin_femur=4, pin_tibia=3
 )
 LF.joint_zero = {"coxa": 7.0, "femur": -15.0, "tibia": 0.0}
@@ -43,8 +43,8 @@ LF.joint_range = {"coxa": (-40, 55), "femur": (-75, 90), "tibia": (-90, 90)}
 
 RF = LegHardware(
     name="RF",
-    mount_x=40, mount_y=-40, mount_angle=45,
-    coxa_dir=1, femur_dir=1, tibia_dir=1,
+    mount_x=40, mount_y=-40, mount_angle=45, # ANGLE CONFIRMED
+    coxa_dir=1, femur_dir=-1, tibia_dir=-1,
     pin_coxa=11, pin_femur=10, pin_tibia=9
 )
 RF.joint_zero = {"coxa": 0.0, "femur": 0.0, "tibia": 0.0}
@@ -52,8 +52,8 @@ RF.joint_range = {"coxa": (-45, 45), "femur": (-75, 90), "tibia": (-90, 90)}
 
 RR = LegHardware(
     name="RR",
-    mount_x=-40, mount_y=-40, mount_angle=-45,
-    coxa_dir=-1, femur_dir=1, tibia_dir=1,
+    mount_x=-40, mount_y=-40, mount_angle=0, # ANGLE CONFIRMED
+    coxa_dir=1, femur_dir=-1, tibia_dir=-1,
     pin_coxa=8, pin_femur=7, pin_tibia=6
 )
 RR.joint_zero = {"coxa": 0.0, "femur": -20.0, "tibia": 0.0}
@@ -61,8 +61,8 @@ RR.joint_range = {"coxa": (-45, 45), "femur": (-75, 90), "tibia": (-90, 90)}
 
 LR = LegHardware(
     name="LR",
-    mount_x=-40, mount_y=40, mount_angle=-135,
-    coxa_dir=1, femur_dir=1, tibia_dir=1,
+    mount_x=-40, mount_y=40, mount_angle=90, # ANGLE CONFIRMED
+    coxa_dir=1, femur_dir=-1, tibia_dir=-1,
     pin_coxa=2, pin_femur=1, pin_tibia=0
 )
 LR.joint_zero = {"coxa": 7.0, "femur": 10.0, "tibia": 0.0}

@@ -1207,3 +1207,5 @@ Geometry calibrated
 Servo pipeline functional
 X‑axis motion verified
  Frame rotation fix pending
+
+AMZZN 2PCS 7.4V 3000mAh 15C 2S SM-4P Plug Li-ion Battery with USB Charger for EC08 DE85 RC Car, Truck RC Ship RC Drone Engineering Vehicle Backup Battery 
