@@ -28,48 +28,51 @@ class Halcrawler(Robot):
         self.legs = LEGS
         self.leg_map = LEG_MAP
 
-
     def coord2polar(self, leg, coord):
-        # world → leg-local
+        # 1. World to local hip translation
         dx = coord[0] - leg.mount_x
         dy = coord[1] - leg.mount_y
-        dz = coord[2]
+        dz = -coord[2] # Negative world Z drives downward toward floor
 
-        # rotate into leg frame
+        # 2. Standard 2D Rotation Matrix (FIXED: Standardized sign convention)
+        # This guarantees left and right sides calculate identical local distances
         theta = math.radians(leg.mount_angle)
-        lx = dx * math.cos(theta) - dy * math.sin(theta)
-        ly = dx * math.sin(theta) + dy * math.cos(theta)
+        lx =  dx * math.cos(theta) + dy * math.sin(theta)
+        ly = -dx * math.sin(theta) + dy * math.cos(theta)
         lz = dz
 
-        # coxa yaw
-        raw_coxa = math.atan2(ly, lx)
-        coxa_rad = raw_coxa
+        # 3. Calculate Coxa (Yaw) angle
+        coxa_rad = math.atan2(ly, lx)
 
-        # femur/tibia plane
-        px = lx - self.C
+        # 4. Project coordinates onto the vertical 2D leg plane
+        px = math.sqrt(lx**2 + ly**2) - self.C
         pz = lz
-        d = math.sqrt(px*px + pz*pz)
+
+        # Hypotenuse from hip pivot to foot target
+        d = math.sqrt(px * px + pz * pz)
         if d < 1.0:
             d = 1.0
 
-        # tibia
-        cos_tibia = (self.A*self.A + self.B*self.B - d*d) / (2.0 * self.A * self.B)
+        # 5. Calculate Tibia Angle using Law of Cosines
+        cos_tibia = (self.A**2 + self.B**2 - d**2) / (2.0 * self.A * self.B)
         cos_tibia = max(-1.0, min(1.0, cos_tibia))
-        tibia_rad = math.acos(cos_tibia)
+        tibia_internal = math.acos(cos_tibia)
 
-        # femur
+        # Map internal triangle to your physical hardware orientation
+        tibia_rad = math.radians(90) - tibia_internal
+
+        # 6. Calculate Femur Angle
         angle_to_target = math.atan2(pz, px)
-        cos_femur = (self.A*self.A + d*d - self.B*self.B) / (2.0 * self.A * d)
+        cos_femur = (self.A**2 + d**2 - self.B**2) / (2.0 * self.A * d)
         cos_femur = max(-1.0, min(1.0, cos_femur))
-        femur_rad = angle_to_target + math.acos(cos_femur)
+        femur_rad = angle_to_target - math.acos(cos_femur)
 
-        # to degrees
-        coxa_deg  = math.degrees(coxa_rad)  * leg.coxa_dir
+        # 7. Convert to degrees and scale by hardware configuration directions
+        coxa_deg = math.degrees(coxa_rad) * leg.coxa_dir
         femur_deg = math.degrees(femur_rad) * leg.femur_dir
         tibia_deg = math.degrees(tibia_rad) * leg.tibia_dir
 
         return [round(coxa_deg, 4), round(femur_deg, 4), round(tibia_deg, 4)]
-
 
 
     def polar2coord(self, leg, angles):
@@ -127,19 +130,15 @@ class Halcrawler(Robot):
     def limit_angle(self, leg, angles):
         coxa_deg, femur_deg, tibia_deg = angles
 
-        # Coxa: ±45° around mount angle
-        coxa_min = leg.mount_angle - 45
-        coxa_max = leg.mount_angle + 45
+        # Coxa: Allow exactly ±45 degrees of swing around the 0° diagonal mounting point
+        coxa_min, coxa_max = -45.0, 45.0
         coxa_deg = self.limit(coxa_min, coxa_max, coxa_deg)
 
-        # Femur: ±45° around new zero
-        femur_min = -45
-        femur_max = 45
-        femur_deg = self.limit(femur_min, femur_max, femur_deg)
+        # Femur and Tibia: Read directly from your custom hardware safety bounds
+        femur_min, femur_max = leg.joint_range["femur"]
+        tibia_min, tibia_max = leg.joint_range["tibia"]
 
-        # Tibia: nearly full 180° range
-        tibia_min = 10
-        tibia_max = 160
+        femur_deg = self.limit(femur_min, femur_max, femur_deg)
         tibia_deg = self.limit(tibia_min, tibia_max, tibia_deg)
 
         return [coxa_deg, femur_deg, tibia_deg]
