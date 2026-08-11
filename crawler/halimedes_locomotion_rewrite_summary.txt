@@ -1229,3 +1229,232 @@ Code
 [IK OUT] ...
 [FINAL CMD] ...
 I’ll tell you the single next tweak (either flip that leg’s coxa_dir back or set that leg’s joint_zero["coxa"] to a specific value).
+
+
+======================================================================================================================================================
+
+
+
+
+
+
+
+
+IK REVIEW NOTES - AUG 7
+=======================
+
+CURRENT ASSESSMENT
+------------------
+
+Overall progress is extremely positive.
+
+The major breakthrough is that femur and tibia behavior now appears mostly reasonable.
+
+This significantly reduces the search area.
+
+Previous state:
+
+    Everything might be wrong.
+
+Current state:
+
+    Geometry largely makes sense.
+    Hardware largely makes sense.
+    Femur and tibia responses appear plausible.
+    Coxa frame conventions remain the primary suspect.
+
+--------------------------------------------------
+
+ROBOT.PY REVIEW
+---------------
+
+No obvious issues found that would explain the current
+"pinwheel coxa" behavior.
+
+Positive observations:
+
+- Servo storage indexed by actual hardware pin.
+- 16-servo architecture is clean and predictable.
+- Servo initialization appears consistent.
+- servo_write_raw() and servo_write_all() are straightforward.
+- Current debug logging is useful and should remain during development.
+
+Current likelihood of robot.py causing pinwheel behavior:
+
+    Very low.
+
+--------------------------------------------------
+
+CURRENT PRIMARY SYMPTOM
+-----------------------
+
+All coxas tend to rotate in the same direction.
+
+Result:
+
+    Pinwheel effect
+
+instead of:
+
+    Coordinated leg orientation.
+
+This strongly suggests that the legs are not receiving
+unique local-frame interpretations of the world coordinate.
+
+--------------------------------------------------
+
+MOST LIKELY FAILURE LOCATION
+----------------------------
+
+Not hardware.
+
+Not femur math.
+
+Not tibia math.
+
+Most likely:
+
+    Local coordinate frame generation.
+
+Specifically:
+
+    world -> leg-local transform
+
+or
+
+    mount-angle interpretation
+
+or
+
+    coxa direction convention
+
+--------------------------------------------------
+
+CURRENT PROBABILITY ESTIMATE
+----------------------------
+
+10%
+robot.py
+
+10%
+IK math
+
+80%
+leg-local coordinate conventions
+
+--------------------------------------------------
+
+IMPORTANT OBSERVATION
+---------------------
+
+The coxa issue looks like a coordinate-space problem,
+not a trigonometry problem.
+
+The current symptom suggests the robot is behaving
+consistently but using the wrong definition of:
+
+    "forward"
+
+for one or more legs.
+
+--------------------------------------------------
+
+NEW ZERO REFERENCE
+------------------
+
+Recent decision:
+
+    Coxa 0° = leg points directly outward from body
+
+This appears to be a major improvement.
+
+Benefits:
+
+- No arbitrary 45° offsets
+- Physical and software references agree
+- Human-readable debugging
+- Easy visual verification
+- Cleaner transform logic
+
+This change should remain.
+
+--------------------------------------------------
+
+ARCHITECTURE REVIEW
+-------------------
+
+Current separation looks healthy:
+
+LegHardware
+    =
+    Physical facts
+
+ArthropodIK
+    =
+    Mathematics
+
+HalCrawler
+    =
+    Control / motion layer
+
+Recommendation:
+
+    Keep these separate.
+
+Avoid re-merging hardware, math, and control logic.
+
+--------------------------------------------------
+
+NEXT DEBUG STEP
+---------------
+
+Do NOT test:
+
+- Walking
+- Standing
+- Full neutral pose
+- Multiple legs simultaneously
+
+Instead:
+
+Pick a single world-space coordinate.
+
+Example:
+
+    (100, 0, FLOOR)
+
+Print the local coordinates each leg receives.
+
+Example:
+
+    LF local
+    RF local
+    LR local
+    RR local
+
+Expected:
+
+Each leg should see a UNIQUE local representation
+of the same world-space target.
+
+If multiple legs are receiving effectively the same
+local coordinates, the pinwheel effect is explained.
+
+--------------------------------------------------
+
+WORKING THEORY
+--------------
+
+The remaining problem is likely:
+
+    What does "forward" mean for each leg?
+
+rather than:
+
+    How does inverse kinematics work?
+
+The evidence currently suggests that hardware,
+geometry, and IK are converging correctly.
+
+The remaining issue is most likely a disagreement
+between body-space and leg-space conventions.
