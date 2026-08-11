@@ -1,3 +1,4 @@
+# crawler/arthropod_ik.py
 import math
 from crawler.hal_leg_hardware import COXA_LEN, FEMUR_LEN, TIBIA_LEN, MAX_REACH, FLOOR_DROP
 from crawler.hal_leg_hardware import LEGS, LEG_MAP
