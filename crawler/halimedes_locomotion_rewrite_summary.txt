@@ -1208,4 +1208,24 @@ Servo pipeline functional
 X‑axis motion verified
  Frame rotation fix pending
 
-AMZZN 2PCS 7.4V 3000mAh 15C 2S SM-4P Plug Li-ion Battery with USB Charger for EC08 DE85 RC Car, Truck RC Ship RC Drone Engineering Vehicle Backup Battery 
+AMZZN 2PCS 7.4V 3000mAh 15C 2S SM-4P Plug Li-ion Battery with USB Charger for EC08 DE85 RC Car, Truck RC Ship RC Drone Engineering Vehicle Backup Battery
+
+
+DO THIS now (one exact change): flip the coxa direction on the right side.
+
+Edit hal_leg_hardware.py so the front/right and rear/right legs use coxa_dir = -1 and the left legs use coxa_dir = 1. Replace the four leg definitions with these exact lines:
+
+python
+LF = LegHardware(..., coxa_dir=1,  femur_dir=1, tibia_dir=1, ...)
+RF = LegHardware(..., coxa_dir=-1, femur_dir=1, tibia_dir=1, ...)
+RR = LegHardware(..., coxa_dir=-1, femur_dir=1, tibia_dir=1, ...)
+LR = LegHardware(..., coxa_dir=1,  femur_dir=1, tibia_dir=1, ...)
+Why this single change fixes the pinwheel: your logs show math_coxa producing left/right angles but the servo sign mapping currently makes all final coxa commands positive (rotate left). Right‑side servos must invert the math sign so right legs sweep opposite to left legs. Flipping coxa_dir on RF and RR makes the servo commands mirror physically and stops the whole‑robot spin.
+
+After you change it: test one leg at a time with your ramped helper. If you still see a leg moving the wrong way, paste the three debug lines for that single step:
+
+Code
+[IK] ...
+[IK OUT] ...
+[FINAL CMD] ...
+I’ll tell you the single next tweak (either flip that leg’s coxa_dir back or set that leg’s joint_zero["coxa"] to a specific value).

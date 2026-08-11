@@ -15,37 +15,26 @@ class ArthropodIK:
 
     def coord2polar(self, leg, coord):
         # World → hip translation
-        dx = coord[0] - leg.mount_x
-        dy = coord[1] - leg.mount_y
+        dx = coord[0] - leg.mount_x   # world forward
+        dy = coord[1] - leg.mount_y   # world left
 
-        # lx = dy
-        # ly = dx
-        # PER‑LEG ROTATION
         if leg.name == "LF":
-            lx = dy
-            ly = dx
-
+            forward =  dx; left =  dy
         elif leg.name == "RF":
-            lx = -dy
-            ly = -dx
-
+            forward =  dx; left = -dy
         elif leg.name == "LR":
-            lx = dy
-            ly = dx
-
+            forward = -dx; left =  dy
         elif leg.name == "RR":
-            lx = -dy
-            ly = -dx
+            forward = -dx; left = -dy
+
+        coxa_rad = math.atan2(left, forward)   # correct order: atan2(y, x)
+        px = math.sqrt(forward*forward + left*left) - self.C
+
+        print(f"[IK] {leg.name} mount=({leg.mount_x},{leg.mount_y}) dx={dx:.1f} dy={dy:.1f} forward={forward:.1f} left={left:.1f}")
 
         # Z baseline: full extension = Z=0
         user_z = coord[2]          # always positive
         pz = self.floor_drop - user_z
-
-        # Coxa angle (arthropod lateral hinge)
-        coxa_rad = math.atan2(lx, ly)
-
-        # Project into vertical plane
-        px = math.sqrt(lx*lx + ly*ly) - self.C
 
         # Law of Cosines for femur/tibia
         d = math.sqrt(px*px + pz*pz)
@@ -61,6 +50,8 @@ class ArthropodIK:
         cos_femur = (self.A*self.A + d*d - self.B*self.B) / (2*self.A*d)
         cos_femur = max(-1.0, min(1.0, cos_femur))
         femur_rad = angle_to_target - math.acos(cos_femur)
+
+        print(f"[IK OUT] {leg.name} -> coxa={math.degrees(coxa_rad):.1f}°, femur={math.degrees(femur_rad):.1f}°, tibia={math.degrees(tibia_rad):.1f}°")
 
         # Output degrees (raw math only)
         return [

@@ -74,9 +74,11 @@ class Robot(_Basic_class):
 
 
     def servo_write_all(self, angles):
-        rounded_angles = [round(a, 2) if a is not None else None for a in angles]
+        # round to one decimal place for consistent, compact logging
+        rounded_angles = [round(a, 1) if a is not None else None for a in angles]
         print("def servo_write_all(self, angles):", rounded_angles)
         self.servo_write_raw(rounded_angles)
+
 
     def servo_move(self, targets, speed=50, bpm=None):
         """
