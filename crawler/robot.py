@@ -3,21 +3,14 @@ from crawler.basic import _Basic_class
 from crawler.pwm import PWM
 from crawler.servo import Servo
 import time
-from crawler.filedb import fileDB
-import os
 from typing import Optional, Sequence
 
-config_file = os.path.expanduser("~/hal/data/robot-hat.conf")
 import faulthandler
 faulthandler.enable()
 
 class Robot(_Basic_class):
     """
-    Robot class
-
-    This class is for makeing a servo robot with Robot HAT
-
-    There are servo initialization, all servo move in specific speed. servo offset and stuff. make it easy to make a robot.
+    Robot class is for talking to servos through Robot HAT
     """
 
     move_list = {}
@@ -28,22 +21,19 @@ class Robot(_Basic_class):
     Servo max Degree Per Second
     dps, degrees per second, genally in 4.8V : 60des/0.14s, dps = 428 is original sunfounder value based on original calculated math.
     max_dps currently constrained to 720 as a known working high speed stable value.  DPS has been observed as high as 800 but will crash the pi if used directly without ramping up first.
-    Scaling speed to 200 in do_action in picrawler.py through this: speed = max(0, min(200, speed))
+    Scaling speed to 200 in do_action through this: speed = max(0, min(200, speed))
     Old math dps calculations vs new math dps calculations plus higher dps means scale of 0-200 leaves call sites untouched when passing existing values calibrated as 0-100 while
     allowing for speed boosts when higher values are passed through or creating new motions that require more speed and faster reaction events.
-    Observation - movements that call direct servo angle adjustments must be watched closely as they can cause voltage underruns especially when all servos move at the same times as speeds of 25 or higher.
+    Observation - movements that call direct servo angle adjustments must be watched closely as they can cause voltage underruns
+    especially when all servos move significantly at the same times with speeds of 25 or higher.
     """
 
-    def __init__(self, pin_list, db=config_file, name=None, init_angles=None, init_order=None, **kwargs):
+    def __init__(self, pin_list, init_angles=None, init_order=None, **kwargs):
         """
         Initialize the robot class
 
         :param pin_list: list of pin number[0-11]
         :type pin_list: list
-        :param db: config file path
-        :type db: str
-        :param name: robot name
-        :type name: str
         :param init_angles: list of initial angles
         :type init_angles: list
         :param init_order: list of initialization order(Servos will init one by one in case of sudden huge current, pulling down the power supply voltage. default order is the pin list. in some cases, you need different order, use this parameter to set it.)
@@ -52,34 +42,10 @@ class Robot(_Basic_class):
         """
         super().__init__(**kwargs)
         self.pin_list = pin_list
-
-        # self.servo_list = []
         self.servo_list = [None] * 16
-        # self.pin_num = len(pin_list)
         self.pin_num = 16
-
-        if name == None:
-            self.name = 'other'
-        else:
-            self.name = name
-
-        self.offset_value_name = f"{self.name}_servo_offset_list"
-        # offset
-        self.db = fileDB(db=db)
-        raw = self.db.get(self.offset_value_name,
-                        default_value=str(self.new_list(0)))
-        temp_str = str(raw)
-        temp = [float(i.strip()) for i in temp_str.strip("[]").split(",") if i.strip()]
-        self.offset: list[float] = temp
-        while len(self.offset) < 16:
-            self.offset.append(0.0)
-
         # parameter init
         self.servo_positions = self.new_list(0)
-        self.origin_positions = self.new_list(0)
-        self.calibrate_position = self.new_list(0)
-        self.direction = self.new_list(1)
-
         # servo init
         if init_angles is None:
             init_angles = [0] * self.pin_num
@@ -91,14 +57,10 @@ class Robot(_Basic_class):
             init_order = pin_list
 
         for i, pin in enumerate(pin_list):
-            # self.servo_list.append(Servo(pin))
-            # self.servo_positions[i] = init_angles[i]
             self.servo_list[pin] = Servo(pin)
             self.servo_positions[pin] = init_angles[i]
-        # for i in init_order:
-        #     self.servo_list[i].angle = self.offset[i] + self.servo_positions[i]
         for pin in init_order:
-            self.servo_list[pin].angle = self.offset[pin] + self.servo_positions[pin]
+            self.servo_list[pin].angle = self.servo_positions[pin]
             time.sleep(0.15)
 
         self.last_move_time = time.time()
@@ -106,22 +68,15 @@ class Robot(_Basic_class):
     def new_list(self, default_value):
         return [default_value] * 16
 
-
     def servo_write_raw(self, angle_list):
         for pin in self.pin_list:
             self.servo_list[pin].angle = angle_list[pin]
 
 
     def servo_write_all(self, angles):
-        print("WRITE_ALL:", angles)  # ← ADD THIS
-
-        rel_angles = []
-        for i in range(16):
-            rel_angles.append(self.origin_positions[i] + angles[i] + self.offset[i])
-
-        print("REL:", rel_angles)    # ← AND THIS
-
-        self.servo_write_raw(rel_angles)
+        rounded_angles = [round(a, 2) if a is not None else None for a in angles]
+        print("def servo_write_all(self, angles):", rounded_angles)
+        self.servo_write_raw(rounded_angles)
 
     def servo_move(self, targets, speed=50, bpm=None):
         """
@@ -133,8 +88,9 @@ class Robot(_Basic_class):
 
         Existing coded speed values can remain unchanged. The new scale preserves
         the original behavior where speed=100 represents the previous maximum, so all
-        existing motions continue to run at their intended speeds without modification.
-
+        existing motions continue to run close to their intended speeds without modification.
+        BPM as in beats per minute, so he can synchronize his tempo to the tempo of the music.
+        The bpm parameter overrides speed if both are provided, allowing for precise timing control in musical applications.
         Move servos to target angles with speed or bpm.
 
         :param targets: list of servo angles
@@ -161,7 +117,7 @@ class Robot(_Basic_class):
             time.sleep(step_time / 1000.0)
             return
 
-        # If bpm is given, use it to define total_time per move
+        # If bpm is given, use it to define total_time per move to sync movements to music.
         if bpm:
             total_time = 60.0 / bpm * 1000.0  # ms per beat
             # Derive effective dps from bpm and clamp to max_dps
@@ -200,45 +156,3 @@ class Robot(_Basic_class):
             delay -= servo_move_time
             if delay > 0:
                 time.sleep(delay)
-
-    def do_action(self, motion_name, step=1, speed=50):
-        """
-        IS THIS EVEN USED?  PICRAWLER CLASS HAS ITS OWN THAT IS USED.  NOTE FOR POSSIBLE REMOVAL.
-        Do prefix action with motion_name and step and speed
-
-        :param motion_name: motion
-        :type motion_name: str
-        :param step: step of motion
-        :type step: int
-        :param speed: speed of motion
-        :type speed: int or float
-        """
-        for _ in range(step):
-            for motion in self.move_list[motion_name]:
-                self.servo_move(motion, speed)
-
-    def set_offset(self, offset_list):
-        """
-        Set offset of servo angles
-
-        :param offset_list: list of servo angles
-        :type offset_list: list
-        """
-        offset_list = [min(max(offset, -20), 20) for offset in offset_list]
-        temp = str(offset_list)
-        self.db.set(self.offset_value_name, temp)
-        self.offset: list[float] = [float(x) for x in temp.strip("[]").split(",") if x.strip()]
-
-    def calibration(self):
-        """Move all servos to home position"""
-        self.servo_positions = self.calibrate_position
-        self.servo_write_all(self.servo_positions)
-
-    def reset(self):
-        """Reset servo to original position"""
-        self.servo_positions = self.new_list(0)
-        self.servo_write_all(self.servo_positions)
-
-    def soft_reset(self):
-        temp_list = self.new_list(0)
-        self.servo_write_all(temp_list)
