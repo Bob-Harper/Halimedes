@@ -68,9 +68,28 @@ class Robot(_Basic_class):
     def new_list(self, default_value):
         return [default_value] * 16
 
-    def servo_write_raw(self, angle_list):
+    def xx_servo_write_raw(self, angle_list):
         for pin in self.pin_list:
             self.servo_list[pin].angle = angle_list[pin]
+
+    def servo_write_raw(self, angle_list):
+        # DEBUG: show the raw payload we received
+        print(f"[SERVO_RAW IN] {angle_list}")
+
+        try:
+            # iterate and assign while logging per-pin activity
+            for pin in self.pin_list:
+                angle = angle_list[pin] if pin < len(angle_list) else None
+                print(f"[SERVO_RAW ASSIGN] pin={pin} angle={angle}")
+                # keep the original assignment
+                self.servo_list[pin].angle = angle
+
+            # final confirmation that the function completed
+            print(f"[SERVO_RAW OUT] completed; assigned {len(self.pin_list)} pins")
+        except Exception as e:
+            # surface any error immediately and keep the exception short and actionable
+            print(f"[SERVO_RAW ERROR] exception while writing to servos: {e}")
+            raise
 
 
     def servo_write_all(self, angles):

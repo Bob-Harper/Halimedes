@@ -39,26 +39,9 @@ LF = LegHardware(
     coxa_dir=1, femur_dir=1, tibia_dir=1,
     pin_coxa=5, pin_femur=4, pin_tibia=3
 )
-LF.joint_zero = {"coxa": -45.0, "femur": 0.0, "tibia": 0.0}
+LF.servo_index_map = {"coxa": 5, "femur": 4, "tibia": 3}
+LF.joint_zero = {"coxa": 0.0, "femur": 0.0, "tibia": 0.0}
 LF.joint_range = {"coxa": (0, 90), "femur": (-75, 90), "tibia": (-90, 90)}
-
-RF = LegHardware(
-    name="RF",
-    mount_x=40, mount_y=-40, mount_angle=0,
-    coxa_dir=1, femur_dir=1, tibia_dir=1,
-    pin_coxa=11, pin_femur=10, pin_tibia=9
-)
-RF.joint_zero = {"coxa": 45.0, "femur": 0.0, "tibia": 0.0}
-RF.joint_range = {"coxa": (0, 90), "femur": (-75, 90), "tibia": (-90, 90)}
-
-RR = LegHardware(
-    name="RR",
-    mount_x=-40, mount_y=-40, mount_angle=0,
-    coxa_dir=1, femur_dir=1, tibia_dir=1,
-    pin_coxa=8, pin_femur=7, pin_tibia=6
-)
-RR.joint_zero = {"coxa": -45.0, "femur": 0.0, "tibia": 0.0}
-RR.joint_range = {"coxa": (0, 90), "femur": (-75, 90), "tibia": (-90, 90)}
 
 LR = LegHardware(
     name="LR",
@@ -66,8 +49,29 @@ LR = LegHardware(
     coxa_dir=1, femur_dir=1, tibia_dir=1,
     pin_coxa=2, pin_femur=1, pin_tibia=0
 )
-LR.joint_zero = {"coxa": -45.0, "femur": 0.0, "tibia": 0.0}
+LR.servo_index_map = {"coxa": 2, "femur": 1, "tibia": 0}
+LR.joint_zero = {"coxa": 0.0, "femur": 0.0, "tibia": 0.0}
 LR.joint_range = {"coxa": (0, 90), "femur": (-75, 90), "tibia": (-90, 90)}
+
+RF = LegHardware(
+    name="RF",
+    mount_x=40, mount_y=-40, mount_angle=0,
+    coxa_dir=-1, femur_dir=1, tibia_dir=1,
+    pin_coxa=11, pin_femur=10, pin_tibia=9
+)
+RF.servo_index_map = {"coxa": 11, "femur": 10, "tibia": 9}
+RF.joint_zero = {"coxa": 0.0, "femur": 0.0, "tibia": 0.0}
+RF.joint_range = {"coxa": (0, 90), "femur": (-75, 90), "tibia": (-90, 90)}
+
+RR = LegHardware(
+    name="RR",
+    mount_x=-40, mount_y=-40, mount_angle=0,
+    coxa_dir=-1, femur_dir=1, tibia_dir=1,
+    pin_coxa=8, pin_femur=7, pin_tibia=6
+)
+RR.servo_index_map = {"coxa": 8, "femur": 7, "tibia": 6}
+RR.joint_zero = {"coxa": 0.0, "femur": 0.0, "tibia": 0.0}
+RR.joint_range = {"coxa": (0, 90), "femur": (-75, 90), "tibia": (-90, 90)}
 
 
 LEGS = [LF, RF, RR, LR]
