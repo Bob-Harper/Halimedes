@@ -22,10 +22,12 @@ class LegHardware:
 
     joint_zero = {"coxa": 0.0, "femur": 0.0, "tibia": 0.0}
     joint_range = {
-        "coxa": (0.0, 90.0),
-        "femur": (-75.0, 90.0),
+        "coxa": (-90.0, 90.0),
+        "femur": (-45.0, 90.0),
         "tibia": (-90.0, 90.0),
     }
+
+    servo_zero_offset: float = 0.0   # degrees: converts body-forward zero → servo zero
 
 # Physical hip locations (mm)
 LF_X, LF_Y =  +40, +40
@@ -37,46 +39,46 @@ LF = LegHardware(
     name="LF",
     mount_x=40, mount_y=40, mount_angle=0,
     coxa_dir=1, femur_dir=1, tibia_dir=1,
-    pin_coxa=5, pin_femur=4, pin_tibia=3
+    pin_coxa=0, pin_femur=1, pin_tibia=2
 )
-LF.servo_index_map = {"coxa": 2, "femur":1, "tibia": 0}
+LF.servo_index_map = {"coxa": 0, "femur":1, "tibia": 2}
 LF.joint_zero = {"coxa": 0.0, "femur": 0.0, "tibia": 0.0}
-LF.joint_range = {"coxa": (0, 90), "femur": (-75, 90), "tibia": (-90, 90)}
-
-LR = LegHardware(
-    name="LR",
-    mount_x=-40, mount_y=40, mount_angle=0,
-    coxa_dir=1, femur_dir=1, tibia_dir=1,
-    pin_coxa=2, pin_femur=1, pin_tibia=0
-)
-LR.servo_index_map = {"coxa": 2, "femur": 1, "tibia": 0}
-LR.joint_zero = {"coxa": 0.0, "femur": 0.0, "tibia": 0.0}
-LR.joint_range = {"coxa": (0, 90), "femur": (-75, 90), "tibia": (-90, 90)}
+LF.joint_range = {"coxa": (-90, 90), "femur": (-45, 90), "tibia": (-90, 90)}
 
 RF = LegHardware(
     name="RF",
     mount_x=40, mount_y=-40, mount_angle=0,
     coxa_dir=-1, femur_dir=1, tibia_dir=1,
-    pin_coxa=11, pin_femur=10, pin_tibia=9
+    pin_coxa=3, pin_femur=4, pin_tibia=5
 )
-RF.servo_index_map = {"coxa": 11, "femur": 10, "tibia": 9}
+RF.servo_index_map = {"coxa": 3, "femur": 4, "tibia": 5}
 RF.joint_zero = {"coxa": 0.0, "femur": 0.0, "tibia": 0.0}
-RF.joint_range = {"coxa": (0, 90), "femur": (-75, 90), "tibia": (-90, 90)}
+RF.joint_range = {"coxa": (-90, 90), "femur": (-45, 90), "tibia": (-90, 90)}
 
 RR = LegHardware(
     name="RR",
     mount_x=-40, mount_y=-40, mount_angle=0,
     coxa_dir=-1, femur_dir=1, tibia_dir=1,
-    pin_coxa=8, pin_femur=7, pin_tibia=6
+    pin_coxa=6, pin_femur=7, pin_tibia=8
 )
-RR.servo_index_map = {"coxa": 8, "femur": 7, "tibia": 6}
+RR.servo_index_map = {"coxa": 6, "femur": 7, "tibia": 8}
 RR.joint_zero = {"coxa": 0.0, "femur": 0.0, "tibia": 0.0}
-RR.joint_range = {"coxa": (0, 90), "femur": (-75, 90), "tibia": (-90, 90)}
+RR.joint_range = {"coxa": (-90, 90), "femur": (-45, 90), "tibia": (-90, 90)}
+
+LR = LegHardware(
+    name="LR",
+    mount_x=-40, mount_y=40, mount_angle=0,
+    coxa_dir=1, femur_dir=1, tibia_dir=1,
+    pin_coxa=9, pin_femur=10, pin_tibia=11
+)
+LR.servo_index_map = {"coxa": 9, "femur": 10, "tibia": 11}
+LR.joint_zero = {"coxa": 0.0, "femur": 0.0, "tibia": 0.0}
+LR.joint_range = {"coxa": (-90, 90), "femur": (-45, 90), "tibia": (-90, 90)}
 
 
 LEGS = [LF, RF, RR, LR]
 LEG_MAP = { leg.name: leg for leg in LEGS }
-PIN_LIST = [5,4,3, 11,10,9, 8,7,6, 2,1,0]
+PIN_LIST = [0,1,2, 3,4,5, 6,7,8, 9,10,11]
 
 # -----------------------------
 # Linkage lengths (millimeters)
@@ -89,6 +91,11 @@ MAX_REACH = FEMUR_LEN + TIBIA_LEN  # 128mm
 PIVOT_OFFSET = 15.0          # belly → pivot height
 FLOOR_DROP = MAX_REACH - PIVOT_OFFSET  # 113mm
 
+# per-leg values (recommended)
+LF.servo_zero_offset =  90.0   # left servos zero points are +90° from body-forward
+RF.servo_zero_offset = -90.0   # right servos zero points are -90° from body-forward
+RR.servo_zero_offset = -90.0
+LR.servo_zero_offset =  90.0
 
 """
 
@@ -104,25 +111,25 @@ FLOOR_DROP = MAX_REACH - PIVOT_OFFSET  # 113mm
        ```````          ```````
 	             BACK
 SERVO OFFSETS OBSERVED FOR EACH UNIT (but not final values because they seem to act different when in ACTUAL use)
+LF
+    pin_coxa=0, NEW
+    pin_femur=1,-75 straight up, 90 (45 degrees downward)
+    pin_tibia=2, 90 fully inward, -90 fully extended
+
 RF
-    pin_coxa=11, 45 straight forward, -45 straight right,
-    pin_femur=10, # unknown, servo awaiting replacement
-    pin_tibia=9, 90 fully inward, -90 fully extended
+    pin_coxa=3, NEW
+    pin_femur=4, NEW
+    pin_tibia=5, 90 fully inward, -90 fully extended
 
 RR
-    pin_coxa=8, -45 straight back,  45 straight right,
+    pin_coxa=6, NEW
     pin_femur=7,-75 straight up, 90 (30 degrees downward)
-    pin_tibia=6, 90 fully inward, -90 fully extended
-
-LF
-    pin_coxa=5, 55 straight left, -40 straight forward
-    pin_femur=4,-75 straight up, 90 (45 degrees downward)
-    pin_tibia=3, 90 fully inward, -90 fully extended
+    pin_tibia=8, 90 fully inward, -90 fully extended
 
 LR
-    pin_coxa=2, -45 straight left, 60 straight back.
-    pin_femur=1, -45 straight up, 90 (45 degrees downward)
-    pin_tibia=0, 90 fully inward, -90 fully extended
+    pin_coxa=9, NEW
+    pin_femur=10, -45 straight up, 90 (45 degrees downward)
+    pin_tibia=11, 90 fully inward, -90 fully extended
 
 
 """

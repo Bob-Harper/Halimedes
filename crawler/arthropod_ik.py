@@ -19,19 +19,14 @@ class ArthropodIK:
         dx = coord[0] - leg.mount_x   # world forward
         dy = coord[1] - leg.mount_y   # world left
 
-        if leg.name == "LF":
-            forward =  dx; left =  dy
-        elif leg.name == "RF":
-            forward =  dx; left = -dy
-        elif leg.name == "LR":
-            forward = -dx; left =  dy
-        elif leg.name == "RR":
-            forward = -dx; left = -dy
+        # canonical coxa angle: atan2(left, forward)
+        raw_angle_rad = math.atan2(dy, dx)   # radians, body-frame: forward=0°
 
-        coxa_rad = math.atan2(left, forward)   # correct order: atan2(y, x)
-        px = math.sqrt(forward*forward + left*left) - self.C
+        coxa_rad = raw_angle_rad
+        theta_deg = math.degrees(coxa_rad)
 
-        print(f"[IK] {leg.name} mount=({leg.mount_x},{leg.mount_y}) dx={dx:.1f} dy={dy:.1f} forward={forward:.1f} left={left:.1f}")
+        # compute horizontal reach after coxa
+        px = math.sqrt(dx*dx + dy*dy) - self.C
 
         # Z baseline: full extension = Z=0
         user_z = coord[2]          # always positive
@@ -52,22 +47,34 @@ class ArthropodIK:
         cos_femur = max(-1.0, min(1.0, cos_femur))
         femur_rad = angle_to_target - math.acos(cos_femur)
 
-        print(f"[IK OUT] {leg.name} -> coxa={math.degrees(coxa_rad):.1f}°, femur={math.degrees(femur_rad):.1f}°, tibia={math.degrees(tibia_rad):.1f}°")
+        # raw IK angles in degrees
+        coxa_deg = math.degrees(coxa_rad)
+        femur_deg = math.degrees(femur_rad)
+        tibia_deg = math.degrees(tibia_rad)
 
-        # Output degrees (raw math only)
-        return [
-            math.degrees(coxa_rad),
-            math.degrees(femur_rad),
-            math.degrees(tibia_rad)
-        ]
+        # rotate into leg frame if mount_angle is used
+        theta_body_deg = coxa_deg - leg.mount_angle
 
-    def polar2coord(self, leg, angles):
-        # Will not work with new math, fix before trying to call this if it is even needed.
-        coxa_deg, femur_deg, tibia_deg = angles
-        femur_deg /= leg.femur_dir
-        tibia_deg /= leg.tibia_dir
-        coxa_deg = coxa_deg / leg.coxa_dir
-        return [round(world_x,4), round(world_y,4), round(world_z,4)]
+        # per-leg servo_zero_offset must exist on LegHardware (default 0.0 if not set)
+        servo_zero = getattr(leg, "servo_zero_offset", 0.0)
+
+        # map IK angles into servo degrees using per-leg direction and hardware zero
+        servo_coxa = leg.coxa_dir * (theta_body_deg - servo_zero) + leg.joint_zero["coxa"]
+        servo_femur = leg.femur_dir * femur_deg + leg.joint_zero["femur"]
+        servo_tibia = leg.tibia_dir * tibia_deg + leg.joint_zero["tibia"]
+
+        # clamp to safe ranges
+        servo_coxa = self.limit(leg.joint_range["coxa"][0], leg.joint_range["coxa"][1], servo_coxa)
+        servo_femur = self.limit(leg.joint_range["femur"][0], leg.joint_range["femur"][1], servo_femur)
+        servo_tibia = self.limit(leg.joint_range["tibia"][0], leg.joint_range["tibia"][1], servo_tibia)
+
+        # debug trace to verify per-leg mapping
+        print(f"[IK DEBUG] {leg.name} dx={dx:.1f} dy={dy:.1f} theta_deg={coxa_deg:.1f} "
+            f"mount_angle={leg.mount_angle} servo_zero={servo_zero:.1f} "
+            f"theta_body={theta_body_deg:.1f} coxa_dir={leg.coxa_dir} servo_coxa={servo_coxa:.1f}")
+
+        # return servo-ready angles (degrees)
+        return [servo_coxa, servo_femur, servo_tibia]
 
     def limit(self, min_val, max_val, x):
         if x > max_val:

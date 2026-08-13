@@ -36,7 +36,10 @@ class Robot(_Basic_class):
         :type pin_list: list
         :param init_angles: list of initial angles
         :type init_angles: list
-        :param init_order: list of initialization order(Servos will init one by one in case of sudden huge current, pulling down the power supply voltage. default order is the pin list. in some cases, you need different order, use this parameter to set it.)
+        :param init_order: list of initialization order
+            (Servos will init one by one in case of sudden huge current,
+            pulling down the power supply voltage. default order is the pin list.
+            in some cases, you need different order, use this parameter to set it.)
         :type init_order: list
         :type init_angles: list
         """
@@ -56,9 +59,17 @@ class Robot(_Basic_class):
         if init_order == None:
             init_order = pin_list
 
+        COXA_PINS = [0, 3, 6, 9]
+
         for i, pin in enumerate(pin_list):
-            self.servo_list[pin] = Servo(pin)
+            if pin in COXA_PINS:
+                # Brushless coxa servos
+                self.servo_list[pin] = Servo(pin, min_pw=1000, max_pw=2000)
+            else:
+                # Sunfounder femur/tibia servos
+                self.servo_list[pin] = Servo(pin, min_pw=500, max_pw=2500)
             self.servo_positions[pin] = init_angles[i]
+
         for pin in init_order:
             self.servo_list[pin].angle = self.servo_positions[pin]
             time.sleep(0.15)
@@ -74,18 +85,18 @@ class Robot(_Basic_class):
 
     def servo_write_raw(self, angle_list):
         # DEBUG: show the raw payload we received
-        print(f"[SERVO_RAW IN] {angle_list}")
+        # print(f"[SERVO_RAW IN] {angle_list}")
 
         try:
             # iterate and assign while logging per-pin activity
             for pin in self.pin_list:
                 angle = angle_list[pin] if pin < len(angle_list) else None
-                print(f"[SERVO_RAW ASSIGN] pin={pin} angle={angle}")
+                # print(f"[SERVO_RAW ASSIGN] pin={pin} angle={angle}")
                 # keep the original assignment
                 self.servo_list[pin].angle = angle
 
             # final confirmation that the function completed
-            print(f"[SERVO_RAW OUT] completed; assigned {len(self.pin_list)} pins")
+            # print(f"[SERVO_RAW OUT] completed; assigned {len(self.pin_list)} pins")
         except Exception as e:
             # surface any error immediately and keep the exception short and actionable
             print(f"[SERVO_RAW ERROR] exception while writing to servos: {e}")
@@ -95,7 +106,7 @@ class Robot(_Basic_class):
     def servo_write_all(self, angles):
         # round to one decimal place for consistent, compact logging
         rounded_angles = [round(a, 1) if a is not None else None for a in angles]
-        print("def servo_write_all(self, angles):", rounded_angles)
+        # print("def servo_write_all(self, angles):", rounded_angles)
         self.servo_write_raw(rounded_angles)
 
 

@@ -11,7 +11,7 @@ class Servo(PWM):
     FREQ = 50
     PERIOD = 4095
 
-    def __init__(self, channel, address=None, *args, **kwargs):
+    def __init__(self, channel, address=None, min_pw=500, max_pw=2500, *args, **kwargs):
         """
         Initialize the servo motor class.
 
@@ -21,6 +21,8 @@ class Servo(PWM):
         self.period(self.PERIOD)
         prescaler = self.CLOCK / self.FREQ / self.PERIOD
         self.prescaler(prescaler)
+        self.MIN_PW = min_pw
+        self.MAX_PW = max_pw
         self._angle = 0.0
 
     # ------------------------------
@@ -64,3 +66,47 @@ class Servo(PWM):
         self._debug(f"pulse width value: {value}")
 
         self.pulse_width(value)
+
+"""
+
+Product description
+
+9g Coreless Servo Black, Full Metal Gear Micro RC Servo 4KG-CM Torque 4.8-8.4V for Arduino Fixed-wing Aircraft RC Smart Car Robotic Arm DIY Projects (180 Degree)
+
+Products Specifcation :
+Products Name: 9g micro coreless servo
+
+Apply Environmental Conditon
+Storage Temperature Range: -30°C-80°C
+Operating Temperature Range: -15°C-70°C
+Operating Voltage Range: 4.8-8.4V
+
+Mechanical Specifications
+Size: 24*11.8*21.9mm / 0.94x0.46x0.86 in
+Weight:13g
+Gear type: Full Metal
+Gear ratio:410
+Bearing: Double Bearing
+Connector wire: 170±5mm / 6.69 ±0.19 in
+Motor : 3-Pole(k)
+Horn gear spline: 25T
+Horn type: Plastic
+Case: Engineering plastics
+
+Electrical Specifications
+Operat voltage: 4.8V-8.4V
+Idle current(at stopped): 4mA(6V), 5mA(7.4V), 6mA(8.4V)
+Operating speed (at no load): 0.14sec/60° (6V) , 0.12sec/60°(7.4V), 0.10sec/60°(8.4V)
+Stall torque (at locked): 3.5kg-cm(6V) , 4 kg-cm(7.4V), 5 kg-cm(8.4V)
+Stall current (at locked):0.6A(6V), 0.8A(7.4V), 1.0A(8.4V)
+
+Control Specifications
+Control System : PWM (Pulse width modification)
+Pulse width range: 500-2500μsec
+Neutral position: 1500μsec
+Running degree: 180°(when 500-2500μsec) / 90°（when remote control 1000-2000μsec)
+Dead band width: 3 μsec
+Operating frequency: 50-330Hz
+Rotating direction: Counterclockwise (when 500～2500 μsec)
+
+"""

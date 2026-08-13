@@ -3,7 +3,7 @@
 import math
 from crawler.arthropod_ik import ArthropodIK
 from crawler.robot import Robot
-
+from crawler.hal_leg_hardware import LEG_MAP, COXA_LEN, FEMUR_LEN, TIBIA_LEN
 
 class HalCrawler(Robot):
     def __init__(self,
@@ -17,71 +17,59 @@ class HalCrawler(Robot):
                          init_order=init_order,
                          **kwargs)
 
-        self.ik = ArthropodIK()   # FIXED
+        self.ik = ArthropodIK()
+
+        # BIND THE DICTIONARY SO MOVE_LEG_TO CAN ACCESS IT
+        self.leg_map = LEG_MAP
+
+        # Cache the physical linkage dimensions for easy access if needed
+        self.C = kwargs.get('coxa_len', COXA_LEN)
+        self.A = kwargs.get('femur_len', FEMUR_LEN)
+        self.B = kwargs.get('tibia_len', TIBIA_LEN)
 
     def set_leg_angles(self, leg_name, angles):
-        leg = self.ik.leg_map[leg_name]
-        coxa, femur, tibia = angles
+        leg = self.leg_map[leg_name]
+        coxa_deg, femur_deg, tibia_deg = angles
 
-        # apply joint_zero offsets
-        coxa  = leg.joint_zero["coxa"]  + coxa
-        femur = leg.joint_zero["femur"] + femur
-        tibia = leg.joint_zero["tibia"] + tibia
+        # Map IK -> servo frame here (per-leg)
+        servo_zero = getattr(leg, "servo_zero_offset", 0.0)
 
-        self.servo_positions[leg.pin_coxa]  = coxa
-        self.servo_positions[leg.pin_femur] = femur
-        self.servo_positions[leg.pin_tibia] = tibia
+        servo_coxa = leg.coxa_dir * (coxa_deg - servo_zero) + leg.joint_zero["coxa"]
+        servo_femur = leg.femur_dir * femur_deg + leg.joint_zero["femur"]
+        servo_tibia = leg.tibia_dir * tibia_deg + leg.joint_zero["tibia"]
 
-        self.servo_write_all(self.servo_positions)
+        # clamp to safe ranges
+        servo_coxa = max(leg.joint_range["coxa"][0], min(leg.joint_range["coxa"][1], servo_coxa))
+        servo_femur = max(leg.joint_range["femur"][0], min(leg.joint_range["femur"][1], servo_femur))
+        servo_tibia = max(leg.joint_range["tibia"][0], min(leg.joint_range["tibia"][1], servo_tibia))
+
+        # Write to servos
+        self.servo_list[leg.pin_coxa].angle  = servo_coxa
+        self.servo_list[leg.pin_femur].angle = servo_femur
+        self.servo_list[leg.pin_tibia].angle = servo_tibia
 
     def move_leg_to(self, leg_name, target_coord):
-        leg = self.ik.leg_map[leg_name]
+        leg = self.leg_map[leg_name]
 
-        # FIXED: call IK correctly
+        # Calculate raw angles from your engine
         math_coxa, math_femur, math_tibia = self.ik.coord2polar(leg, target_coord)
+        print(f"[MOVE_LEG] {leg.name} rawIK: C={math_coxa:.1f}° F={math_femur:.1f}° T={math_tibia:.1f}°")
 
-        # apply direction and zero (assumes math_coxa/math_femur/math_tibia already computed)
-        servo_coxa  = math_coxa  * leg.coxa_dir
-        servo_femur = math_femur * leg.femur_dir
-        servo_tibia = math_tibia * leg.tibia_dir
+        # Pure 1-to-1 matching to let your math engine drive the 180-degree hardware scale
+        # Inverting the coxa tracks with the motor's counterclockwise physical rotation profile
+        servo_coxa  = math_coxa # * 5.36
+        servo_femur = math_femur
+        servo_tibia = math_tibia
 
-        # apply per-leg zero offsets (use 0.0 if not set)
-        servo_coxa  += leg.joint_zero.get("coxa",  0.0)
-        servo_femur += leg.joint_zero.get("femur", 0.0)
-        servo_tibia += leg.joint_zero.get("tibia", 0.0)
+        # Unpack the updated float bounds to protect the physical limbs
+        c_min, c_max = leg.joint_range["coxa"]
+        f_min, f_max = leg.joint_range["femur"]
+        t_min, t_max = leg.joint_range["tibia"]
 
-        # get mechanical ranges from leg.joint_range if available, else use safe defaults
-        coxa_min,  coxa_max  = leg.joint_range.get("coxa",  (-90.0, 90.0))
-        femur_min, femur_max = leg.joint_range.get("femur", (-90.0, 90.0))
-        tibia_min, tibia_max = leg.joint_range.get("tibia", (-90.0, 90.0))
+        # Safety clamps
+        final_coxa  = max(c_min, min(c_max, servo_coxa))
+        final_femur = max(f_min, min(f_max, servo_femur))
+        final_tibia = max(t_min, min(t_max, servo_tibia))
+        print(f"[MOVE_LEG] {leg.name} final (to servo): C={final_coxa:.1f}° F={final_femur:.1f}° T={final_tibia:.1f}°")
 
-        # clamp to ranges
-        final_coxa  = max(coxa_min,  min(coxa_max,  servo_coxa))
-        final_femur = max(femur_min, min(femur_max, servo_femur))
-        final_tibia = max(tibia_min, min(tibia_max, servo_tibia))
-
-        # definitive debug line showing the full transform chain
-        print(f"[FINAL CMD] {leg.name} math_coxa={math_coxa:.1f} servo_coxa(before zero)={(math_coxa*leg.coxa_dir):.1f} servo_coxa(with zero)={servo_coxa:.1f} final_coxa={final_coxa:.1f}")
-
-        # --- write final angles into servo array using per-leg mapping ---
-        new_positions = list(self.servo_positions)
-
-        m = getattr(leg, "servo_index_map", None)
-        if m:
-            if "coxa" in m:  new_positions[m["coxa"]]  = final_coxa
-            if "femur" in m: new_positions[m["femur"]] = final_femur
-            if "tibia" in m: new_positions[m["tibia"]] = final_tibia
-        else:
-            print(f"[ERROR] no servo_index_map for leg {leg.name}; not writing servo values")
-            return
-
-        # debug: show exactly what we will send
-        rounded = [round(v, 1) if v is not None else None for v in new_positions]
-        print(f"[WRITE DEBUG] leg={leg.name} map={m} new_positions={rounded}")
-
-        # send to hardware
-        self.servo_write_all(rounded)
-        # --- end replacement ---
-        # --- end replacement ---
-
-
+        self.set_leg_angles(leg_name, [final_coxa, final_femur, final_tibia])
