@@ -39,7 +39,7 @@ LF = LegHardware(
     coxa_dir=1, femur_dir=1, tibia_dir=1,
     pin_coxa=5, pin_femur=4, pin_tibia=3
 )
-LF.servo_index_map = {"coxa": 5, "femur": 4, "tibia": 3}
+LF.servo_index_map = {"coxa": 2, "femur":1, "tibia": 0}
 LF.joint_zero = {"coxa": 0.0, "femur": 0.0, "tibia": 0.0}
 LF.joint_range = {"coxa": (0, 90), "femur": (-75, 90), "tibia": (-90, 90)}
 
