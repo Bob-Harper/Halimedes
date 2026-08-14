@@ -1458,3 +1458,66 @@ geometry, and IK are converging correctly.
 
 The remaining issue is most likely a disagreement
 between body-space and leg-space conventions.
+
+"""
+    ramp_move(hal, "LF", (80, 60, -40), (120, 20, -40))
+    ramp_move(hal, "LF", (120, 20, -40), (20, 120, -40))
+    ramp_move(hal, "LF", (20, 120, -40), (0, 120, 0))
+
+    # RF (front-right)
+    print("RF: Testing leg movement...")
+    ramp_move(hal, "RF", (80, -60, -40), (120, -20, -40))
+    ramp_move(hal, "RF", (120, -20, -40), (20, -120, -40))
+    ramp_move(hal, "RF", (20, -120, -40), (0, -120, 0))
+
+    # RR (rear-right)
+    print("RR: Testing leg movement...")
+    ramp_move(hal, "RR", (-80, -60, -40), (-120, -20, -40))
+    ramp_move(hal, "RR", (-120, -20, -40), (-20, -120, -40))
+    ramp_move(hal, "RR", (-20, -120, -40), (0, -120, 0))
+
+    # LR: Testing leg movement (rear-left uses negative X)
+    print("LR: Testing leg movement...")
+    ramp_move(hal, "LR", (-80, 60, -40), (-120, 20, -40))   # step toward rear‑out
+    ramp_move(hal, "LR", (-120, 20, -40), (-20, 120, -40))  # sweep forward across body
+    ramp_move(hal, "LR", (-20, 120, -40), (0, 120, 0))      # lift to neutral
+
+
+
+"""
+"""
+
+  -------- PiCrawler Servo Layout ---------
+	Arrows indicate which side of the servo block the pivot point is on
+
+	            Front
+       .......          .......
+    <=|  LF   |-U----U-|  RF   |=>
+       ``````` |      | ```````
+  L    ....... |      | .......    R
+    <=|  LR   |--------|  RR   |=>
+       ```````          ```````
+	             BACK
+SERVO OFFSETS OBSERVED FOR EACH UNIT (but not final values because they seem to act different when in ACTUAL use)
+LF
+    pin_coxa=0, NEW
+    pin_femur=1,-75 straight up, 90 (45 degrees downward)
+    pin_tibia=2, 90 fully inward, -90 fully extended
+
+RF
+    pin_coxa=3, NEW
+    pin_femur=4, NEW
+    pin_tibia=5, 90 fully inward, -90 fully extended
+
+RR
+    pin_coxa=6, NEW
+    pin_femur=7,-75 straight up, 90 (30 degrees downward)
+    pin_tibia=8, 90 fully inward, -90 fully extended
+
+LR
+    pin_coxa=9, NEW
+    pin_femur=10, -45 straight up, 90 (45 degrees downward)
+    pin_tibia=11, 90 fully inward, -90 fully extended
+
+
+"""

@@ -45,8 +45,8 @@ class Robot(_Basic_class):
         """
         super().__init__(**kwargs)
         self.pin_list = pin_list
-        self.servo_list = [None] * 16
-        self.pin_num = 16
+        self.servo_list = [None] * 12
+        self.pin_num = 12
         # parameter init
         self.servo_positions = self.new_list(0)
         # servo init
@@ -77,7 +77,7 @@ class Robot(_Basic_class):
         self.last_move_time = time.time()
 
     def new_list(self, default_value):
-        return [default_value] * 16
+        return [default_value] * 12
 
     def xx_servo_write_raw(self, angle_list):
         for pin in self.pin_list:
