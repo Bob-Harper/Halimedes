@@ -72,7 +72,7 @@ class HalCrawler(Robot):
         femur_deg = self._clamp(femur_deg, f_min, f_max)
         tibia_deg = self._clamp(tibia_deg, t_min, t_max)
 
-        print(f"[LEG DATA] {leg_name}: {leg}")
+        # print(f"[LEG DATA] {leg_name}: {leg}")
 
         # send to servo mapping
         self.set_leg_angles(leg_name, [coxa_deg, femur_deg, tibia_deg])
