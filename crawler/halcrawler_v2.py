@@ -25,7 +25,6 @@ class HalCrawler(Robot):
             self.legs.COXA_LEN,
             self.legs.FEMUR_LEN,
             self.legs.TIBIA_LEN,
-            self.legs.FLOOR_DROP
         )
 
         self.C = self.legs.COXA_LEN
@@ -37,42 +36,56 @@ class HalCrawler(Robot):
 
     def set_leg_angles(self, leg_name, angles):
         leg = self.leg_map[leg_name]
-        coxa_deg, femur_deg, tibia_deg = angles
+        coxa, femur, tibia = angles
 
-        # per-leg servo zero offset
-        servo_zero = leg["servo_zero_offset"]
+        if hasattr(leg, "__dict__") and not isinstance(leg, dict):
+            leg = vars(leg)
 
-        servo_coxa  = servo_zero + leg["coxa_dir"]  * coxa_deg + leg["joint_zero"]["coxa"]
-        servo_femur = leg["femur_dir"] * femur_deg + leg["joint_zero"]["femur"]
-        servo_tibia = leg["tibia_dir"] * tibia_deg + leg["joint_zero"]["tibia"]
+        # 1. FIXED PHYSICAL HIP SPLIT (All 4 legs swing FORWARD together)
+        # Because the left and right servo banks are physical mirror images,
+        # we adjust the math symbols so a forward step drives all hips forward.
+        if leg_name in ["LF", "LR"]:
+            servo_coxa = 90.0 + coxa   # Left side: Positive math swings hip FORWARD
+        else:
+            servo_coxa = 90.0 - coxa   # Right side: Positive math swings hip FORWARD
 
-        # clamp to safe ranges
-        servo_coxa  = self._clamp(servo_coxa,  *leg["joint_range"]["coxa"])
-        servo_femur = self._clamp(servo_femur, *leg["joint_range"]["femur"])
-        servo_tibia = self._clamp(servo_tibia, *leg["joint_range"]["tibia"])
+        # 2. FIXED VERTICAL LINKAGES (No more meerkat stance)
+        # Femur tracks smoothly down to its 45-degree resting incline
+        servo_femur = 45.0 - femur
 
-        # write to servos
-        self.servo_list[leg["pin_coxa"]].angle  = servo_coxa
-        self.servo_list[leg["pin_femur"]].angle = servo_femur
-        self.servo_list[leg["pin_tibia"]].angle = servo_tibia
+        # Tibia Inversion Fix: By subtracting tibia from 90.0 instead of tibia - 90.0,
+        # a opening triangle angle mathematically forces the physical servo horn
+        # to rotate OUTWARD away from the chassis, extending the foot down to the grid.
+        servo_tibia = 90.0 - tibia
 
-    def move_leg_to(self, leg_name, target_coord):
-        leg = self.leg_map[leg_name]
-
-        # raw IK angles
-        coxa_deg, femur_deg, tibia_deg = self.ik.coord2polar(leg, target_coord)
-        print(f"[MOVE_LEG] {leg_name} rawIK: C={coxa_deg:.1f} F={femur_deg:.1f} T={tibia_deg:.1f}")
-
-        # clamp raw IK angles BEFORE mapping (safety)
         c_min, c_max = leg["joint_range"]["coxa"]
         f_min, f_max = leg["joint_range"]["femur"]
         t_min, t_max = leg["joint_range"]["tibia"]
 
-        coxa_deg  = self._clamp(coxa_deg,  c_min, c_max)
-        femur_deg = self._clamp(femur_deg, f_min, f_max)
-        tibia_deg = self._clamp(tibia_deg, t_min, t_max)
+        # Universal safety clamps
+        final_coxa  = max(c_min, min(c_max, servo_coxa))
+        final_femur = max(f_min, min(f_max, servo_femur))
+        final_tibia = max(t_min, min(t_max, servo_tibia))
 
-        # print(f"[LEG DATA] {leg_name}: {leg}")
+        # Push clean, synchronized angles straight to your physical pin indices
+        self.servo_list[leg["pin_coxa"]].angle  = final_coxa
+        self.servo_list[leg["pin_femur"]].angle = final_femur
+        self.servo_list[leg["pin_tibia"]].angle = final_tibia
 
-        # send to servo mapping
+    def move_leg_to(self, leg_name, target_coord):
+        leg = self.leg_map[leg_name]
+        x, y, z = target_coord
+
+        # Calculate pure displacement vectors from the leg's unique physical mount point
+        dx = x - leg["mount_x"]
+        dy = y - leg["mount_y"]
+        dz = z  # Raw target vertical distance from the shoulder axis line
+
+        # Call the pure solver to get the abstract triangle degrees
+        coxa_deg, femur_deg, tibia_deg = self.ik.solve_leg_triangle(dx, dy, dz)
+
+        print(f"[MOVE_LEG] {leg_name} Raw Triangle: C={coxa_deg:.1f}° F={femur_deg:.1f}° T={tibia_deg:.1f}°")
+
+        # Send the clean geometric angles straight down to your execution layer
         self.set_leg_angles(leg_name, [coxa_deg, femur_deg, tibia_deg])
+

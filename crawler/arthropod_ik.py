@@ -1,43 +1,48 @@
 # crawler/arthropod_ik.py
 import math
-import math
 
 class ArthropodIK:
-    def __init__(self, coxa_len, femur_len, tibia_len, floor_drop):
+    def __init__(self, coxa_len=33, femur_len=48, tibia_len=80, *args, **kwargs):
         self.C = coxa_len
         self.A = femur_len
         self.B = tibia_len
-        self.floor_drop = floor_drop
 
-    def coord2polar(self, leg, coord):
-        dx = coord[0] - leg["mount_x"]
-        dy = coord[1] - leg["mount_y"]
-        rot = math.radians(leg["mount_angle"])
-        dx2 = dx*math.cos(rot) + dy*math.sin(rot)
-        dy2 = -dx*math.sin(rot) + dy*math.cos(rot)
+    def solve_leg_triangle(self, dx, dy, dz):
+        """Solves a pure geometric triangle for an upward-slanted limb configuration."""
+        # 1. Pure horizontal coxa angle relative to the side axis (abs(dy))
+        coxa_rad = math.atan2(dx, abs(dy))
 
-        coxa_rad = math.atan2(dy, dx)
-        # use mount_angle to rotate the leg’s local frame
-        coxa_deg = math.degrees(coxa_rad) - leg["mount_angle"]
-        # normalize to -180..+180
-        # coxa_deg = ((coxa_deg + 180.0) % 360.0) - 180.0
-        px = math.sqrt(dx2*dx2 + dy2*dy2) - self.C
+        # 2. Horizontal extension distance past the hip joint
+        px = math.sqrt(dx*dx + dy*dy) - self.C
 
-        user_z = coord[2]
-        pz = self.floor_drop - user_z
+        # 3. For an upward-slanted link setup where the foot is at the baseplate,
+        # pz represents the true vertical depth coordinate below the hip pivot.
+        pz = dz
 
+        # 4. Straight-line hypotenuse distance from hip core to foot tip
         d = math.sqrt(px*px + pz*pz)
-        d = max(abs(self.A - self.B) + 1.0, min(self.A + self.B - 1.0, d))
 
-        cos_tibia = (self.A*self.A + self.B*self.B - d*d) / (2*self.A*self.B)
-        tibia_rad = math.pi - math.acos(max(-1.0, min(1.0, cos_tibia)))
+        # Safety constraint to prevent math domain violations
+        max_reach = self.A + self.B
+        min_reach = abs(self.A - self.B)
+        d = max(min_reach + 0.1, min(max_reach - 0.1, d))
 
+        # 5. Law of Cosines for the bone links
+        cos_tibia = (self.A*self.A + self.B*self.B - d*d) / (2.0 * self.A * self.B)
+        cos_tibia = max(-1.0, min(1.0, cos_tibia))
+        tibia_rad = math.pi - math.acos(cos_tibia)
+
+        # To resolve a triangle that slants upward first, the femur pitch angle
+        # subtracts the internal cosine variation from the baseline tracking slant!
         angle_to_target = math.atan2(pz, px)
-        cos_femur = (self.A*self.A + d*d - self.B*self.B) / (2*self.A*d)
-        femur_rad = angle_to_target - math.acos(max(-1.0, min(1.0, cos_femur)))
 
+        cos_femur = (self.A*self.A + d*d - self.B*self.B) / (2.0 * self.A * d)
+        cos_femur = max(-1.0, min(1.0, cos_femur))
+        femur_rad = angle_to_target - math.acos(cos_femur)
+
+        # Return pure, raw, unaltered mathematical degrees relative to the horizon
         return [
-            coxa_deg,                      # ← use this instead of math.degrees(coxa_rad)
+            math.degrees(coxa_rad),
             math.degrees(femur_rad),
             math.degrees(tibia_rad)
         ]
