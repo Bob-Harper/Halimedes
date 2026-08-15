@@ -20,7 +20,7 @@ class ArthropodIK:
         # use mount_angle to rotate the leg’s local frame
         coxa_deg = math.degrees(coxa_rad) - leg["mount_angle"]
         # normalize to -180..+180
-        coxa_deg = ((coxa_deg + 180.0) % 360.0) - 180.0
+        # coxa_deg = ((coxa_deg + 180.0) % 360.0) - 180.0
         px = math.sqrt(dx2*dx2 + dy2*dy2) - self.C
 
         user_z = coord[2]
