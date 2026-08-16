@@ -63,9 +63,8 @@ class Robot(_Basic_class):
 
         for i, pin in enumerate(pin_list):
             if pin in COXA_PINS:
-                # Brushless coxa servos
-                self.servo_list[pin] = Servo(pin, min_pw=1000, max_pw=2000)  # original
-                # self.servo_list[pin] = Servo(pin, min_pw=50, max_pw=2500)
+                # Coreless coxa servos
+                self.servo_list[pin] = Servo(pin, min_pw=500, max_pw=2500) # original
             else:
                 # Sunfounder femur/tibia servos
                 self.servo_list[pin] = Servo(pin, min_pw=500, max_pw=2500)

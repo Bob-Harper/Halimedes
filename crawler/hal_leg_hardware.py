@@ -22,17 +22,17 @@ class HalLegs:
 
         self.RF = {
             "name": "RF",
-            "mount_x": 40, "mount_y": -40, "mount_angle": -90,
+            "mount_x": 40, "mount_y": -40, "mount_angle": 0,
             "coxa_dir": 1, "femur_dir": 1, "tibia_dir": 1,  # Keeps right side mirrored to left
             "pin_coxa": 3, "pin_femur": 4, "pin_tibia": 5,
             "servo_zero_offset": 0.0,
-            "joint_zero": {"coxa": 90.0, "femur": -3.0, "tibia": 0.0},
+            "joint_zero": {"coxa": 90.0, "femur": 5.0, "tibia": 0.0},
             "joint_range": {"coxa": (0, 180), "femur": (-45, 90), "tibia": (-90, 90)}
         }
 
         self.RR = {
             "name": "RR",
-            "mount_x": -40, "mount_y": -40, "mount_angle": 180,
+            "mount_x": -40, "mount_y": -40, "mount_angle": 0,
             "coxa_dir": 1, "femur_dir": 1, "tibia_dir": 1,
             "pin_coxa": 6, "pin_femur": 7, "pin_tibia": 8,
             "servo_zero_offset": 0.0,
@@ -42,11 +42,11 @@ class HalLegs:
 
         self.LR = {
             "name": "LR",
-            "mount_x": -40, "mount_y": 40, "mount_angle": -180,
+            "mount_x": -40, "mount_y": 40, "mount_angle": 0,
             "coxa_dir": 1, "femur_dir": 1, "tibia_dir": 1,
             "pin_coxa": 9, "pin_femur": 10, "pin_tibia": 11,
             "servo_zero_offset": 0.0,
-            "joint_zero": {"coxa": 90.0, "femur": -3.0, "tibia": 0.0},
+            "joint_zero": {"coxa": 90.0, "femur": 5.0, "tibia": 0.0},
             "joint_range": {"coxa": (0, 180), "femur": (-45, 90), "tibia": (-90, 90)}
         }
 

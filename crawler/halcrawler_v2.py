@@ -1,91 +1,109 @@
 # crawler/halcrawler_v2.py
-
 import math
-from crawler.arthropod_ik import ArthropodIK
 from crawler.robot import Robot
 from crawler.hal_leg_hardware import HalLegs
-
+from crawler.arthropod_ik import ArthropodIK
 
 class HalCrawler(Robot):
-    def __init__(self,
-                 pin_list,
-                 init_angles=None,
-                 init_order=None,
-                 *args, **kwargs):
-
-        super().__init__(pin_list=pin_list,
-                         init_angles=init_angles,
-                         init_order=init_order,
-                         **kwargs)
-
-        self.legs = HalLegs()
-        self.leg_map = self.legs.LEG_MAP
-
-        self.ik = ArthropodIK(
-            self.legs.COXA_LEN,
-            self.legs.FEMUR_LEN,
-            self.legs.TIBIA_LEN,
+    """
+    The final coordination bridge for the quadruped.
+    Operates strictly on a UNIFORM BODY-ORIENTED LOCAL GRID shifted to each hip:
+    +dx = Forward  | -dx = Backward
+    +dy = Left     | -dy = Right
+    -dz = Lift UP  | +dz = Push DOWN
+    """
+    def __init__(self, **kwargs):
+        self.legs_cfg = HalLegs()
+        self.ik_solver = ArthropodIK(
+            coxa_len=self.legs_cfg.COXA_LEN,
+            femur_len=self.legs_cfg.FEMUR_LEN,
+            tibia_len=self.legs_cfg.TIBIA_LEN
         )
 
-        self.C = self.legs.COXA_LEN
-        self.A = self.legs.FEMUR_LEN
-        self.B = self.legs.TIBIA_LEN
+        pin_list = self.legs_cfg.PIN_LIST
+        init_angles = [0.0] * 12
+        super().__init__(pin_list=pin_list, init_angles=init_angles, **kwargs)
 
-    def _clamp(self, x, lo, hi):
-        return max(lo, min(hi, x))
+    def translate_ik_to_servo(self, leg_name: str, ik_angles: list) -> dict:
+        """
+        Takes raw math angles from the body-aligned IK engine and maps them
+        directly to your clean -90 to 90 hardware space.
+        """
+        leg = self.legs_cfg.LEG_MAP[leg_name]
+        ik_coxa, ik_femur, ik_tibia = ik_angles
 
-    def set_leg_angles(self, leg_name, angles):
-        leg = self.leg_map[leg_name]
-        coxa, femur, tibia = angles
+        is_left_side = leg_name in ["LF", "LR"]
 
-        if hasattr(leg, "__dict__") and not isinstance(leg, dict):
-            leg = vars(leg)
-
-        # 1. FIXED PHYSICAL HIP SPLIT (All 4 legs swing FORWARD together)
-        # Because the left and right servo banks are physical mirror images,
-        # we adjust the math symbols so a forward step drives all hips forward.
-        if leg_name in ["LF", "LR"]:
-            servo_coxa = 90.0 + coxa   # Left side: Positive math swings hip FORWARD
+        # =====================================================================
+        # 1. COXA AXIS MAPPING (Straight out = 0.0 hardware baseline)
+        # =====================================================================
+        if is_left_side:
+            corrected_coxa = ik_coxa - 90.0
+            servo_coxa = 0.0 + corrected_coxa
         else:
-            servo_coxa = 90.0 - coxa   # Right side: Positive math swings hip FORWARD
+            corrected_coxa = ik_coxa + 90.0
+            servo_coxa = 0.0 + corrected_coxa
 
-        # 2. FIXED VERTICAL LINKAGES (No more meerkat stance)
-        # Femur tracks smoothly down to its 45-degree resting incline
-        servo_femur = 45.0 - femur
+        # =====================================================================
+        # 2. FEMUR TRANSLATION (Your confirmed zero-horizon math)
+        # =====================================================================
+        zero_femur = leg["joint_zero"]["femur"] if leg["joint_zero"]["femur"] != 90.0 else 0.0
+        servo_femur = zero_femur - (0.0 - ik_femur)
 
-        # Tibia Inversion Fix: By subtracting tibia from 90.0 instead of tibia - 90.0,
-        # a opening triangle angle mathematically forces the physical servo horn
-        # to rotate OUTWARD away from the chassis, extending the foot down to the grid.
-        servo_tibia = 90.0 - tibia
+        # =====================================================================
+        # 3. TIBIA TRANSLATION
+        # =====================================================================
+        zero_tibia = leg["joint_zero"]["tibia"] if leg["joint_zero"]["tibia"] != 90.0 else 0.0
+        servo_tibia = zero_tibia - ik_tibia
 
-        c_min, c_max = leg["joint_range"]["coxa"]
-        f_min, f_max = leg["joint_range"]["femur"]
-        t_min, t_max = leg["joint_range"]["tibia"]
+        return {
+            "coxa":  max(-90.0, min(90.0, round(servo_coxa, 2))),
+            "femur": max(-90.0, min(90.0, round(servo_femur, 2))),
+            "tibia": max(-90.0, min(90.0, round(servo_tibia, 2)))
+        }
 
-        # Universal safety clamps
-        final_coxa  = max(c_min, min(c_max, servo_coxa))
-        final_femur = max(f_min, min(f_max, servo_femur))
-        final_tibia = max(t_min, min(t_max, servo_tibia))
+    def execute_local_step(self, body_aligned_targets: dict, speed: int = 20, bpm: float = None):
+        """
+        Accepts targets where -dz explicitly lifts the foot up.
+        Enforces a hard radial safety barrier to protect chassis servos and IR sensors.
+        """
+        pin_payload = [0.0] * 12
 
-        # Push clean, synchronized angles straight to your physical pin indices
-        self.servo_list[leg["pin_coxa"]].angle  = final_coxa
-        self.servo_list[leg["pin_femur"]].angle = final_femur
-        self.servo_list[leg["pin_tibia"]].angle = final_tibia
+        # Hard mechanical safety threshold from body center (0,0)
+        MIN_SAFE_RADIUS = 90.0  # Safe clearance zone
 
-    def move_leg_to(self, leg_name, target_coord):
-        leg = self.leg_map[leg_name]
-        x, y, z = target_coord
+        for leg_name, coords in body_aligned_targets.items():
+            leg_cfg = self.legs_cfg.LEG_MAP[leg_name]
 
-        # Calculate pure displacement vectors from the leg's unique physical mount point
-        dx = x - leg["mount_x"]
-        dy = y - leg["mount_y"]
-        dz = z  # Raw target vertical distance from the shoulder axis line
+            # Calculate the true horizontal distance from the center of the robot body
+            world_radius = math.sqrt(coords["dx"]**2 + coords["dy"]**2)
 
-        # Call the pure solver to get the abstract triangle degrees
-        coxa_deg, femur_deg, tibia_deg = self.ik.solve_leg_triangle(dx, dy, dz)
+            # Firewall: If the high-level gait tries to pull a leg too close,
+            # we automatically clamp its outward extension safely at your threshold.
+            if world_radius < MIN_SAFE_RADIUS:
+                print(f"[SAFETY WARN] {leg_name} requested unsafe position ({coords['dx']}, {coords['dy']}). Radius {world_radius:.1f}mm is too tight! Clamping to {MIN_SAFE_RADIUS}mm.")
 
-        print(f"[MOVE_LEG] {leg_name} Raw Triangle: C={coxa_deg:.1f}° F={femur_deg:.1f}° T={tibia_deg:.1f}°")
+                # Proportional scaling to push the target out along the same vector
+                scale_factor = MIN_SAFE_RADIUS / world_radius
+                safe_dx = coords["dx"] * scale_factor
+                safe_dy = coords["dy"] * scale_factor
+            else:
+                safe_dx = coords["dx"]
+                safe_dy = coords["dy"]
 
-        # Send the clean geometric angles straight down to your execution layer
-        self.set_leg_angles(leg_name, [coxa_deg, femur_deg, tibia_deg])
+            # Process with the secured, safe coordinates
+            corrected_z = -coords["dz"]
 
+            raw_ik = self.ik_solver.solve_leg_triangle(
+                dx=safe_dx,
+                dy=safe_dy,
+                dz=corrected_z
+            )
+
+            translated = self.translate_ik_to_servo(leg_name, raw_ik)
+
+            pin_payload[leg_cfg["pin_coxa"]]  = translated["coxa"]
+            pin_payload[leg_cfg["pin_femur"]] = translated["femur"]
+            pin_payload[leg_cfg["pin_tibia"]] = translated["tibia"]
+
+        self.servo_move(pin_payload, speed=speed, bpm=bpm)
