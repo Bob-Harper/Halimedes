@@ -1521,3 +1521,431 @@ LR
 
 
 """
+===========================================================================
+
+HAL LOCOMOTION V3 NOTES
+=======================
+
+DATE
+----
+
+Post-IK Rewrite Architecture Review
+
+--------------------------------------------------
+
+MAJOR REALIZATION
+-----------------
+
+The original goal was:
+
+    "Rotate Hal's forward direction."
+
+The final result was:
+
+    A complete replacement of the locomotion architecture.
+
+The original problem eventually became irrelevant once the
+geometry, coordinate system, hardware definitions, and
+movement pipeline were redefined from first principles.
+
+--------------------------------------------------
+
+ARCHITECTURE STATUS
+-------------------
+
+Current architecture consists of four distinct layers:
+
+HalLegs
+    =
+    Physical Robot Definition
+
+ArthropodIK
+    =
+    Pure Geometry / Mathematics
+
+HalCrawler
+    =
+    Movement Translation and Coordination Layer
+
+Robot
+    =
+    Low-Level Servo Hardware Driver
+
+This separation should be preserved.
+
+Do NOT merge these layers back together.
+
+--------------------------------------------------
+
+HALLEGS RESPONSIBILITIES
+------------------------
+
+HalLegs now acts as the hardware specification database.
+
+Contains:
+
+- Physical dimensions
+- Link lengths
+- Pin assignments
+- Joint zero definitions
+- Joint limits
+- Leg mounting positions
+- Structural offsets
+
+HalLegs should remain hardware-only.
+
+No movement logic belongs here.
+
+--------------------------------------------------
+
+ARTHROPODIK RESPONSIBILITIES
+----------------------------
+
+ArthropodIK is now effectively a pure mathematical solver.
+
+Inputs:
+
+    dx
+    dy
+    dz
+
+Outputs:
+
+    coxa
+    femur
+    tibia
+
+Responsibilities:
+
+- Triangle solving
+- Reach calculations
+- Law of Cosines
+- Joint angle generation
+
+No:
+
+- Servo pins
+- Offsets
+- Special cases
+- Hardware compensation
+
+should exist here.
+
+Keep it pure.
+
+--------------------------------------------------
+
+HALCRAWLER RESPONSIBILITIES
+---------------------------
+
+HalCrawler has become the actual movement engine.
+
+Responsibilities include:
+
+- Stability
+- IMU integration
+- Structural safety checks
+- IK invocation
+- Servo translation
+- Movement execution
+
+This layer now serves as:
+
+    Intent
+        ↓
+    Translation
+        ↓
+    Execution
+
+This is likely the permanent movement coordination layer.
+
+--------------------------------------------------
+
+ACCIDENTAL DISCOVERY
+--------------------
+
+The original IMU integration was intended as:
+
+    Proof of concept only.
+
+Goal:
+
+    "See if Hal can adjust his stance from IMU data."
+
+Result:
+
+    Complete movement translation layer.
+
+The architecture was mature enough that the IMU feature
+naturally integrated into the correct location.
+
+The proof of concept revealed the final architecture.
+
+--------------------------------------------------
+
+COORDINATE SYSTEM STATUS
+------------------------
+
+Current coordinate model:
+
++X = Forward
+-X = Rear
+
++Y = Left
+-Y = Right
+
++Z = Raise Foot
+-Z = Lower Foot
+
+This model should remain.
+
+It is intuitive.
+
+Movement commands match natural language.
+
+Examples:
+
+    Raise leg
+        = +Z
+
+    Lower leg
+        = -Z
+
+No mental inversion required.
+
+--------------------------------------------------
+
+COXA ZERO REFERENCE
+-------------------
+
+Historical approach:
+
+    Arbitrary 45° offsets.
+
+Current approach:
+
+    Coxa zero points directly outward from body.
+
+Benefits:
+
+- Physical meaning
+- Human-readable
+- Easy debugging
+- No magic 45°
+- Hardware and software agree
+
+This should remain the permanent convention.
+
+--------------------------------------------------
+
+FLOOR REFERENCE CHANGE
+----------------------
+
+Previous model:
+
+    Floor existed as an arbitrary offset.
+
+Current model:
+
+    Femur pivot defines 0Z.
+
+Body structure:
+
+    Body Plane
+         +
+    PIVOT_OFFSET
+
+Foot positions:
+
+    Positive Z
+        =
+        Lift
+
+    Negative Z
+        =
+        Drop
+
+This has proven easier to reason about and should remain.
+
+--------------------------------------------------
+
+IMPORTANT DESIGN DISCOVERY
+--------------------------
+
+A major simplification occurred:
+
+Old thinking:
+
+    Four coordinate systems
+
+New thinking:
+
+    One coordinate system
+    Four origins
+
+Each leg uses:
+
+    Same coordinate rules
+
+but
+
+    Different mounting positions
+
+Legs are translated in space.
+
+They are not conceptually rotated into separate realities.
+
+This dramatically simplified the math and debugging.
+
+--------------------------------------------------
+
+IMU STABILITY SYSTEM
+--------------------
+
+Current implementation provides:
+
+- Pitch compensation
+- Roll compensation
+- Real-time body stabilization
+
+Current workflow:
+
+    IMU
+        ↓
+    Orientation
+        ↓
+    Leg Height Corrections
+        ↓
+    IK
+        ↓
+    Servo Translation
+
+Future movement automatically benefits from stabilization.
+
+No special handling is required inside gait code.
+
+--------------------------------------------------
+
+THINGS TO WATCH
+---------------
+
+1. translate_ik_to_servo()
+
+This is now the primary location carrying hardware-specific
+movement assumptions.
+
+Future coxa issues are likely to originate here.
+
+Monitor:
+
+    corrected_coxa
+
+    left/right side handling
+
+    servo limit interactions
+
+--------------------------------------------------
+
+2. Servo Limits
+
+Watch for situations where:
+
+Raw Angle:
+
+    120°
+
+becomes:
+
+    90°
+
+through clamping.
+
+Robot behavior can appear wrong when the actual problem
+is simply an unreachable command.
+
+Log raw values when debugging.
+
+--------------------------------------------------
+
+3. IMU Deadband
+
+Current duplicate-filtering:
+
+    if pitch == previous_pitch
+    and roll == previous_roll
+
+works because IMU values are rounded.
+
+If precision increases later:
+
+Consider replacing with:
+
+    abs(delta) < threshold
+
+to avoid unnecessary corrections.
+
+--------------------------------------------------
+
+4. Structural Radius Limits
+
+Current firewall:
+
+    MIN_SAFE_RADIUS
+
+is protecting the robot from physically impossible targets.
+
+Keep this protection.
+
+It prevents:
+
+- Self-collision
+- Body penetration
+- Impossible IK requests
+
+--------------------------------------------------
+
+CURRENT PROJECT STATUS
+----------------------
+
+The project has moved beyond:
+
+    "Make the old crawler do new tricks."
+
+Current reality:
+
+    Define robot geometry.
+    Define movement mathematically.
+    Define hardware independently.
+    Connect them through a translation layer.
+
+The resulting system is no longer a modified kit.
+
+It is a robot-specific locomotion architecture.
+
+--------------------------------------------------
+
+FINAL OBSERVATION
+-----------------
+
+The most important success is not the IMU.
+
+It is not the gait engine.
+
+It is not even the IK.
+
+The biggest success is that hardware, mathematics,
+translation, and execution now exist as separate systems.
+
+This allows future work such as:
+
+- New gaits
+- Trot experiments
+- Strafing
+- Dynamic balance
+- Autonomous locomotion
+- Terrain compensation
+
+without reworking the foundation again.
+
+The architecture has stopped fighting the robot and has
+started describing the robot.
