@@ -11,7 +11,7 @@ class ArthropodIK:
         """Solves a pure geometric triangle for an upward-slanted limb configuration."""
         # 1. Pure horizontal coxa angle relative to the side axis (abs(dy))
         coxa_rad = math.atan2(dy, dx)
-        print(f"DEBUG dx={dx:.2f} dy={dy:.2f} coxa_rad={coxa_rad:.4f} coxa_deg={math.degrees(coxa_rad):.2f}")
+        # print(f"DEBUG dx={dx:.2f} dy={dy:.2f} coxa_rad={coxa_rad:.4f} coxa_deg={math.degrees(coxa_rad):.2f}")
         # 2. Horizontal extension distance past the hip joint
         px = math.sqrt(dx*dx + dy*dy) - self.C
 
