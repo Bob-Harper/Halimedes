@@ -79,10 +79,6 @@ class Robot(_Basic_class):
     def new_list(self, default_value):
         return [default_value] * 12
 
-    def xx_servo_write_raw(self, angle_list):
-        for pin in self.pin_list:
-            self.servo_list[pin].angle = angle_list[pin]
-
     def servo_write_raw(self, angle_list):
         # DEBUG: show the raw payload we received
         # print(f"[SERVO_RAW IN] {angle_list}")
