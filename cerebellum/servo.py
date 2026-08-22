@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 from cerebellum.pwm import PWM
-from cerebellum.utils import mapping
 from crawler.hal_hardware import PWM_Values, Servo_Values
 
 
@@ -27,7 +26,7 @@ class Servo(PWM):
         value = max(-90, min(90, value))
         self._angle = float(value)
 
-        pulse_width = mapping(value, -90, 90, self.servo_cfg.MIN_PW, self.servo_cfg.MAX_PW)
+        pulse_width = self._map(value, -90, 90, self.servo_cfg.MIN_PW, self.servo_cfg.MAX_PW)
 
         self._set_pulse_width_time(pulse_width)
 
@@ -39,3 +38,8 @@ class Servo(PWM):
         value = int(pwr * self.servo_cfg.SERVO_PERIOD)
 
         self.pulse_width(value)
+
+
+    @staticmethod
+    def _map(x, in_min, in_max, out_min, out_max):
+        return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min

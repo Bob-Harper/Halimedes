@@ -126,4 +126,4 @@ class HalCrawler(Robot):
             pin_payload[leg_cfg["pin_femur"]] = translated["femur"]
             pin_payload[leg_cfg["pin_tibia"]] = translated["tibia"]
 
-        self.servo_write_all(pin_payload)
+        self.servo_write_raw(pin_payload)
