@@ -1,70 +1,54 @@
 #!/usr/bin/env python3
-from crawler.i2c import I2C
-
+from cerebellum.i2c import I2C
 
 class ADC(I2C):
     """
-    Analog to digital converter
+    High-performance Analog-to-Digital Converter interface.
+    All legacy parent class overhead, logging leaks, and redundant bus writes are purged.
     """
     ADDR = [0x14, 0x15]
 
     def __init__(self, chn, address=None, *args, **kwargs):
         """
-        Analog to digital converter
-
-        :param chn: channel number (0-7/A0-A7)
-        :type chn: int/str
+        Initialize the ADC channel register map.
+        :param chn: channel number (0-7 or string 'A0'-'A7')
         """
-        if address is not None:
-            super().__init__(address, *args, **kwargs)
-        else:
-            super().__init__(self.ADDR, *args, **kwargs)
-        self._debug(f'ADC device address: 0x{self.address:02X}')
+        target_addr = address if address is not None else self.ADDR
+        super().__init__(target_addr, *args, **kwargs)
 
+        # Parse string semantic channel names natively
         if isinstance(chn, str):
-            # If chn is a string, assume it's a pin name, remove A and convert to int
             if chn.startswith("A"):
                 chn = int(chn[1:])
             else:
-                raise ValueError(
-                    f'ADC channel should be between [A0, A7], not "{chn}"')
-        # Make sure channel is between 0 and 7
+                raise ValueError(f'ADC channel should be between [A0, A7], not "{chn}"')
+
         if chn < 0 or chn > 7:
-            raise ValueError(
-                f'ADC channel should be between [0, 7], not "{chn}"')
+            raise ValueError(f'ADC channel should be between, not "{chn}"')
+
+        # Map channel selection directly to the co-processor's internal register frame
         chn = 7 - chn
-        # Convert to Register value
         self.chn = chn | 0x10
 
-    def read(self, length: int = 2):
+    def read(self):
         """
-        Read the ADC value
+        Read the 12-bit raw analog conversion value from the hardware registers.
 
-        :param length: number of bytes to read (ignored, always 2 for ADC)
-        :return: ADC value(0-4095)
+        :return: ADC resolution value (0-4095)
         :rtype: int
         """
-        # Write register address
-        self.write([self.chn, 0, 0])
-        # Read values (always 2 bytes for this ADC)
-        msb, lsb = super().read(2)
+        # Execute a native, atomic 16-bit word read across the bus channels
+        # Your I2C._read_word_data returns a [low_byte, high_byte] list array matrix
+        lsb, msb = self._read_word_data(self.chn)
 
-        # Combine MSB and LSB
-        value = (msb << 8) + lsb
-        self._debug(f"Read value: {value}")
-        return value
+        # Combine the bit planes into a clean 12-bit unsigned integer resolution scale
+        return (msb << 8) + lsb
 
-
-    def read_voltage(self):
+    def read_voltage(self) -> float:
         """
-        Read the ADC value and convert to voltage
+        Read the raw conversion value and scale it directly to the 3.3V reference plane.
 
-        :return: Voltage value(0-3.3(V))
+        :return: Calculated voltage (0.0 to 3.3 Volts)
         :rtype: float
         """
-        # Read ADC value
-        value = self.read()
-        # Convert to voltage
-        voltage = value * 3.3 / 4095
-        self._debug(f"Read voltage: {voltage}")
-        return voltage
+        return (self.read() * 3.3) / 4095.0

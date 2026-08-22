@@ -1,4 +1,4 @@
-from crawler.utils import reset_mcu
+from cerebellum.utils import reset_mcu
 
 
 if __name__ == "__main__":

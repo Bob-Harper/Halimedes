@@ -1,7 +1,7 @@
 # crawler/halcrawler_v3.py
 import math
-from crawler.robot import Robot
-from crawler.hal_leg_hardware import HalLegs
+from cerebellum.robot import Robot
+from crawler.hal_hardware import HalLegs
 from crawler.arthropod_ik import ArthropodIK
 
 class HalCrawler(Robot):
@@ -126,4 +126,4 @@ class HalCrawler(Robot):
             pin_payload[leg_cfg["pin_femur"]] = translated["femur"]
             pin_payload[leg_cfg["pin_tibia"]] = translated["tibia"]
 
-        self.servo_move(pin_payload, speed=speed, bpm=bpm)
+        self.servo_write_all(pin_payload)

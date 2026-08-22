@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-from crawler.basic import _Basic_class
-from crawler.pwm import PWM
-from crawler.pin import Pin
-from crawler.filedb import fileDB
+from cerebellum.basic import _Basic_class
+from cerebellum.pwm import PWM
+from cerebellum.pin import Pin
+from cerebellum.filedb import fileDB
 import os
 
 config_file = os.path.expanduser("~/hal/data/robot-hat.conf")

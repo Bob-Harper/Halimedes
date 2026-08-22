@@ -1,9 +1,9 @@
 # main_py
 
 import asyncio
-from hal_runtime import Hal
+from runtime.hal_runtime import Hal
 
-debug_reasoning = True
+debug_reasoning = False
 
 async def _main():
     hal = Hal(debug_reasoning=debug_reasoning)
