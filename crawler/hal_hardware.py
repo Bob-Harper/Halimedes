@@ -74,15 +74,15 @@ class Robot_Values:
     severe voltage underruns when speeds exceed 25.
     """
     def __init__(self):
-        self.MAX_DPS = 720.0 # nominal max value 720.
+        self.MAX_DPS = 360.0 # nominal max value 720.
         self.SERVO_COUNT = 12
         self.PIN_COUNT = 12
         self.STEP_TIME_MS = 10.0  # 10ms internal step interpolation interval
         self.SPEED_SCALE_NORM = 100 # Sane Speed in most movments is calibrated for 1-100.
         self.SPEED_SCALE_MAX = 200 # Values up to this allows for a "Turbo Mode"
         # scale speed of movements to reduce spikes until hardware can handle higher servo power draw
-        self.MOVEMENT_SCALER = 0.5
-        self.MAX_DELTA_PER_SERVO = 3.0
+        self.MOVEMENT_SCALER = 0.66
+        self.MAX_DELTA_PER_SERVO =5.0
         self.MAX_TOTAL_DELTA = 50.0
         # scale the pitch and roll of the GRV values returned for stabilization.  Debug only, 5 is extremely noticeable
         self.PITCH_SCALE = 1
