@@ -17,7 +17,7 @@ class ArthropodIK:
 
         # 3. For an upward-slanted link setup where the foot is at the baseplate,
         # pz represents the true vertical depth coordinate below the hip pivot.
-        pz = dz
+        pz = -dz
 
         # 4. Straight-line hypotenuse distance from hip core to foot tip
         d = math.sqrt(px*px + pz*pz)
@@ -35,10 +35,22 @@ class ArthropodIK:
         # To resolve a triangle that slants upward first, the femur pitch angle
         # subtracts the internal cosine variation from the baseline tracking slant!
         angle_to_target = math.atan2(pz, px)
-
         cos_femur = (self.A*self.A + d*d - self.B*self.B) / (2.0 * self.A * d)
         cos_femur = max(-1.0, min(1.0, cos_femur))
-        femur_rad = angle_to_target - math.acos(cos_femur)
+        femur_offset = math.acos(cos_femur)
+
+        # two geometric solutions: knee on one side or the other of the hypotenuse
+        candidate_up   = angle_to_target + femur_offset
+        candidate_down = angle_to_target - femur_offset
+
+        # simple rule: keep the knee on the “arthropod side” of the line,
+        # but let the femur go below the body plane when the foot is down.
+        if dz < 0:
+            # foot below body → allow femur to swing down while staying on same side of hypotenuse
+            femur_rad = candidate_down
+        else:
+            # foot above body → use the other branch
+            femur_rad = candidate_up
 
         # Return pure, raw, unaltered mathematical degrees relative to the horizon
         return [

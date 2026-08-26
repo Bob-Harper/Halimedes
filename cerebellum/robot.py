@@ -60,7 +60,7 @@ class Robot:
             start = time.time()
 
             for j in range(self.pin_num):
-                self.servo_positions[j] = round(self.servo_positions[j] + steps[j], 4)
+                self.servo_positions[j] += steps[j]
 
             self.servo_write_raw(self.servo_positions)
 

@@ -1,15 +1,32 @@
 # crawler/hal_hardware.py
 
+class GPIO_Values:
+    def __init__(self):
+        self.OUT = 0x01
+        self.IN = 0x02
+
+        self.PULL_UP = 0x11
+        self.PULL_DOWN = 0x12
+        self.PULL_NONE = None
+
+        # Static broadcom dictionary mapping for standard robot hat configuration aliases
+        self._dict = {
+            "D0": 17, "D1": 4, "D2": 27, "D3": 22, "D4": 23, "D5": 24,
+            "D9": 6, "D10": 12, "D11": 13, "D12": 19, "D13": 16, "D14": 26,
+            "D15": 20, "D16": 21, "SW": 25, "USER": 25, "LED": 26,
+            "BOARD_TYPE": 12, "RST": 16, "BLEINT": 13, "BLERST": 20, "MCURST": 5, "CE": 8,
+        }
+
 
 class Headlights:
     """
-    Repurposes Mot0rport1 fors use as brightness control for front mounted headlights/searchlight.
+    Repurposed Motorport1 for use as brightness control for front mounted headlights/searchlight.
     Motorport2 pins are already repurposed elsewhere and cannot be used as a hardware control at this time.
     """
     def __init__(self):
         self.period = 4095
         self.prescaler = 10
-        freq=100
+        self.freq=100
         self.motor_1_pwm_pin = "P13"
         self.motor_1_dir_pin = "D4"
 
@@ -57,12 +74,19 @@ class Robot_Values:
     severe voltage underruns when speeds exceed 25.
     """
     def __init__(self):
-        self.MAX_DPS = 720.0
+        self.MAX_DPS = 720.0 # nominal max value 720.
         self.SERVO_COUNT = 12
         self.PIN_COUNT = 12
         self.STEP_TIME_MS = 10.0  # 10ms internal step interpolation interval
         self.SPEED_SCALE_NORM = 100 # Sane Speed in most movments is calibrated for 1-100.
         self.SPEED_SCALE_MAX = 200 # Values up to this allows for a "Turbo Mode"
+        # scale speed of movements to reduce spikes until hardware can handle higher servo power draw
+        self.MOVEMENT_SCALER = 0.5
+        self.MAX_DELTA_PER_SERVO = 3.0
+        self.MAX_TOTAL_DELTA = 50.0
+        # scale the pitch and roll of the GRV values returned for stabilization.  Debug only, 5 is extremely noticeable
+        self.PITCH_SCALE = 1
+        self.ROLL_SCALE = 1
 
 class HalLegs:
     """
@@ -87,8 +111,8 @@ class HalLegs:
             "coxa_dir": 1, "femur_dir": 1, "tibia_dir": 1,
             "pin_coxa": 0, "pin_femur": 1, "pin_tibia": 2,
             "servo_zero_offset": 0.0,
-            "joint_zero": {"coxa": 90.0, "femur": 0.0, "tibia": 0.0},
-            "joint_range": {"coxa": (0, 180), "femur": (-45, 90), "tibia": (-90, 90)}
+            "joint_zero": {"coxa": 90.0, "femur": 45.0, "tibia": 90.0},
+            "joint_range": {"coxa": (0, 180), "femur": (-90, 90), "tibia": (-90, 90)}
         }
 
         self.RF = {
@@ -97,8 +121,8 @@ class HalLegs:
             "coxa_dir": 1, "femur_dir": 1, "tibia_dir": 1,
             "pin_coxa": 3, "pin_femur": 4, "pin_tibia": 5,
             "servo_zero_offset": 0.0,
-            "joint_zero": {"coxa": 90.0, "femur": 5.0, "tibia": 0.0},
-            "joint_range": {"coxa": (0, 180), "femur": (-45, 90), "tibia": (-90, 90)}
+            "joint_zero": {"coxa": 90.0, "femur": 45.0, "tibia": 90.0},
+            "joint_range": {"coxa": (0, 180), "femur": (-90, 90), "tibia": (-90, 90)}
         }
 
         self.RR = {
@@ -107,8 +131,8 @@ class HalLegs:
             "coxa_dir": 1, "femur_dir": 1, "tibia_dir": 1,
             "pin_coxa": 6, "pin_femur": 7, "pin_tibia": 8,
             "servo_zero_offset": 0.0,
-            "joint_zero": {"coxa": 90.0, "femur": 0.0, "tibia": 0.0},
-            "joint_range": {"coxa": (0, 180), "femur": (-45, 90), "tibia": (-90, 90)}
+            "joint_zero": {"coxa": 90.0, "femur": 45.0, "tibia": 90.0},
+            "joint_range": {"coxa": (0, 180), "femur": (-90, 90), "tibia": (-90, 90)}
         }
 
         self.LR = {
@@ -117,8 +141,8 @@ class HalLegs:
             "coxa_dir": 1, "femur_dir": 1, "tibia_dir": 1,
             "pin_coxa": 9, "pin_femur": 10, "pin_tibia": 11,
             "servo_zero_offset": 0.0,
-            "joint_zero": {"coxa": 90.0, "femur": 5.0, "tibia": 0.0},
-            "joint_range": {"coxa": (0, 180), "femur": (-45, 90), "tibia": (-90, 90)}
+            "joint_zero": {"coxa": 90.0, "femur": 45.0, "tibia": 90.0},
+            "joint_range": {"coxa": (0, 180), "femur": (-90, 90), "tibia": (-90, 90)}
         }
 
         # Collections

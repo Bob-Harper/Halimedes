@@ -18,6 +18,8 @@ REPORT_LENGTHS = {
     0x05: 14,  # Rotation Vector
     0x06: 10,  # Gravity
     0x08: 12,  # Game Rotation Vector
+    0xF8: 4,   # IMU Reset - if this shows up it means the IMU has reset itself.
+
 }
 
 class IMUInterpreter:
@@ -74,14 +76,18 @@ class IMUInterpreter:
 
             # If we hit something that isn't a known report, stop
             if report_id not in REPORT_LENGTHS:
-                break
+                # Skip unknown report IDs instead of killing the stream
+                idx += 1
+                continue
 
             payload_size = REPORT_LENGTHS[report_id]
             end = idx + payload_size
 
             # If we don't have enough bytes for this report, stop
             if end > length:
-                break
+                # Skip malformed/truncated report instead of killing the stream
+                idx += 1
+                continue
 
             report_buf = buf[idx:end]
 
@@ -100,7 +106,12 @@ class IMUInterpreter:
                 decoded = GravityDecoder.decode(report_buf)
             elif report_id == 0x08:
                 decoded = GameRotationVectorDecoder.decode(report_buf)
-
+            elif report_id == 0xF8:  # Hub Event
+                event_id = report_buf[1]
+                decoded = {
+                    "type": "hub_event",
+                    "event_id": event_id,
+                }
             if decoded is not None:
                 reports.append(decoded)
 

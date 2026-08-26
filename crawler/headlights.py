@@ -10,10 +10,10 @@ class Headlights:
     """Minimal driver using MotorPort (PWM + DIR pin)."""
 
     def __init__(self, config=None):
-        # Natively pull from your hardware configuration data class if no custom override is passed
+        # Natively pull from hardware configuration data class if no custom override is passed
         cfg = config if config else HeadlightsConfig()
 
-        # Hardware objects bound dynamically to your hardware file properties
+        # Hardware objects bound dynamically to hardware file properties
         self.pwm = PWM(cfg.motor_1_pwm_pin)
         self.dir = Pin(cfg.motor_1_dir_pin)
 

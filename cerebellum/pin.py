@@ -1,33 +1,32 @@
 #!/usr/bin/env python3
 import gpiozero
 from gpiozero import OutputDevice, InputDevice
+from crawler.hal_hardware import GPIO_Values as gpio_values
+gpio_cfg = gpio_values()
 
 class Pin:
     """
     High-performance native GPIO Controller for Hal.
     All dynamic hardware instance rebuilding and legacy logging leaks are completely purged.
     """
-    OUT = 0x01
-    IN = 0x02
 
-    PULL_UP = 0x11
-    PULL_DOWN = 0x12
-    PULL_NONE = None
-
-    # Static broadcom dictionary mapping for standard robot hat configuration aliases
-    _dict = {
-        "D0": 17, "D1": 4, "D2": 27, "D3": 22, "D4": 23, "D5": 24,
-        "D9": 6, "D10": 12, "D11": 13, "D12": 19, "D13": 16, "D14": 26,
-        "D15": 20, "D16": 21, "SW": 25, "USER": 25, "LED": 26,
-        "BOARD_TYPE": 12, "RST": 16, "BLEINT": 13, "BLERST": 20, "MCURST": 5, "CE": 8,
-    }
 
     def __init__(self, pin, mode=0x01, pull=None, *args, **kwargs):
         # Resolve board designation names directly
+        self.gpio_values = gpio_cfg
+        self.OUT = self.gpio_values.OUT
+        self.IN = self.gpio_values.IN
+
+        self.PULL_UP = self.gpio_values.PULL_UP
+        self.PULL_DOWN = self.gpio_values.PULL_DOWN
+        self.PULL_NONE = self.gpio_values.PULL_NONE
+
+            # Static broadcom dictionary mapping for standard robot hat configuration aliases
+
         if isinstance(pin, str):
-            if pin not in self._dict:
+            if pin not in self.gpio_values._dict:
                 raise ValueError(f"Pin '{pin}' not found in hardware register specification.")
-            self._pin_num = self._dict[pin]
+            self._pin_num = self.gpio_values._dict[pin]
         elif isinstance(pin, int):
             self._pin_num = pin
         else:

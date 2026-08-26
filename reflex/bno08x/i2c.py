@@ -114,7 +114,7 @@ class BNO08X_I2C(BNO08X):
         i2c = busio.I2C(board.SCL, board.SDA)
         self.bus_device_obj = i2c_device.I2CDevice(i2c, address)
         super().__init__(reset, debug)
-        self.log_data = True # True to Log raw packets inside def _read_packet
+        self.log_data = False # True to Log raw packets inside def _read_packet
 
     def _send_packet(self, channel, data):
         data_length = len(data)

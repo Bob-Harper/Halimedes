@@ -1,22 +1,13 @@
-# crawler/hal_imu.py
 import math
 from reflex.bno08x.i2c import IMUDriver
 from reflex.bno08x.enable_imu_reports import configure_imu
 from reflex.bno08x.imu_interpreter import IMUInterpreter
 
+
 class HalIMU:
-    """
-    Direct hardware interface wrapper utilizing your local reflex driver stack.
-    Configured for a safe, crash-free 50Hz timing profile to eliminate I2C bus stress.
-    """
     def __init__(self):
         try:
             self.imu = IMUDriver(i2c_bus=1, address=0x4B)
-
-            # =================================================================
-            # TIMING CALIBRATION: Changed interval from 10000us (100Hz) to 20000us (50Hz).
-            # This completely solves the clock-stretching watchdog reset bug.
-            # =================================================================
             configure_imu(self.imu, interval_us=20000)
 
             self.interpreter = IMUInterpreter()
@@ -25,6 +16,7 @@ class HalIMU:
             self.last_pitch = 0.0
             self.last_roll = 0.0
             print("[HAL_IMU] Custom BNO08x driver stack attached at stable 50Hz.")
+
         except Exception as e:
             print(f"[HAL_IMU ERROR] Failed to anchor local hardware driver stream: {e}")
             self.connected = False
@@ -39,6 +31,14 @@ class HalIMU:
                 return {"pitch": self.last_pitch, "roll": self.last_roll}
 
             decoded_report = self.interpreter.interpret(pkt_obj)
+
+            # Detect IMU reset event
+            if isinstance(decoded_report, dict) and decoded_report.get('type') == 'hub_event':
+                if decoded_report.get('event_id') == 1:  # Reset Occurred
+                    print("[HAL_IMU] IMU reset event detected.")
+                    self.recover()
+                    return {"pitch": 0.0, "roll": 0.0}
+
             if decoded_report is None:
                 return {"pitch": self.last_pitch, "roll": self.last_roll}
 
@@ -71,5 +71,10 @@ class HalIMU:
 
             return {"pitch": self.last_pitch, "roll": self.last_roll}
 
-        except Exception:
+        except Exception as e:
             return {"pitch": self.last_pitch, "roll": self.last_roll}
+
+    def recover(self):
+        print("[HAL_IMU] Reconfiguring IMU after reset...")
+        configure_imu(self.imu, interval_us=20000)
+        print("[HAL_IMU] IMU stream restored.")
