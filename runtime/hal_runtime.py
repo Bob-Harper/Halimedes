@@ -5,7 +5,7 @@ import os
 import warnings
 import asyncio
 from aiohttp import web
-from crawler.utils import reset_mcu # OGO: to reset mcu in case of prior crash and lockup
+from cerebellum.utils import reset_mcu # OGO: to reset mcu in case of prior crash and lockup
 from runtime.loaders import HotSwapLoader # Allows non hardware modules to be updated without needing to restart the main process.
 from cortex.perception_manager import PerceptionManager # OGO: In cortex module but talks directly to hardware_manager and cannot be hotswapped
 from cortex.action_executor import ActionExecutor # OGO: In cortex module but talks directly to hardware modules and cannot be hotswapped

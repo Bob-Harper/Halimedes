@@ -2,7 +2,7 @@
 
 import os
 import psutil
-from crawler.utils import get_battery_voltage
+from cerebellum.utils import get_battery_voltage
 
 
 class HardwareStateManager:

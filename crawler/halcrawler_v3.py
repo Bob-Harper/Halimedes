@@ -3,6 +3,7 @@ import math
 from cerebellum.robot import Robot
 from crawler.hal_hardware import HalLegs, Robot_Values
 from crawler.arthropod_ik import ArthropodIK
+from crawler.hal_imu import HalIMU
 
 class HalCrawler(Robot):
     """
@@ -20,6 +21,7 @@ class HalCrawler(Robot):
             femur_len=self.legs_cfg.FEMUR_LEN,
             tibia_len=self.legs_cfg.TIBIA_LEN
         )
+        self.sensor_imu = HalIMU()
         # Stores historical orientation frames to detect duplicated updates.
         self.prev_pitch = None
         self.prev_roll = None

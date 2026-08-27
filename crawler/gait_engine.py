@@ -1,114 +1,137 @@
-# crawler/gait_engine.py
-import time
-from crawler.halcrawler_v2 import HalCrawler
+class Frame:
+    def __init__(self, legs, body=None):
+        self.legs = legs        # dict: name -> [x,y,z] in world space (mm)
+        self.body = body or {}  # roll/pitch/yaw/height
 
-class CreepGait:
-    def __init__(self, robot: HalCrawler):
-        self.bot = robot
+class Gait:
+    def __init__(self, name, frames, loop=True):
+        self.name = name
+        self.frames = [Frame(f) if isinstance(f, dict) else f for f in frames]
+        self.loop = loop
 
-        # 1. Standardize your proven, world-aligned baseline home coordinates
-        self.BASE_X = 120.0
-        self.BASE_Y = 120.0
+class GaitEngine:
+    def __init__(self, ik, state):
+        self.ik = ik
+        self.state = state  # HalCrawler instance
+        self.current_gait = None
+        self.current_frame_idx = 0
+        self.diagonal_phase = 0
 
-        # 2. FIXED: Aligned variables with your physical real-world layout
-        self.STAND_Z = 25.0    # Positive Z drives the feet DOWN below his body to support weight
-        self.LIFT_Z = -40.0    # Negative Z explicitly pulls the foot UP into the air to step
+    def start_gait(self, gait):
+        if not gait.frames:
+            return
+        self.current_gait = gait
+        self.current_frame_idx = 0
 
-        # 3. Gait stroke size
-        self.STRIDE = 40.0
+    def step(self):
+        # if not self.current_gait:
+        #     return
 
-    def execute_forward_cycle(self, loops: int = 1):
-        s = self.STRIDE
-        bx = self.BASE_X
-        by = self.BASE_Y
-        z = self.STAND_Z
-        lift = self.LIFT_Z
+        frame = self.current_gait.frames[self.current_frame_idx]
 
-        print(f"Initiating true static-tripod crawl loop for {loops} cycles...")
+        if self.diagonal_phase == 1:
+            frame = self._flip_diagonal(frame)
 
-        for i in range(loops):
-            print(f"--- Stride Cycle {i+1} ---")
+        self._apply_frame(frame)
+        self._advance()
 
-            # =================================================================
-            # STEP 1: LEFT REAR (LR) SWING PHASE
-            # Three stance legs lock level at 25.0 to carry weight.
-            # LR lifts UP to -40.0 and steps forward.
-            # =================================================================
-            step_1 = {
-                "LF": {"dx":  bx,     "dy":   by, "dz": z},     # Supporting Ground
-                "RF": {"dx":  bx,     "dy":  -by, "dz": z},     # Supporting Ground
-                "RR": {"dx": -bx,     "dy":  -by, "dz": z},     # Supporting Ground
-                "LR": {"dx": -bx + s, "dy":   by, "dz": lift}   # LIFTS UP & STEPS FORWARD
+    def _apply_frame(self, frame):
+        # 1. Standardize formatting into structural targets
+        body_aligned_targets = {}
+        for leg_name, xyz in frame.legs.items():
+            body_aligned_targets[leg_name] = {
+                "dx": xyz[0],
+                "dy": xyz[1],
+                "dz": xyz[2]
             }
-            self.bot.execute_local_step(step_1, speed=40)
-            time.sleep(0.3)
 
-            # Plant LR firmly back down to the supporting floor plane
-            step_1["LR"]["dz"] = z
-            self.bot.execute_local_step(step_1, speed=30)
-            time.sleep(0.2)
+        # 2. Extract live orientation payload directly out of the state layer
+        imu_data = {"pitch": 0.0, "roll": 0.0}
+        if hasattr(self.state, 'sensor_imu') and self.state.sensor_imu:
+            imu_data = self.state.sensor_imu.get_pitch_roll()
 
-            # =================================================================
-            # STEP 2: LEFT FRONT (LF) SWING PHASE
-            # Three stance legs lock level at 25.0. LF lifts UP to -40.0 and steps.
-            # =================================================================
-            step_2 = {
-                "LF": {"dx":  bx + s, "dy":   by, "dz": lift},  # LIFTS UP & STEPS FORWARD
-                "RF": {"dx":  bx,     "dy":  -by, "dz": z},     # Supporting Ground
-                "RR": {"dx": -bx,     "dy":  -by, "dz": z},     # Supporting Ground
-                "LR": {"dx": -bx + s, "dy":   by, "dz": z}      # Supporting Ground
-            }
-            self.bot.execute_local_step(step_2, speed=40)
-            time.sleep(0.3)
+        # 3. Safely pass down to working level and speed controls
+        self.state.execute_local_step(body_aligned_targets, speed=20, imu_data=imu_data)
 
-            step_2["LF"]["dz"] = z
-            self.bot.execute_local_step(step_2, speed=30)
-            time.sleep(0.2)
+    def _advance(self):
+        self.current_frame_idx += 1
+        if self.current_frame_idx >= len(self.current_gait.frames):
+            if self.current_gait.loop:
+                self.current_frame_idx = 0
+                self.diagonal_phase = 1 - self.diagonal_phase
+            else:
+                self.current_frame_idx = len(self.current_gait.frames) - 1
 
-            # =================================================================
-            # STEP 3: THE BODY CREEP TRANSITION
-            # All 4 feet are supporting on the ground. The body twists/shifts
-            # forward, resetting the stance for the right-side sequence.
-            # =================================================================
-            body_shift = {
-                "LF": {"dx":  bx,     "dy":   by, "dz": z},
-                "RF": {"dx":  bx - s, "dy":  -by, "dz": z},
-                "RR": {"dx": -bx - s, "dy":  -by, "dz": z},
-                "LR": {"dx": -bx,     "dy":   by, "dz": z}
-            }
-            self.bot.execute_local_step(body_shift, speed=25)
-            time.sleep(0.3)
+    def _flip_diagonal(self, frame):
+        mapping = {"LF": "RR", "RR": "LF", "RF": "LR", "LR": "RF"}
+        flipped_legs = {}
+        for leg_name, xyz in frame.legs.items():
+            target_leg = mapping[leg_name]
+            flipped_legs[target_leg] = [-xyz[0], -xyz[1], xyz[2]]
+        return Frame(flipped_legs, frame.body)
 
-            # =================================================================
-            # STEP 4: RIGHT REAR (RR) SWING PHASE
-            # Three stance legs lock level at 25.0. RR lifts UP to -40.0 and steps.
-            # =================================================================
-            step_3 = {
-                "LF": {"dx":  bx,     "dy":   by, "dz": z},     # Supporting Ground
-                "RF": {"dx":  bx - s, "dy":  -by, "dz": z},     # Supporting Ground
-                "RR": {"dx": -bx + s, "dy":  -by, "dz": lift},  # LIFTS UP & STEPS FORWARD
-                "LR": {"dx": -bx,     "dy":   by, "dz": z}      # Supporting Ground
-            }
-            self.bot.execute_local_step(step_3, speed=40)
-            time.sleep(0.3)
 
-            step_3["RR"]["dz"] = z
-            self.bot.execute_local_step(step_3, speed=30)
-            time.sleep(0.2)
+Z_STANCE = -45   # body height (tune later)
+STEP_X   = 20    # forward stride
+LIFT_Z   = 20    # foot lift height
+SHIFT_X  = 10    # body advance per cycle
 
-            # =================================================================
-            # STEP 5: RIGHT FRONT (RF) SWING PHASE
-            # Three stance legs lock level at 25.0. RF lifts UP to -40.0 and steps.
-            # =================================================================
-            step_4 = {
-                "LF": {"dx":  bx,     "dy":   by, "dz": z},     # Supporting Ground
-                "RF": {"dx":  bx + s, "dy":  -by, "dz": lift},  # LIFTS UP & STEPS FORWARD
-                "RR": {"dx": -bx + s, "dy":  -by, "dz": z},     # Supporting Ground
-                "LR": {"dx": -bx,     "dy":   by, "dz": z}      # Supporting Ground
-            }
-            self.bot.execute_local_step(step_4, speed=40)
-            time.sleep(0.3)
 
-            step_4["RF"]["dz"] = z
-            self.bot.execute_local_step(step_4, speed=30)
-            time.sleep(0.2)
+STANCE = {
+    "LF": [80,  80, Z_STANCE],
+    "RF": [80, -80, Z_STANCE],
+    "RR": [-80, -80, Z_STANCE],
+    "LR": [-80,  90, Z_STANCE],
+}
+
+walk_forward_frames = [
+    # 1: lift + start swing RF
+    {
+        "LF": [80,  80, Z_STANCE],
+        "RF": [80 + STEP_X/2, -80, Z_STANCE + LIFT_Z],
+        "RR": [-80, -80, Z_STANCE],
+        "LR": [-80,  80, Z_STANCE],
+    },
+    # 2: full swing RF
+    {
+        "LF": [80,  80, Z_STANCE],
+        "RF": [80 + STEP_X, -80, Z_STANCE + LIFT_Z],
+        "RR": [-80, -80, Z_STANCE],
+        "LR": [-80,  80, Z_STANCE],
+    },
+    # 3: place RF
+    {
+        "LF": [80,  80, Z_STANCE],
+        "RF": [80 + STEP_X, -80, Z_STANCE],
+        "RR": [-80, -80, Z_STANCE],
+        "LR": [-80,  80, Z_STANCE],
+    },
+    # 4: shift body forward (all feet relative)
+    {
+        "LF": [80 + SHIFT_X,  80, Z_STANCE],
+        "RF": [80 + STEP_X + SHIFT_X, -80, Z_STANCE],
+        "RR": [-80 + SHIFT_X, -80, Z_STANCE],
+        "LR": [-80 + SHIFT_X,  80, Z_STANCE],
+    },
+    # 5: lift + swing RR
+    {
+        "LF": [80 + SHIFT_X,  80, Z_STANCE],
+        "RF": [80 + STEP_X + SHIFT_X, -80, Z_STANCE],
+        "RR": [-80 + SHIFT_X/2, -80, Z_STANCE + LIFT_Z],
+        "LR": [-80 + SHIFT_X,  80, Z_STANCE],
+    },
+    # 6: place RR forward
+    {
+        "LF": [80 + SHIFT_X,  80, Z_STANCE],
+        "RF": [80 + STEP_X + SHIFT_X, -80, Z_STANCE],
+        "RR": [-80 + SHIFT_X + STEP_X, -80, Z_STANCE],
+        "LR": [-80 + SHIFT_X,  80, Z_STANCE],
+    },
+    # 7: reset stance (optional, or next cycle starts here)
+    {
+        "LF": [80 + SHIFT_X,  80, Z_STANCE],
+        "RF": [80 + STEP_X + SHIFT_X, -80, Z_STANCE],
+        "RR": [-80 + SHIFT_X + STEP_X, -80, Z_STANCE],
+        "LR": [-80 + SHIFT_X,  80, Z_STANCE],
+    },
+]
