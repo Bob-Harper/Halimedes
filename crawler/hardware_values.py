@@ -1,4 +1,4 @@
-# crawler/hal_hardware.py
+# crawler/hardware_values.py
 
 class GPIO_Values:
     def __init__(self):
@@ -18,7 +18,7 @@ class GPIO_Values:
         }
 
 
-class Headlights:
+class Headlight_Values:
     """
     Repurposed Motorport1 for use as brightness control for front mounted headlights/searchlight.
     Motorport2 pins are already repurposed elsewhere and cannot be used as a hardware control at this time.
@@ -88,7 +88,7 @@ class Robot_Values:
         self.PITCH_SCALE = 1
         self.ROLL_SCALE = 1
 
-class HalLegs:
+class Leg_Values:
     """
     Hardware Specification Matrix for Hal.
     Contains absolute physical dimensions, pin maps, and hardware zero-points.

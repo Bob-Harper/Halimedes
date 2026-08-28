@@ -1,7 +1,7 @@
 # crawler/halcrawler_v3.py
 import math
 from cerebellum.robot import Robot
-from crawler.hal_hardware import HalLegs, Robot_Values
+from crawler.hardware_values import Leg_Values, Robot_Values
 from crawler.arthropod_ik import ArthropodIK
 from crawler.hal_imu import HalIMU
 
@@ -14,7 +14,7 @@ class HalCrawler(Robot):
     +dz = Lift Height Above Floor (Picks feet UP into the air)
     """
     def __init__(self, **kwargs):
-        self.legs_cfg = HalLegs()
+        self.legs_cfg = Leg_Values()
         self.robot_cfg = Robot_Values()
         self.ik_solver = ArthropodIK(
             coxa_len=self.legs_cfg.COXA_LEN,
@@ -28,6 +28,8 @@ class HalCrawler(Robot):
 
         # cache of last servo angles for governor to reduce servo power draw spikes
         self.prev_pin_payload = [0.0] * 12
+        # cache of desired servo angles (absolute targets for governor)
+        self.target_pin_payload = [0.0] * 12
 
         pin_list = self.legs_cfg.PIN_LIST
         init_angles = [0.0] * 12
@@ -57,7 +59,8 @@ class HalCrawler(Robot):
             "tibia": max(-90.0, min(90.0, round(servo_tibia, 2)))
         }
 
-    def execute_local_step(self, body_aligned_targets: dict, speed: int = 20, imu_data: dict = None):
+    def execute_local_step(self, body_aligned_targets: dict, speed: int = 20, imu_data: dict | None = None):
+
         """
         Accepts targets. Automatically shifts Z using self.legs_cfg.PIVOT_OFFSET.
         Filters out duplicated background telemetry entries natively to stop servo twitches.
@@ -65,15 +68,6 @@ class HalCrawler(Robot):
         # 1. Pull the raw angles from your driver container dictionary safely
         current_pitch = imu_data.get("pitch", 0.0) if imu_data else 0.0
         current_roll  = imu_data.get("roll", 0.0) if imu_data else 0.0
-
-        # =====================================================================
-        # THE CORE STABILITY CHANGE GATE
-        # If the incoming orientation matches the historical cache frame, it's
-        # a duplicate or background report. Abort immediately to prevent
-        # bus stutters and protect the servos from phantom micro-movements.
-        # =====================================================================
-        if current_pitch == self.prev_pitch and current_roll == self.prev_roll:
-            return  # Drop out of the function cleanly, saving execution cycles
 
         # Secure the current values in your instance cache memory parameters
         self.prev_pitch = current_pitch
@@ -147,7 +141,8 @@ class HalCrawler(Robot):
             pin_payload[leg_cfg["pin_femur"]] = translated["femur"]
             pin_payload[leg_cfg["pin_tibia"]] = translated["tibia"]
 
-        self.servo_write_governed(pin_payload)
+        self.target_pin_payload = pin_payload
+        self.servo_write_governed(self.target_pin_payload)
 
     def servo_write_governed(self, target_payload):
         v = self.robot_cfg

@@ -36,9 +36,9 @@ print("[Startup] Importing Vision Modules.") # Camera and Vision processing modu
 from vision_processing.vision_manager import VisionManager
 print("[Startup] Importing Reflex Modules.")
 from crawler.ultrasonic import UltrasonicDriver # OGO: In crawer module but is a sensor used for reflexes
-from reflex.bno08x.i2c import IMUDriver
+from crawler.bno08x.i2c import IMUDriver
 imu = IMUDriver(i2c_bus=1, address=0x4B)  # OGO:hardware driver Needs to be initialized before configureing IMU or loading Sensor State Manaager
-from reflex.bno08x.enable_imu_reports import configure_imu
+from crawler.bno08x.enable_imu_reports import configure_imu
 configure_imu(imu)  # Initialize IMU reports
 from reflex.reflexes import load_all_reflexes
 from reflex.reflexive_layer import ReflexEngine

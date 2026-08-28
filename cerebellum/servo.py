@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from cerebellum.pwm import PWM
-from crawler.hal_hardware import PWM_Values, Servo_Values
+from crawler.hardware_values import PWM_Values, Servo_Values
 
 
 class Servo(PWM):

@@ -2,7 +2,7 @@
 #!/usr/bin/env python3
 import math
 from cerebellum.i2c import I2C
-from crawler.hal_hardware import PWM_Values
+from crawler.hardware_values import PWM_Values
 
 class PWM(I2C):
     """

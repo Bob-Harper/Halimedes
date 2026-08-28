@@ -1,6 +1,6 @@
 import board
 import busio
-from reflex.bno08x.i2c import IMUDriver
+from crawler.bno08x.i2c import IMUDriver
 
 i2c = busio.I2C(board.SCL, board.SDA)
 imu = IMUDriver(i2c, address=0x4B)

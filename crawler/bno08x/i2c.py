@@ -1,12 +1,12 @@
 
 # reflex/bno08x/i2c.py
 from struct import pack_into
-import reflex.bno08x as bno08x
+import crawler.bno08x as bno08x
 from adafruit_bus_device import i2c_device
-from reflex.bno08x  import BNO08X, DATA_BUFFER_SIZE, Packet, PacketError
+from crawler.bno08x  import BNO08X, DATA_BUFFER_SIZE, Packet, PacketError
 import board
 import busio
-from reflex.bno08x.imu_interpreter import IMUInterpreter
+from crawler.bno08x.imu_interpreter import IMUInterpreter
 import time
 
 _BNO08X_DEFAULT_ADDRESS = (0x4B)

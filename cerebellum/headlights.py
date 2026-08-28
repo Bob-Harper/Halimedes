@@ -2,7 +2,7 @@
 
 from cerebellum.pwm import PWM
 from cerebellum.pin import Pin
-from crawler.hal_hardware import Headlights as HeadlightsConfig
+from crawler.hardware_values import Headlight_Values
 import time
 
 
@@ -11,7 +11,7 @@ class Headlights:
 
     def __init__(self, config=None):
         # Natively pull from hardware configuration data class if no custom override is passed
-        cfg = config if config else HeadlightsConfig()
+        cfg = config if config else Headlight_Values()
 
         # Hardware objects bound dynamically to hardware file properties
         self.pwm = PWM(cfg.motor_1_pwm_pin)
@@ -58,7 +58,7 @@ class Headlights:
 
 if __name__ == "__main__":
     print("[Test] Initializing Headlight Test...")
-    # Boots up cleanly, automatically reading pins from crawler/hal_hardware.py
+    # Boots up cleanly, automatically reading pins from crawler/hardware_values.py
     light = Headlights()
 
     print("[Test] Setting brightness to 10%")

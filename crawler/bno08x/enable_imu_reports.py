@@ -1,5 +1,5 @@
 # reflex/bno08x/enable_imu_reports.py
-from reflex.bno08x.i2c import IMUDriver
+from crawler.bno08x.i2c import IMUDriver
 
 
 features = {

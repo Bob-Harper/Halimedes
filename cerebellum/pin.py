@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import gpiozero
 from gpiozero import OutputDevice, InputDevice
-from crawler.hal_hardware import GPIO_Values as gpio_values
+from crawler.hardware_values import GPIO_Values as gpio_values
 gpio_cfg = gpio_values()
 
 class Pin:

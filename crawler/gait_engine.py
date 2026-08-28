@@ -13,7 +13,7 @@ class GaitEngine:
     def __init__(self, ik, state):
         self.ik = ik
         self.state = state  # HalCrawler instance
-        self.current_gait = None
+        self.current_gait: Gait | None = None
         self.current_frame_idx = 0
         self.diagonal_phase = 0
 
@@ -24,8 +24,8 @@ class GaitEngine:
         self.current_frame_idx = 0
 
     def step(self):
-        # if not self.current_gait:
-        #     return
+        if not self.current_gait:
+            return
 
         frame = self.current_gait.frames[self.current_frame_idx]
 
@@ -54,6 +54,9 @@ class GaitEngine:
         self.state.execute_local_step(body_aligned_targets, speed=20, imu_data=imu_data)
 
     def _advance(self):
+        if not self.current_gait:
+            return
+
         self.current_frame_idx += 1
         if self.current_frame_idx >= len(self.current_gait.frames):
             if self.current_gait.loop:
@@ -72,9 +75,9 @@ class GaitEngine:
 
 
 Z_STANCE = -45   # body height (tune later)
-STEP_X   = 20    # forward stride
-LIFT_Z   = 20    # foot lift height
-SHIFT_X  = 10    # body advance per cycle
+STEP_X   = 120    # forward stride
+LIFT_Z   = 80    # foot lift height
+SHIFT_X  =60    # body advance per cycle
 
 
 STANCE = {

@@ -2,7 +2,7 @@
 from cerebellum.pwm import PWM
 from cerebellum.servo import Servo
 import time
-from crawler.hal_hardware import Robot_Values, Servo_Values
+from crawler.hardware_values import Robot_Values, Servo_Values
 
 class Robot:
 
