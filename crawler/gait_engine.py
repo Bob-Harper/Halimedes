@@ -50,7 +50,7 @@ class GaitEngine:
         if hasattr(self.state, 'sensor_imu') and self.state.sensor_imu:
             imu_data = self.state.sensor_imu.get_pitch_roll()
 
-        # 3. Safely pass down to working level and speed controls
+        # 3. Safely pass down to working level and speed controls.  Speed in this context is Governer smoothing rate
         self.state.execute_local_step(body_aligned_targets, speed=20, imu_data=imu_data)
 
     def _advance(self):
@@ -74,67 +74,67 @@ class GaitEngine:
         return Frame(flipped_legs, frame.body)
 
 
-Z_STANCE = -45   # body height (tune later)
-STEP_X   = 120    # forward stride
-LIFT_Z   = 80    # foot lift height
-SHIFT_X  =60    # body advance per cycle
+Z_STANCE = -40   # body height (tune later)
+STEP_X   = 25    # forward stride
+LIFT_Z   = 35    # foot lift height
+SHIFT_X  = 25    # body advance per cycle
 
 
 STANCE = {
-    "LF": [80,  80, Z_STANCE],
-    "RF": [80, -80, Z_STANCE],
-    "RR": [-80, -80, Z_STANCE],
-    "LR": [-80,  90, Z_STANCE],
+    "LF": [65,  85, Z_STANCE],
+    "RF": [65, -85, Z_STANCE],
+    "RR": [-65, -85, Z_STANCE],
+    "LR": [-65,  85, Z_STANCE],
 }
 
 walk_forward_frames = [
     # 1: lift + start swing RF
     {
-        "LF": [80,  80, Z_STANCE],
-        "RF": [80 + STEP_X/2, -80, Z_STANCE + LIFT_Z],
-        "RR": [-80, -80, Z_STANCE],
-        "LR": [-80,  80, Z_STANCE],
+        "LF": [65,  85, Z_STANCE],
+        "RF": [65 + STEP_X/2, -85, Z_STANCE + LIFT_Z],
+        "RR": [-65, -85, Z_STANCE],
+        "LR": [-65,  85, Z_STANCE],
     },
     # 2: full swing RF
     {
-        "LF": [80,  80, Z_STANCE],
-        "RF": [80 + STEP_X, -80, Z_STANCE + LIFT_Z],
-        "RR": [-80, -80, Z_STANCE],
-        "LR": [-80,  80, Z_STANCE],
+        "LF": [65,  85, Z_STANCE],
+        "RF": [65 + STEP_X, -85, Z_STANCE + LIFT_Z],
+        "RR": [-65, -85, Z_STANCE],
+        "LR": [-65,  85, Z_STANCE],
     },
     # 3: place RF
     {
-        "LF": [80,  80, Z_STANCE],
-        "RF": [80 + STEP_X, -80, Z_STANCE],
-        "RR": [-80, -80, Z_STANCE],
-        "LR": [-80,  80, Z_STANCE],
+        "LF": [65,  85, Z_STANCE],
+        "RF": [65 + STEP_X, -85, Z_STANCE],
+        "RR": [-65, -85, Z_STANCE],
+        "LR": [-65,  85, Z_STANCE],
     },
     # 4: shift body forward (all feet relative)
     {
-        "LF": [80 + SHIFT_X,  80, Z_STANCE],
-        "RF": [80 + STEP_X + SHIFT_X, -80, Z_STANCE],
-        "RR": [-80 + SHIFT_X, -80, Z_STANCE],
-        "LR": [-80 + SHIFT_X,  80, Z_STANCE],
+        "LF": [65 + SHIFT_X,  85, Z_STANCE],
+        "RF": [65 + STEP_X + SHIFT_X, -85, Z_STANCE],
+        "RR": [-65 + SHIFT_X, -85, Z_STANCE],
+        "LR": [-65 + SHIFT_X,  85, Z_STANCE],
     },
     # 5: lift + swing RR
     {
-        "LF": [80 + SHIFT_X,  80, Z_STANCE],
-        "RF": [80 + STEP_X + SHIFT_X, -80, Z_STANCE],
-        "RR": [-80 + SHIFT_X/2, -80, Z_STANCE + LIFT_Z],
-        "LR": [-80 + SHIFT_X,  80, Z_STANCE],
+        "LF": [65 + SHIFT_X,  85, Z_STANCE],
+        "RF": [65 + STEP_X + SHIFT_X, -85, Z_STANCE],
+        "RR": [-65 + SHIFT_X/2, -85, Z_STANCE + LIFT_Z],
+        "LR": [-65 + SHIFT_X,  85, Z_STANCE],
     },
     # 6: place RR forward
     {
-        "LF": [80 + SHIFT_X,  80, Z_STANCE],
-        "RF": [80 + STEP_X + SHIFT_X, -80, Z_STANCE],
-        "RR": [-80 + SHIFT_X + STEP_X, -80, Z_STANCE],
-        "LR": [-80 + SHIFT_X,  80, Z_STANCE],
+        "LF": [65 + SHIFT_X,  85, Z_STANCE],
+        "RF": [65 + STEP_X + SHIFT_X, -85, Z_STANCE],
+        "RR": [-65 + SHIFT_X + STEP_X, -85, Z_STANCE],
+        "LR": [-65 + SHIFT_X,  85, Z_STANCE],
     },
     # 7: reset stance (optional, or next cycle starts here)
     {
-        "LF": [80 + SHIFT_X,  80, Z_STANCE],
-        "RF": [80 + STEP_X + SHIFT_X, -80, Z_STANCE],
-        "RR": [-80 + SHIFT_X + STEP_X, -80, Z_STANCE],
-        "LR": [-80 + SHIFT_X,  80, Z_STANCE],
+        "LF": [65 + SHIFT_X,  85, Z_STANCE],
+        "RF": [65 + STEP_X + SHIFT_X, -85, Z_STANCE],
+        "RR": [-65 + SHIFT_X + STEP_X, -85, Z_STANCE],
+        "LR": [-65 + SHIFT_X,  85, Z_STANCE],
     },
 ]

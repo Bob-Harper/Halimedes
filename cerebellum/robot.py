@@ -4,8 +4,8 @@ from cerebellum.servo import Servo
 import time
 from crawler.hardware_values import Robot_Values, Servo_Values
 
-class Robot:
 
+class Robot:
     def __init__(self, pin_list, init_angles=None, init_order=None):
         self.robot_cfg = Robot_Values()
         self.max_dps = self.robot_cfg.MAX_DPS
@@ -14,7 +14,7 @@ class Robot:
         self.pin_list = pin_list
         self.pin_num = self.robot_cfg.PIN_COUNT
 
-        self.servo_list = [None] * self.pin_num
+        self.servo_list: list[Servo | None] = [None] * self.pin_num
         self.servo_positions = [0] * self.pin_num
 
         init_angles = init_angles or [0] * self.pin_num

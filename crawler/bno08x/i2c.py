@@ -4,6 +4,7 @@ from struct import pack_into
 import crawler.bno08x as bno08x
 from adafruit_bus_device import i2c_device
 from crawler.bno08x  import BNO08X, DATA_BUFFER_SIZE, Packet, PacketError
+from cerebellum.i2c import I2C
 import board
 import busio
 from crawler.bno08x.imu_interpreter import IMUInterpreter
@@ -17,7 +18,6 @@ class IMUDriver:
         # Use the patched transport layer
         self.dev = BNO08X_I2C(i2c_bus, address=address, debug=False)
         self.enabled_reports = []
-
 
     def send_feature(self, feature_id, interval_us):
         payload = bytearray(16)
@@ -42,19 +42,6 @@ class IMUDriver:
         except PacketError:
             # normal: no packet available
             return None
-
-        except Exception:
-            # corruption: drop ONE BYTE and retry
-            try:
-                self.dev._read_byte()   # discard a single byte
-            except:
-                pass
-
-            # try again immediately
-            try:
-                return self.dev._read_packet()
-            except:
-                return
 
     def read(self):
         try:
@@ -95,7 +82,6 @@ class IMUDriver:
         # unknown packets → ignore
         return None
 
-
     def read_raw(self):
         # This must call the low-level packet reader that does NOT interpret,
         # and does NOT discard non-0xFB packets.
@@ -104,14 +90,10 @@ class IMUDriver:
 
 
 class BNO08X_I2C(BNO08X):
-    """Library for the BNO08x IMUs from Hillcrest Laboratories
-
-    :param ~busio.I2C i2c_bus: The I2C bus the BNO08x is connected to.
-
-    """
 
     def __init__(self, i2c_bus, reset=None, address=_BNO08X_DEFAULT_ADDRESS, debug=False):
         i2c = busio.I2C(board.SCL, board.SDA)
+
         self.bus_device_obj = i2c_device.I2CDevice(i2c, address)
         super().__init__(reset, debug)
         self.log_data = False # True to Log raw packets inside def _read_packet
@@ -136,9 +118,6 @@ class BNO08X_I2C(BNO08X):
 
         # increment sequence number for this channel
         self._sequence_number[channel] = (self._sequence_number[channel] + 1) % 256
-
-    # returns true if available data was read
-    # the sensor will always tell us how much there is, so no need to track it ourselves
 
     def _read_header(self):
         """Reads the first 4 bytes available as a header"""
@@ -183,9 +162,6 @@ class BNO08X_I2C(BNO08X):
 
         return Packet(self._data_buffer[:packet_byte_count])
 
-
-
-    # returns true if all requested data was read
     def _read(self, requested_read_length):
         self._dbg("trying to read", requested_read_length, "bytes")
         # +4 for the header

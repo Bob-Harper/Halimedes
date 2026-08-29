@@ -103,6 +103,7 @@ class Leg_Values:
         self.MAX_REACH = self.FEMUR_LEN + self.TIBIA_LEN
         self.PIVOT_OFFSET = 15.0  # Vertical height of femur horn above baseplate plane
         self.FLOOR_DROP = self.MAX_REACH - self.PIVOT_OFFSET
+        self.MIN_SAFE_RADIUS = 90.0 # Foot target can never be less then this in world space or will encounter physical pbstruction.
 
         # Definitive leg configurations
         self.LF = {

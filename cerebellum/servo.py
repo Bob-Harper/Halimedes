@@ -13,7 +13,6 @@ class Servo(PWM):
         self.prescaler(prescaler)
         self._angle = 0.0
 
-
     @property
     def angle(self) -> float:
         return self._angle
@@ -38,7 +37,6 @@ class Servo(PWM):
         value = int(pwr * self.servo_cfg.SERVO_PERIOD)
 
         self.pulse_width(value)
-
 
     @staticmethod
     def _map(x, in_min, in_max, out_min, out_max):

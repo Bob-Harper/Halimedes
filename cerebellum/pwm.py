@@ -4,10 +4,11 @@ import math
 from cerebellum.i2c import I2C
 from crawler.hardware_values import PWM_Values
 
+
 class PWM(I2C):
     """
     High-performance native Python PWM driver interface.
-    Natively references your isolated PWM_Values specification block.
+    Natively references isolated PWM_Values specification block.
     """
     def __init__(self, channel, address=None, *args, **kwargs):
         self.hw = PWM_Values()

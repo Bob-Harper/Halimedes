@@ -10,21 +10,23 @@ class I2C:
     def __init__(self, address: int | list[int], bus: int = 1, *args, **kwargs):
         self._bus = bus
         self._smbus = SMBus(self._bus)
-        self.address = None
+        addr: int | None = None
 
         if isinstance(address, list):
             connected_devices = self.scan()
             for _addr in address:
                 if _addr in connected_devices:
-                    self.address = _addr
+                    addr = _addr
                     break
             else:
-                self.address = address
+                if address:
+                    addr = address[0]
         else:
-            self.address = address
+            addr = address
 
-        if self.address is None:
+        if addr is None:
             raise ValueError("I2C address cannot be None")
+        self.address: int = addr
 
     def _write_byte(self, data):
         return self._smbus.write_byte(self.address, data)

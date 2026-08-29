@@ -7,9 +7,7 @@ gpio_cfg = gpio_values()
 class Pin:
     """
     High-performance native GPIO Controller for Hal.
-    All dynamic hardware instance rebuilding and legacy logging leaks are completely purged.
     """
-
 
     def __init__(self, pin, mode=0x01, pull=None, *args, **kwargs):
         # Resolve board designation names directly
@@ -20,8 +18,6 @@ class Pin:
         self.PULL_UP = self.gpio_values.PULL_UP
         self.PULL_DOWN = self.gpio_values.PULL_DOWN
         self.PULL_NONE = self.gpio_values.PULL_NONE
-
-            # Static broadcom dictionary mapping for standard robot hat configuration aliases
 
         if isinstance(pin, str):
             if pin not in self.gpio_values._dict:
@@ -44,10 +40,12 @@ class Pin:
 
     def value(self, val=None):
         """Get or set pin state with zero dynamic instance reconstruction."""
+        if self.gpio is None:
+            return 0
         if val is None:
             return int(self.gpio.value)
 
-        if self._mode == self.OUT:
+        if self._mode == self.OUT and isinstance(self.gpio, OutputDevice):
             if val:
                 self.gpio.on()
             else:
@@ -55,12 +53,12 @@ class Pin:
         return 1 if val else 0
 
     def on(self):
-        if self._mode == self.OUT:
+        if self._mode == self.OUT and isinstance(self.gpio, OutputDevice):
             self.gpio.on()
         return 1
 
     def off(self):
-        if self._mode == self.OUT:
+        if self._mode == self.OUT and isinstance(self.gpio, OutputDevice):
             self.gpio.off()
         return 0
 

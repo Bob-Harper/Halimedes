@@ -56,6 +56,7 @@ class Headlights:
 # Standalone test
 # ---------------------------------------------------------
 
+
 if __name__ == "__main__":
     print("[Test] Initializing Headlight Test...")
     # Boots up cleanly, automatically reading pins from crawler/hardware_values.py

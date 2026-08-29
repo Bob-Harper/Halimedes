@@ -50,7 +50,7 @@ class HalCrawler(Robot):
         zero_femur = leg["joint_zero"]["femur"] if leg["joint_zero"]["femur"] != 90.0 else 0.0
         zero_tibia = leg["joint_zero"]["tibia"]  # no special-case 90→0
 
-        servo_femur = zero_femur - (0.0 - ik_femur)
+        servo_femur = zero_femur + ik_femur
         servo_tibia = zero_tibia - ik_tibia      # → 90 - ik_tibia
 
         return {
@@ -74,7 +74,6 @@ class HalCrawler(Robot):
         self.prev_roll = current_roll
 
         pin_payload = [0.0] * 12
-        MIN_SAFE_RADIUS = 90.0
 
         # Convert values to clean radians for your inverse trigonometry
         pitch_rad = math.radians(current_pitch)
@@ -85,8 +84,8 @@ class HalCrawler(Robot):
 
             # Structural proximity firewall
             world_radius = math.sqrt(coords["dx"]**2 + coords["dy"]**2)
-            if world_radius < MIN_SAFE_RADIUS:
-                scale_factor = MIN_SAFE_RADIUS / world_radius
+            if world_radius < self.legs_cfg.MIN_SAFE_RADIUS:
+                scale_factor = self.legs_cfg.MIN_SAFE_RADIUS / world_radius
                 safe_dx = coords["dx"] * scale_factor
                 safe_dy = coords["dy"] * scale_factor
             else:
@@ -127,16 +126,18 @@ class HalCrawler(Robot):
             hip_dx = safe_dx - leg_cfg["mount_x"]
             hip_dy = safe_dy - leg_cfg["mount_y"]
 
-            # print("IK INPUT:", leg_name, hip_dx, hip_dy, corrected_z)
+            print("IK INPUT:", leg_name, hip_dx, hip_dy, corrected_z)
 
             raw_ik = self.ik_solver.solve_leg_triangle(
                 dx=hip_dx,
                 dy=hip_dy,
                 dz=corrected_z
             )
-
+            print(leg_name, "IK OUTPUT:", raw_ik)
+            ik_femur = max(-90.0, min(45.0, raw_ik[1]))
+            raw_ik[1] = ik_femur
             translated = self.translate_ik_to_servo(leg_name, raw_ik)
-
+            print(leg_name, "IK TRANSLATED:", translated)
             pin_payload[leg_cfg["pin_coxa"]]  = translated["coxa"]
             pin_payload[leg_cfg["pin_femur"]] = translated["femur"]
             pin_payload[leg_cfg["pin_tibia"]] = translated["tibia"]

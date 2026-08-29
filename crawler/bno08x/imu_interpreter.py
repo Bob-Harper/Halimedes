@@ -1,14 +1,7 @@
 # reflex/bno08x/imu_interpreter.py
 
-from .decoders.rotation_vector import RotationVectorDecoder
-from .decoders.game_rotation_vector import GameRotationVectorDecoder
-from .decoders.gravity import GravityDecoder
-from .decoders.linear_accel import LinearAccelDecoder
-from .decoders.gyro import GyroDecoder
-from .decoders.accel import AccelDecoder
-from .decoders.mag import MagDecoder
+from .game_rotation_vector import GameRotationVectorDecoder
 import time
-
 
 REPORT_LENGTHS = {
     0x01: 10,  # Accelerometer
@@ -21,6 +14,7 @@ REPORT_LENGTHS = {
     0xF8: 4,   # IMU Reset - if this shows up it means the IMU has reset itself.
 
 }
+
 
 class IMUInterpreter:
     def __init__(self):
@@ -92,19 +86,7 @@ class IMUInterpreter:
             report_buf = buf[idx:end]
 
             decoded = None
-            if report_id == 0x01:
-                decoded = AccelDecoder.decode(report_buf)
-            elif report_id == 0x02:
-                decoded = GyroDecoder.decode(report_buf)
-            elif report_id == 0x03:
-                decoded = MagDecoder.decode(report_buf)
-            elif report_id == 0x04:
-                decoded = LinearAccelDecoder.decode(report_buf)
-            elif report_id == 0x05:
-                decoded = RotationVectorDecoder.decode(report_buf)
-            elif report_id == 0x06:
-                decoded = GravityDecoder.decode(report_buf)
-            elif report_id == 0x08:
+            if report_id == 0x08:
                 decoded = GameRotationVectorDecoder.decode(report_buf)
             elif report_id == 0xF8:  # Hub Event
                 event_id = report_buf[1]
