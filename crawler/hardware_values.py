@@ -81,7 +81,7 @@ class Robot_Values:
         self.SPEED_SCALE_NORM = 100 # Sane Speed in most movments is calibrated for 1-100.
         self.SPEED_SCALE_MAX = 200 # Values up to this allows for a "Turbo Mode"
         # scale speed of movements to reduce spikes until hardware can handle higher servo power draw
-        self.MOVEMENT_SCALER = 0.66
+        self.MOVEMENT_SCALER = 0.50
         self.MAX_DELTA_PER_SERVO =5.0
         self.MAX_TOTAL_DELTA = 50.0
         # scale the pitch and roll of the GRV values returned for stabilization.  Debug only, 5 is extremely noticeable
