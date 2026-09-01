@@ -126,18 +126,18 @@ class HalCrawler(Robot):
             hip_dx = safe_dx - leg_cfg["mount_x"]
             hip_dy = safe_dy - leg_cfg["mount_y"]
 
-            print("IK INPUT:", leg_name, hip_dx, hip_dy, corrected_z)
+            # print("IK INPUT:", leg_name, hip_dx, hip_dy, corrected_z)
 
             raw_ik = self.ik_solver.solve_leg_triangle(
                 dx=hip_dx,
                 dy=hip_dy,
                 dz=corrected_z
             )
-            print(leg_name, "IK OUTPUT:", raw_ik)
+            # print(leg_name, "IK OUTPUT:", raw_ik)
             ik_femur = max(-90.0, min(45.0, raw_ik[1]))
             raw_ik[1] = ik_femur
             translated = self.translate_ik_to_servo(leg_name, raw_ik)
-            print(leg_name, "IK TRANSLATED:", translated)
+            # print(leg_name, "IK TRANSLATED:", translated)
             # movement rate: speed is 0-100 percentage (100 == full)
             move_speed_pct = max(0.0, min(speed, 100)) / 100.0
 
@@ -209,9 +209,9 @@ class HalCrawler(Robot):
         governed_payload = [self.prev_pin_payload[i] + clamped[i] for i in range(12)]
 
         # temporary debug for swing pins
-        if swing_indices:
-            for i in sorted(swing_indices):
-                print(f"[GOV] pin {i} prev={self.prev_pin_payload[i]:.2f} targ={target_payload[i]:.2f} req={deltas[i]:.2f} clamped={clamped[i]:.2f}")
+        # if swing_indices:
+        #     for i in sorted(swing_indices):
+        #         print(f"[GOV] pin {i} prev={self.prev_pin_payload[i]:.2f} targ={target_payload[i]:.2f} req={deltas[i]:.2f} clamped={clamped[i]:.2f}")
 
         self.servo_write_raw(governed_payload)
         self.prev_pin_payload = governed_payload

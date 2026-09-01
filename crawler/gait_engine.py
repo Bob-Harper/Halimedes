@@ -17,7 +17,11 @@ class GaitEngine:
         self.current_frame_idx = 0
         self.diagonal_phase = 0
         self.current_speed = 50 # 0-100 scale with reflex/boosting to 200
-        self.smooth = 50 #gait smoothing
+        self.current_smooth = 20 #gait smoothing
+        self.current_target = None
+        self.current_imu = None
+
+
     def set_speed(self, pct: int):
             self.current_speed = max(0, min(100, int(pct)))
 
@@ -56,8 +60,10 @@ class GaitEngine:
 
         # 3. Safely pass down to working level and speed controls.  Speed in this context is Governer smoothing rate
         # pass smoothing as 'smooth' and movement rate as 'speed'
-        self.state.execute_local_step(body_aligned_targets, self.smooth, speed=self.current_speed, imu_data=imu_data)
-
+        self.state.execute_local_step(body_aligned_targets, self.current_smooth, speed=self.current_speed, imu_data=imu_data)
+        # Store for interpolation
+        self.current_target = body_aligned_targets
+        self.current_imu = imu_data
 
     def _advance(self):
         if not self.current_gait:
@@ -79,8 +85,19 @@ class GaitEngine:
             flipped_legs[target_leg] = [-xyz[0], -xyz[1], xyz[2]]
         return Frame(flipped_legs, frame.body)
 
-X_STANCE = 75
-Y_STANCE = 95
+    def update(self):
+        if self.current_target is None:
+            return
+
+        self.state.execute_local_step(
+            self.current_target,
+            smooth=self.current_smooth,
+            speed=self.current_speed,
+            imu_data=self.current_imu
+        )
+
+X_STANCE = 90
+Y_STANCE = 90
 Z_STANCE = 60   # body height (tune later)
 STEP_X   = 25    # forward stride
 LIFT_Z   = 45    # foot lift height
