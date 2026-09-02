@@ -74,16 +74,16 @@ class Robot_Values:
     severe voltage underruns when speeds exceed 25.
     """
     def __init__(self):
-        self.MAX_DPS = 360.0 # nominal max value 720.
+        self.MAX_DPS = 240.0 # nominal max value 720.  May be scaled down until power issues are resolved.
         self.SERVO_COUNT = 12
         self.PIN_COUNT = 12
         self.STEP_TIME_MS = 10.0  # 10ms internal step interpolation interval
-        self.SPEED_SCALE_NORM = 100 # Sane Speed in most movments is calibrated for 1-100.
+        self.SPEED_SCALE_NORM = 20 # Sane Speed in most movments is calibrated for 1-100. Until gaits are calibrated to servos and power issues, def speed is 20
         self.SPEED_SCALE_MAX = 200 # Values up to this allows for a "Turbo Mode"
         # scale speed of movements to reduce spikes until hardware can handle higher servo power draw
         self.MOVEMENT_SCALER = 0.50
-        self.MAX_DELTA_PER_SERVO =5.0
-        self.MAX_TOTAL_DELTA = 50.0
+        self.MAX_DELTA_PER_SERVO = 5.0
+        self.MAX_TOTAL_DELTA = 40.0
         # scale the pitch and roll of the GRV values returned for stabilization.  Debug only, 5 is extremely noticeable
         self.PITCH_SCALE = 1
         self.ROLL_SCALE = 1
@@ -101,7 +101,7 @@ class Leg_Values:
 
         # Structural space boundaries
         self.MAX_REACH = self.FEMUR_LEN + self.TIBIA_LEN
-        self.PIVOT_OFFSET = 15.0  # Vertical height of femur horn above baseplate plane
+        self.PIVOT_OFFSET = -15  # Vertical height of femur horn above baseplate plane
         self.FLOOR_DROP = self.MAX_REACH - self.PIVOT_OFFSET
         self.MIN_SAFE_RADIUS = 90.0 # Foot target can never be less then this in world space or will encounter physical pbstruction.
 

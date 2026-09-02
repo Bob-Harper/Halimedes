@@ -11,7 +11,7 @@ class ArthropodIK:
         """Solves a pure geometric triangle for an upward-slanted limb configuration."""
         # 1. Pure horizontal coxa angle relative to the side axis (abs(dy))
         coxa_rad = math.atan2(dy, dx)
-        # print(f"DEBUG dx={dx:.2f} dy={dy:.2f} coxa_rad={coxa_rad:.4f} coxa_deg={math.degrees(coxa_rad):.2f}")
+
         # 2. Horizontal extension distance past the hip joint
         px = math.sqrt(dx*dx + dy*dy) - self.C
 
@@ -32,29 +32,43 @@ class ArthropodIK:
         cos_tibia = max(-1.0, min(1.0, cos_tibia))
         tibia_rad = math.pi - math.acos(cos_tibia)
 
-        # To resolve a triangle that slants upward first, the femur pitch angle
-        # subtracts the internal cosine variation from the baseline tracking slant!
+        # femur baseline and offset
         angle_to_target = math.atan2(pz, px)
         cos_femur = (self.A*self.A + d*d - self.B*self.B) / (2.0 * self.A * d)
         cos_femur = max(-1.0, min(1.0, cos_femur))
         femur_offset = math.acos(cos_femur)
 
-        # two geometric solutions: knee on one side or the other of the hypotenuse
-        candidate_up   = angle_to_target + femur_offset
-        candidate_down = angle_to_target - femur_offset
+        # two geometric femur candidates
+        femur_up   = angle_to_target + femur_offset
+        femur_down = angle_to_target - femur_offset
 
-        # simple rule: keep the knee on the “arthropod side” of the line,
-        # but let the femur go below the body plane when the foot is down.
-        if dz < 0:
-            # foot below body → allow femur to swing down while staying on same side of hypotenuse
-            femur_rad = candidate_down
+        # helper: does this femur+tibia configuration point outward, not inward?
+        def tibia_points_outward(femur_angle):
+            # fx, fz = femur direction vector, tx, tz = tibia tip position relative to hip, hx, hz = hip→foot target vector
+
+            # femur direction
+            fx = math.cos(femur_angle)
+            fz = math.sin(femur_angle)
+
+            # tibia tip position relative to hip (simple FK)
+            tx = fx * self.A + math.cos(femur_angle + tibia_rad) * self.B
+            tz = fz * self.A + math.sin(femur_angle + tibia_rad) * self.B
+
+            # hip→foot target vector
+            hx = px
+            hz = pz
+
+            # dot product: >= 0 means tibia pointing generally toward the target, not inward
+            return (tx * hx + tz * hz) >= 0
+
+        # choose the branch where tibia does NOT point inward toward the body
+        if tibia_points_outward(femur_up):
+            femur_rad = femur_up
         else:
-            # foot above body → use the other branch
-            femur_rad = candidate_up
+            femur_rad = femur_down
 
-        # Return pure, raw, unaltered mathematical degrees relative to the horizon
         return [
             math.degrees(coxa_rad),
             math.degrees(femur_rad),
-            math.degrees(tibia_rad)
+            math.degrees(tibia_rad),
         ]

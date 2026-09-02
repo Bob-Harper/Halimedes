@@ -1,11 +1,13 @@
+import math
+
+
 class Frame:
     def __init__(self, legs, body=None):
         self.legs = legs        # dict: name -> [x,y,z] in world space (mm)
         self.body = body or {}  # roll/pitch/yaw/height
 
 class Gait:
-    def __init__(self, name, frames, loop=True):
-        self.name = name
+    def __init__(self, frames, loop=True):
         self.frames = [Frame(f) if isinstance(f, dict) else f for f in frames]
         self.loop = loop
 
@@ -16,14 +18,20 @@ class GaitEngine:
         self.current_gait: Gait | None = None
         self.current_frame_idx = 0
         self.diagonal_phase = 0
-        self.current_speed = 50 # 0-100 scale with reflex/boosting to 200
+        self.current_speed = 20 # 0-100 scale with reflex/boosting to 200
         self.current_smooth = 20 #gait smoothing
         self.current_target = None
         self.current_imu = None
-
+        self.body_yaw = 0.0
 
     def set_speed(self, pct: int):
             self.current_speed = max(0, min(100, int(pct)))
+
+    @staticmethod
+    def rotate_xy(x, y, theta):
+        c = math.cos(theta)
+        s = math.sin(theta)
+        return (x*c - y*s, x*s + y*c)
 
     def start_gait(self, gait):
         if not gait.frames:
@@ -44,26 +52,34 @@ class GaitEngine:
         self._advance()
 
     def _apply_frame(self, frame):
-        # 1. Standardize formatting into structural targets
         body_aligned_targets = {}
+
         for leg_name, xyz in frame.legs.items():
+            sx, sy, sz = xyz
+
+            # ROTATE stance by body_yaw
+            rx, ry = self.rotate_xy(sx, sy, self.body_yaw)
+
             body_aligned_targets[leg_name] = {
-                "dx": xyz[0],
-                "dy": xyz[1],
-                "dz": xyz[2]
+                "dx": rx,
+                "dy": ry,
+                "dz": sz
             }
 
-        # 2. Extract live orientation payload directly out of the state layer
         imu_data = {"pitch": 0.0, "roll": 0.0}
         if hasattr(self.state, 'sensor_imu') and self.state.sensor_imu:
             imu_data = self.state.sensor_imu.get_pitch_roll()
 
-        # 3. Safely pass down to working level and speed controls.  Speed in this context is Governer smoothing rate
-        # pass smoothing as 'smooth' and movement rate as 'speed'
-        self.state.execute_local_step(body_aligned_targets, self.current_smooth, speed=self.current_speed, imu_data=imu_data)
-        # Store for interpolation
+        self.state.execute_local_step(
+            body_aligned_targets,
+            self.current_smooth,
+            speed=self.current_speed,
+            imu_data=imu_data
+        )
+
         self.current_target = body_aligned_targets
         self.current_imu = imu_data
+
 
     def _advance(self):
         if not self.current_gait:
@@ -98,9 +114,9 @@ class GaitEngine:
 
 X_STANCE = 90
 Y_STANCE = 90
-Z_STANCE = 60   # body height (tune later)
+Z_STANCE = -45   # body height (tune later)
 STEP_X   = 25    # forward stride
-LIFT_Z   = 45    # foot lift height
+LIFT_Z   = 20    # foot lift height
 SHIFT_X  = 25    # body advance per cycle
 
 STANCE = {
@@ -110,7 +126,7 @@ STANCE = {
     "LR": [-X_STANCE,  Y_STANCE, Z_STANCE],
 }
 
-walk_forward_frames = [
+tripod_gait = [
     # 1: lift + start swing RF
     {
         "LF": [X_STANCE,  Y_STANCE, Z_STANCE],
