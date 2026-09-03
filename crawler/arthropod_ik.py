@@ -12,7 +12,7 @@ class ArthropodIK:
         # 1. Pure horizontal coxa angle relative to the side axis (abs(dy))
         coxa_rad = math.atan2(dy, dx)
 
-        # 2. Horizontal extension distance past the hip joint
+        # 2. Horizontal extension distance past the hip joint/ coxa
         px = math.sqrt(dx*dx + dy*dy) - self.C
 
         # 3. For an upward-slanted link setup where the foot is at the baseplate,

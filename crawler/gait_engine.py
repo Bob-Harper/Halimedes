@@ -56,9 +56,21 @@ class GaitEngine:
 
         for leg_name, xyz in frame.legs.items():
             sx, sy, sz = xyz
+            leg_cfg = self.state.legs_cfg.LEG_MAP[leg_name]
 
-            # ROTATE stance by body_yaw
-            rx, ry = self.rotate_xy(sx, sy, self.body_yaw)
+            mx = leg_cfg["mount_x"]
+            my = leg_cfg["mount_y"]
+
+            # translate stance coordinate into leg-local space
+            tx = sx - mx
+            ty = sy - my
+
+            # rotate around the hip pivot
+            rx_local, ry_local = self.rotate_xy(tx, ty, self.body_yaw)
+
+            # translate back into world/body space
+            rx = rx_local + mx
+            ry = ry_local + my
 
             body_aligned_targets[leg_name] = {
                 "dx": rx,
@@ -79,7 +91,6 @@ class GaitEngine:
 
         self.current_target = body_aligned_targets
         self.current_imu = imu_data
-
 
     def _advance(self):
         if not self.current_gait:
